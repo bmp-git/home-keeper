@@ -1,34 +1,31 @@
 //Room, Door, Window, External env, Home, Floor,
 //Beacon, Pir, Videocamera, Perimetrali
-trait Property {
-  def name: String // ??
-}
 
-trait Action {
-
-}
-
-trait Entity {
+trait Property[T] {
   def name: String
-  def properties: Set[Property]
-  def actions: Set[Action]
+  def value: T
+}
+
+trait Action[T] {
+  def name: String
+  def trig(t: T): Unit
 }
 
 trait DigitalTwin { //DigitalTwin situated
-  def name: String // ??
-  def properties: Set[Property]
-  def actions: Set[Action]
+  def name: String
+  def properties: Set[Property[_]]
+  def actions: Set[Action[_]]
 }
 
 trait User extends DigitalTwin {
   def room:Option[Room]
 }
 
-
 //Home topology
 trait Gateway extends DigitalTwin {
   def rooms: (Room, Room)
 }
+
 trait Door extends Gateway
 trait Window extends Gateway
 trait Room extends DigitalTwin {
@@ -42,9 +39,3 @@ trait Home extends DigitalTwin {
 }
 trait DummyDoor extends Door
 trait External extends Room
-
-class ActorGateway(override val name:String, override val rooms: (Room, Room)) extends Gateway {
-  override def properties: Set[Property] = ???
-
-  override def actions: Set[Action] = ???
-}
