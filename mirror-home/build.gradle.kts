@@ -24,6 +24,8 @@ dependencies {
 
     implementation("com.typesafe.akka:akka-http_2.12:10.1.11")
     implementation("com.typesafe.akka:akka-stream_2.12:2.5.26")
+    implementation("com.typesafe.akka:akka-http-spray-json_2.12:10.1.11")
+    implementation("com.pauldijou:jwt-core_2.12:4.3.0")
 
     implementation("org.scala-lang:scala-compiler:2.12.11")
     //compile("org.scala-lang:scala-library:2.13.1")
