@@ -32,6 +32,9 @@ dependencies {
     implementation("com.typesafe.akka:akka-http-spray-json_2.12:10.1.11")
     implementation("com.lightbend.akka:akka-stream-alpakka-mqtt_2.12:2.0.0-RC1")
 
+    //Sourcecode
+    implementation("com.lihaoyi:sourcecode_2.12:0.2.1")
+
     //JWT authentication
     implementation("com.pauldijou:jwt-core_2.12:4.3.0")
 

@@ -25,8 +25,8 @@ object MqttExamples extends App {
     new MemoryPersistence
   ).withWill(lastWill)
 
-  val allTopics = "no"
-  val topic1 = "#"
+  val allTopics = "#"
+  val topic1 = "lol"
   val mqttSource: Source[MqttMessage, Future[Done]] =
     MqttSource.atMostOnce(
       connectionSettings.withClientId(clientId = "source-spec/source"),
