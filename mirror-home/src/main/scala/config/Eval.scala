@@ -1,7 +1,9 @@
-import scala.reflect.runtime.currentMirror
-import scala.tools.reflect.ToolBox
+package config
+
 import java.io.File
 
+import scala.reflect.runtime.currentMirror
+import scala.tools.reflect.ToolBox
 import scala.util.Try
 
 object Eval {

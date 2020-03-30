@@ -1,5 +1,6 @@
 //Room, Door, Window, External env, Home, Floor,
 //Beacon, Pir, Videocamera, Perimetrali
+package model
 
 trait Property[T] {
   def name: String

@@ -1,3 +1,5 @@
+package webserver
+
 import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -7,17 +9,17 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.server.directives.Credentials
 import akka.stream.ActorMaterializer
-import webserver.JwtUtils
 import webserver.model.ModelJsonProtocol._
 import webserver.model._
 
 import scala.concurrent.Future
 import scala.io.StdIn
 
-
 object WebServer extends App {
 
-
+  implicit val system = ActorSystem()
+  implicit val materializer = ActorMaterializer()
+  implicit val executionContext = system.dispatcher
 
   // (fake) async database query api
   var orders: List[Item] = Nil
@@ -36,11 +38,6 @@ object WebServer extends App {
     }
   }
 
-
-
-  implicit val system = ActorSystem()
-  implicit val materializer = ActorMaterializer()
-  implicit val executionContext = system.dispatcher
 
   def credentialsAuthenticator(credentials: LoginRequest): Future[Boolean] = Future {
     credentials match {

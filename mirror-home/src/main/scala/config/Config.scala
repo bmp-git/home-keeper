@@ -1,3 +1,6 @@
+package config
+
+import model.Property
 
 object Config {
 
