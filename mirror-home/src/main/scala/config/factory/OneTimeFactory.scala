@@ -1,4 +1,4 @@
-package config.factory.topology
+package config.factory
 
 trait OneTimeFactory[T] {
   private var matBuild: Option[T] = None

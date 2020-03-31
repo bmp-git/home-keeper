@@ -1,12 +1,13 @@
 package config.factory.topology
 
-import model.{Action, DigitalTwin, Property}
+import config.factory.{OneTimeFactory, PropertyFactory}
+import model.{Action, DigitalTwin}
 
 trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
-  var properties: Set[Property[_]] = Set[Property[_]]()
+  var properties: Set[PropertyFactory[_, _]] = Set[PropertyFactory[_, _]]()
   var actions: Set[Action[_]] = Set[Action[_]]()
 
-  def withProperties(property: Property[_]*): this.type = {
+  def withProperties(property: PropertyFactory[_, _]*): this.type = {
     properties = properties ++ property
     this
   }

@@ -1,13 +1,42 @@
 package config.factory
 
-trait StaticPropertyFactory[O]  {
-  def name:String
-  def output: Iterable[O]
-  def errors: Iterable[Exception]
-  def outs:Iterable[Either[O,Exception]] = ??? //merge output and errors
+import akka.NotUsed
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.Source
+import model.Property
+
+
+trait PropertyFactory[I, O] extends OneTimeFactory[Property[O]] {
+  def actorSystem: ActorSystem
+
+  def name: String
+
+  def input: Source[I, NotUsed]
+
+  def map(i: I): O
+
+  def errors: Source[Exception, NotUsed]
+
+  def outs: Source[Either[O, Exception], NotUsed] = {
+    val o = output.map(v => Left(v))
+    val e = errors.map(v => Right(v))
+    e.merge(o)
+  }
+
+  def output: Source[O, NotUsed] = input.map(map)
+
+  override def oneTimeBuild(): Property[O] = new Property[O] {
+    implicit val materializer: ActorMaterializer = ActorMaterializer()(actorSystem)
+    private var v: O = _
+    output.runForeach(x => v = x)
+
+    override def name: String = PropertyFactory.this.name
+
+    override def value: O = v
+  }
 }
-trait DynamicPropertyFactory[I,O] extends StaticPropertyFactory[O]{
-  def map(i:I):O
-  def input: Iterable[I]
-  def output: Iterable[O] = input.map(map)
+
+trait StaticPropertyFactory[O] extends PropertyFactory[O, O] {
+  def map(i: O): O = i
 }

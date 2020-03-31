@@ -1,5 +1,6 @@
 package config.factory.topology
 
+import config.impl.FloorImpl
 import model.Floor
 
 case class FloorFactory(name: String) extends DigitalTwinFactory[Floor] {
@@ -15,5 +16,5 @@ case class FloorFactory(name: String) extends DigitalTwinFactory[Floor] {
     this
   }
 
-  override def oneTimeBuild(): Floor = FloorImpl(name, rooms.map(_.build()).toSet, properties, actions)
+  override def oneTimeBuild(): Floor = FloorImpl(name, rooms.map(_.build()).toSet, properties.map(_.build()), actions)
 }

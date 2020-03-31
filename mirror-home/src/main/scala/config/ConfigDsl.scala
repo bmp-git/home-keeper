@@ -1,7 +1,12 @@
 package config
 
+import akka.NotUsed
+import akka.actor.ActorSystem
+import akka.stream.scaladsl.Source
+import config.factory.topology._
 import config.factory.{topology, _}
-import config.factory.topology.{DoorFactory, FloorFactory, HomeFactory, RoomFactory, WindowFactory}
+
+import scala.concurrent.duration._
 
 object ConfigDsl {
 
@@ -28,6 +33,20 @@ object ConfigDsl {
       roomB.withGateways(window)
       window
   }
+
+  val system: ActorSystem = ActorSystem()
+
+  def time_now(): StaticPropertyFactory[Long] = new StaticPropertyFactory[Long] {
+    override def actorSystem: ActorSystem = system
+
+    override def name: String = "time"
+
+    override def input: Source[Long, NotUsed] = Source.tick(0.second, 1.second, None)
+      .map(_ => System.currentTimeMillis)
+      .mapMaterializedValue(_ => NotUsed)
+
+    override def errors: Source[Exception, NotUsed] = Source.empty
+  }
 }
 
 
@@ -39,24 +58,26 @@ object Test extends App {
   val hallway = room()
   val bedRoom = room()
 
-    val h = home("home")(
-      floor("floor level")(
-        hallway,
-        bedRoom
-      ),
-      floor("first level")
+  val h = home("home")(
+    floor("floor level")(
+      hallway,
+      bedRoom
     )
-
-  door(bedRoom -> hallway).withProperties(
-    ???,
-    ???
   )
-  door(hallway -> external)
+
+  door(bedRoom -> hallway)
+  door(hallway -> external).withProperties(
+    time_now()
+  )
 
   val build = h.build()
   println(build)
 
 
+  while (true) {
+    println(build.floors.head.rooms.head.gateways.find(_.rooms._2 == external.build()).head.properties.head.value)
+    Thread.sleep(1000)
+  }
   /*println(Eval[Unit](
     """
       |import config.ConfigDsl._
