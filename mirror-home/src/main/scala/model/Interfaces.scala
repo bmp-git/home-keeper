@@ -38,5 +38,4 @@ trait Floor extends DigitalTwin {
 trait Home extends DigitalTwin {
   def floors: Set[Floor]
 }
-trait DummyDoor extends Door
-trait External extends Room
+
