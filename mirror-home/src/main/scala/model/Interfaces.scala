@@ -2,14 +2,18 @@
 //Beacon, Pir, Videocamera, Perimetrali
 package model
 
+import scala.util.Try
+
 trait Property[T] {
   def name: String
-  def value: T
+
+  def value: Try[T]
 }
 
 trait Action[T] {
   def name: String
-  def trig(t: T): Unit
+
+  def trig(t: T): Unit //Unit or Option[Exception] or Future[Try[Done]]?
 }
 
 trait DigitalTwin { //DigitalTwin situated

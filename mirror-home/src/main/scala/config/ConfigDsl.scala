@@ -1,14 +1,22 @@
 package config
 
-import akka.NotUsed
+import akka.Done
 import akka.actor.ActorSystem
+import akka.stream.alpakka.mqtt.scaladsl.MqttSource
+import akka.stream.alpakka.mqtt.{MqttConnectionSettings, MqttMessage, MqttQoS, MqttSubscriptions}
 import akka.stream.scaladsl.Source
 import config.factory.topology._
 import config.factory.{topology, _}
+import model.Property
+import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
+import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.util.{Failure, Success}
 
 object ConfigDsl {
+
+  type BrokerAddress = String
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
@@ -34,19 +42,37 @@ object ConfigDsl {
       window
   }
 
-  val system: ActorSystem = ActorSystem()
+  //Properties
+  def time_now(): PropertyFactory[Long] = PropertyFactory.safe("time",
+    Source.tick(0.second, 1.second, None).map(_ => System.currentTimeMillis))
 
-  def time_now(): StaticPropertyFactory[Long] = new StaticPropertyFactory[Long] {
-    override def actorSystem: ActorSystem = system
+  def tag(name: String, value: String): PropertyFactory[String] = PropertyFactory.static(name, value)
 
-    override def name: String = "time"
+  implicit val system: ActorSystem = ActorSystem()
 
-    override def input: Source[Long, NotUsed] = Source.tick(0.second, 1.second, None)
-      .map(_ => System.currentTimeMillis)
-      .mapMaterializedValue(_ => NotUsed)
+  def mqtt_bool(name: String, stateTopic: String, truePayload: String, falsePayload: String)
+               (implicit brokerAddress: BrokerAddress): PropertyFactory[Boolean] =
+    mqtt_payload(name, stateTopic).valueMap(_.payload.utf8String).flatMap {
+      case `truePayload` => Success(true)
+      case `falsePayload` => Success(false)
+      case v => Failure(new Exception(s"$name MqttBool property: $v match failure"))
+    }
 
-    override def errors: Source[Exception, NotUsed] = Source.empty
+  private def mqtt_payload(name: String, topic: String)(implicit brokerAddress: BrokerAddress): PropertyFactory[MqttMessage] = {
+    val connectionSettings = MqttConnectionSettings(
+      s"tcp://$brokerAddress",
+      s"mirror-home-property-$name",
+      new MemoryPersistence
+    )
+    val mqttSource: Source[MqttMessage, Future[Done]] =
+      MqttSource.atMostOnce(
+        connectionSettings,
+        MqttSubscriptions(Map(topic -> MqttQoS.AtLeastOnce)),
+        bufferSize = 1
+      )
+    PropertyFactory(name, mqttSource.map(Success.apply))
   }
+
 }
 
 
@@ -67,15 +93,32 @@ object Test extends App {
 
   door(bedRoom -> hallway)
   door(hallway -> external).withProperties(
-    time_now()
+    //time_now()
   )
 
+  val p1 = time_now().build()
+  val p2 = tag("Time", "now: ").build()
+  implicit val brokerAddress: BrokerAddress = "192.168.1.10:1883"
+  val p3 = mqtt_bool("PC", "stat/shelly25_1/POWER1", "ON", "OFF").build()
+  val p4 = mqtt_bool("Letto", "stat/shelly25_1/POWER2", "ON", "OFF").build()
   val build = h.build()
   println(build)
 
+  def printProperty(p: Property[Boolean]): Unit = {
+    val state = p.value match {
+      case Failure(exception) => exception match {
+        case _: NoSuchElementException => "Unknown"
+        case ex => ex.getMessage
+      }
+      case Success(true) => "On"
+      case Success(false) => "Off"
+    }
+    println(s"${p.name}: $state")
+  }
 
   while (true) {
-    println(build.floors.head.rooms.head.gateways.find(_.rooms._2 == external.build()).head.properties.head.value)
+    printProperty(p3)
+    printProperty(p4)
     Thread.sleep(1000)
   }
   /*println(Eval[Unit](
