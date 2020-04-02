@@ -1,10 +1,10 @@
 package config.factory.property
 
-import akka.Done
+import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.stream.alpakka.mqtt.scaladsl.MqttSource
 import akka.stream.alpakka.mqtt.{MqttConnectionSettings, MqttMessage, MqttQoS, MqttSubscriptions}
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Flow, Source}
 import config.ConfigDsl.BrokerAddress
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
@@ -29,16 +29,14 @@ object MqttPropertyFactory {
         bufferSize = 1
       )
     }
-  }
 
-  /*def messages(name: String, brokerAddress: BrokerAddress, topics: String*)
-              (implicit actorSystem: ActorSystem): PropertyFactory[MqttMessage] =
-    PropertyFactory(name, Flows.messages(name, brokerAddress, topics: _*).map(Success.apply))*/
+    def payloadExtractor:Flow[MqttMessage, String, NotUsed] =
+      Flow[MqttMessage].map(_.payload.utf8String)
+  }
 
   def payloads(name: String, brokerAddress: BrokerAddress, topics: String*)
               (implicit actorSystem: ActorSystem): PropertyFactory[String] =
-    PropertyFactory(name, Flows.messages(name, brokerAddress, topics: _*).map(_.payload.utf8String).map(Success.apply))
-
+    PropertyFactory(name, Flows.messages(name, brokerAddress, topics: _*).via(Flows.payloadExtractor).map(Success.apply))
 }
 
 

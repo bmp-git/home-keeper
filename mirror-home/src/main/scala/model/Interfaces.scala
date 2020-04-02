@@ -25,11 +25,11 @@ trait Action[T] {
   def name: String
 
   def trig(t: T): Unit //Unit or Option[Exception] or Future[Try[Done]]?
-/*
+
   def jsonFormat: JsonFormat[T]
 
   def trigFromJson(jsValue: JsValue): Try[Unit] =
-    Try(jsonFormat.read(jsValue)).map(v => trig(v))*/
+    Try(jsonFormat.read(jsValue)).map(v => trig(v))
 }
 
 trait DigitalTwin { //DigitalTwin situated
