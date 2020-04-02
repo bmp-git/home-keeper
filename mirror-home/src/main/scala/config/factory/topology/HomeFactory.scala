@@ -16,5 +16,5 @@ case class HomeFactory(name: String) extends DigitalTwinFactory[Home] {
     this
   }
 
-  override def oneTimeBuild(): Home = HomeImpl(name, floors.map(_.build()).toSet, properties.map(_.build()), actions)
+  override def oneTimeBuild(): Home = HomeImpl(name, floors.map(_.build()).toSet, properties.map(_.build()), actions.map(_.build()))
 }

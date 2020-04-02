@@ -16,5 +16,5 @@ case class FloorFactory(name: String) extends DigitalTwinFactory[Floor] {
     this
   }
 
-  override def oneTimeBuild(): Floor = FloorImpl(name, rooms.map(_.build()).toSet, properties.map(_.build()), actions)
+  override def oneTimeBuild(): Floor = FloorImpl(name, rooms.map(_.build()).toSet, properties.map(_.build()), actions.map(_.build()))
 }

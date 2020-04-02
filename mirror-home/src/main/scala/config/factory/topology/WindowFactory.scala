@@ -6,5 +6,5 @@ import utils.Lazy
 
 case class WindowFactory(name: String, rooms: (RoomFactory, RoomFactory)) extends GatewayFactory[Window] {
   override protected def oneTimeBuild(): Window = WindowImpl(name, new Lazy((rooms._1.build(), rooms._2.build())),
-    properties.map(_.build()), actions)
+    properties.map(_.build()), actions.map(_.build()))
 }

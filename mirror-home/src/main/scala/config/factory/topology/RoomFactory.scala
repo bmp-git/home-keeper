@@ -13,5 +13,5 @@ case class RoomFactory(name: String) extends DigitalTwinFactory[Room] {
   }
 
   override def oneTimeBuild(): Room = RoomImpl(name, new Lazy(gateways.map(_.build()).toSet),
-    properties.map(_.build()), actions)
+    properties.map(_.build()), actions.map(_.build()))
 }

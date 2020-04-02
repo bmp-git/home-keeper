@@ -11,7 +11,7 @@ import model.{Home, Property}
 import spray.json.{JsObject, JsonFormat}
 
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 import spray.json.DefaultJsonProtocol._
 
 object ConfigDsl {
@@ -63,6 +63,17 @@ object ConfigDsl {
 
   def http_object[T: JsonFormat](name: String, httpRequest: HttpRequest): PropertyFactory[T] =
     HttpPropertyFactory.toObject[T](name, httpRequest, 1000.millis)
+
+  def text_file(name:String, path:String):Property[String] = new Property[String] { //TODO: remove lol (or do it properly)
+    override def name: String = name
+
+    val s = scala.io.Source.fromFile("C:\\Users\\Edo\\Desktop\\jwt.txt")
+    val v = s.mkString
+    s.close()
+    override def value: Try[String] = Success(v)
+
+    override def jsonFormat: JsonFormat[String] = implicitly[JsonFormat[String]]
+  }
 }
 
 
@@ -76,7 +87,7 @@ object Test extends App {
   implicit val sensorStateFormat: JsonFormat[SensorState] = lazyFormat(jsonFormat4(SensorState))
 
   implicit val brokerAddress: BrokerAddress = "192.168.1.10:1883"
-  val hassAuth = Authorization(OAuth2BearerToken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJjYjA2Y2Y5OGZlOWY0YmI3Yjk3ZjEwYmQyOWY0M2E0MSIsImlhdCI6MTU3NDE3ODAwMiwiZXhwIjoxODg5NTM4MDAyfQ.QOHLiaA4-cHtV4dOXQ-nCxaHQwo2HRhd6iaJNiXvk8A"))
+  val hassAuth = Authorization(OAuth2BearerToken(text_file("jwt", "C:\\Users\\Edo\\Desktop\\jwt.txt").value.get))
   val garageReq = HttpRequest(uri = "https://hass.brb.dynu.net/api/states/sensor.consumo_garage").withHeaders(hassAuth)
 
 

@@ -10,13 +10,11 @@ import utils.RichProperty._
 import scala.util.{Success, Try}
 
 trait PropertyFactory[T] extends OneTimeFactory[Property[T]] {
-  def map[B: JsonFormat](f: T => B): PropertyFactory[B] = () => build().map(f) //TODO: remove
+  def map[B: JsonFormat](f: T => B): PropertyFactory[B] = () => build().map(f) //TODO: remove if unused
 
   def flatMap[B: JsonFormat](f: T => Try[B]): PropertyFactory[B] = () => build().flatMap(f)
 
   def recoverWith(f: Throwable => T): PropertyFactory[T] = () => build().recoverWith(f)
-
-
 }
 
 
