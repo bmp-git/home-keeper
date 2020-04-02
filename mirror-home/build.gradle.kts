@@ -9,7 +9,7 @@ plugins {
 }
 
 application {
-    mainClassName = "webserver.Main"
+    mainClassName = "webserver.WebServer"
 }
 
 repositories {
@@ -43,7 +43,7 @@ dependencies {
     testImplementation("org.scalatest:scalatest_2.12:3.0.1")
 
 
-    //testRuntimeOnly("org.pegdown:pegdown:1.4.2")
+    testRuntimeOnly("org.pegdown:pegdown:1.4.2")
     //testImplementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.0")
     //scoverage("org.scoverage:scalac-scoverage-plugin_2.12:1.3.1")
     //scoverage("org.scoverage:scalac-scoverage-runtime_2.12:1.3.1")

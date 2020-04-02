@@ -1,22 +1,21 @@
 package config
 
-import akka.Done
 import akka.actor.ActorSystem
-import akka.stream.alpakka.mqtt.scaladsl.MqttSource
-import akka.stream.alpakka.mqtt.{MqttConnectionSettings, MqttMessage, MqttQoS, MqttSubscriptions}
+import akka.http.scaladsl.model.HttpRequest
+import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.stream.scaladsl.Source
+import config.factory.property.{HttpPropertyFactory, MqttPropertyFactory, PropertyFactory}
+import config.factory.topology
 import config.factory.topology._
-import config.factory.{topology, _}
-import model.Property
-import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
+import model.{Home, Property}
+import spray.json.JsonFormat
 
-import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 
 object ConfigDsl {
 
-  type BrokerAddress = String
+  type BrokerAddress = String //TODO: move
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
@@ -43,35 +42,25 @@ object ConfigDsl {
   }
 
   //Properties
+  implicit val system: ActorSystem = ActorSystem()
+
   def time_now(): PropertyFactory[Long] = PropertyFactory.safe("time",
     Source.tick(0.second, 1.second, None).map(_ => System.currentTimeMillis))
 
   def tag(name: String, value: String): PropertyFactory[String] = PropertyFactory.static(name, value)
 
-  implicit val system: ActorSystem = ActorSystem()
-
   def mqtt_bool(name: String, stateTopic: String, truePayload: String, falsePayload: String)
                (implicit brokerAddress: BrokerAddress): PropertyFactory[Boolean] =
-    mqtt_payload(name, stateTopic).valueMap(_.payload.utf8String).flatMap {
+    MqttPropertyFactory.payloads(name, brokerAddress, stateTopic).flatMap {
       case `truePayload` => Success(true)
       case `falsePayload` => Success(false)
       case v => Failure(new Exception(s"$name MqttBool property: $v match failure"))
     }
 
-  private def mqtt_payload(name: String, topic: String)(implicit brokerAddress: BrokerAddress): PropertyFactory[MqttMessage] = {
-    val connectionSettings = MqttConnectionSettings(
-      s"tcp://$brokerAddress",
-      s"mirror-home-property-$name",
-      new MemoryPersistence
-    )
-    val mqttSource: Source[MqttMessage, Future[Done]] =
-      MqttSource.atMostOnce(
-        connectionSettings,
-        MqttSubscriptions(Map(topic -> MqttQoS.AtLeastOnce)),
-        bufferSize = 1
-      )
-    PropertyFactory(name, mqttSource.map(Success.apply))
-  }
+  def http_state(name: String, request: HttpRequest, pollingFreq: FiniteDuration): PropertyFactory[String] = ???
+
+  def http_object[T: JsonFormat](name: String, httpRequest: HttpRequest): PropertyFactory[T] =
+    HttpPropertyFactory.toObject[T](name, httpRequest, 1000.millis)
 
 }
 
@@ -79,6 +68,16 @@ object ConfigDsl {
 object Test extends App {
 
   import ConfigDsl._
+  import spray.json.DefaultJsonProtocol._
+
+  case class SensorState(entity_id: String, last_changed: String, last_updated: String, state: String)
+
+  implicit val sensorStateFormat: JsonFormat[SensorState] = lazyFormat(jsonFormat4(SensorState))
+
+  implicit val brokerAddress: BrokerAddress = "192.168.1.10:1883"
+  val hassAuth = Authorization(OAuth2BearerToken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJjYjA2Y2Y5OGZlOWY0YmI3Yjk3ZjEwYmQyOWY0M2E0MSIsImlhdCI6MTU3NDE3ODAwMiwiZXhwIjoxODg5NTM4MDAyfQ.QOHLiaA4-cHtV4dOXQ-nCxaHQwo2HRhd6iaJNiXvk8A"))
+  val garageReq = HttpRequest(uri = "https://hass.brb.dynu.net/api/states/sensor.consumo_garage").withHeaders(hassAuth)
+
 
   val external = room()
   val hallway = room()
@@ -91,34 +90,35 @@ object Test extends App {
     )
   )
 
-  door(bedRoom -> hallway)
+  //door(bedRoom -> hallway)
   door(hallway -> external).withProperties(
-    //time_now()
+    time_now(),
+    tag("color", "green"),
+    mqtt_bool("PC", "stat/shelly25_1/POWER1", "ON", "OFF"),
+    mqtt_bool("Letto", "stat/shelly25_1/POWER2", "ON", "OFF"),
+    http_object[SensorState]("garage", garageReq)
   )
 
-  val p1 = time_now().build()
-  val p2 = tag("Time", "now: ").build()
-  implicit val brokerAddress: BrokerAddress = "192.168.1.10:1883"
-  val p3 = mqtt_bool("PC", "stat/shelly25_1/POWER1", "ON", "OFF").build()
-  val p4 = mqtt_bool("Letto", "stat/shelly25_1/POWER2", "ON", "OFF").build()
-  val build = h.build()
+
+  val build: Home = h.build()
   println(build)
 
-  def printProperty(p: Property[Boolean]): Unit = {
+  def printProperty[T](p: Property[T]): Unit = {
     val state = p.value match {
       case Failure(exception) => exception match {
         case _: NoSuchElementException => "Unknown"
         case ex => ex.getMessage
       }
-      case Success(true) => "On"
-      case Success(false) => "Off"
+      case Success(v) => v.toString
     }
     println(s"${p.name}: $state")
   }
 
   while (true) {
-    printProperty(p3)
-    printProperty(p4)
+    build.floors.head.rooms.head.gateways.head.properties.foreach(p => {
+      printProperty(p)
+    })
+
     Thread.sleep(1000)
   }
   /*println(Eval[Unit](

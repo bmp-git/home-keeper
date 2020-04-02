@@ -1,6 +1,7 @@
 package config.factory.topology
 
-import config.factory.{OneTimeFactory, PropertyFactory}
+import config.factory.OneTimeFactory
+import config.factory.property.PropertyFactory
 import model.{Action, DigitalTwin}
 
 trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
@@ -12,9 +13,8 @@ trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
     this
   }
 
-  def withAction(action: Action[_]*): this.type = {
+  def withAction(action: Action[_]*): this.type = { //TODO: FactoryAction
     actions = actions ++ action
     this
   }
-
 }
