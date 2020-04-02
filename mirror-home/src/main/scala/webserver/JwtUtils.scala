@@ -5,18 +5,17 @@ import java.time.Clock
 import pdi.jwt.algorithms.JwtHmacAlgorithm
 import pdi.jwt.{Jwt, JwtAlgorithm, JwtClaim, JwtHeader}
 import spray.json._
-import webserver.model.JwtClaimData
+import webserver.json.JwtClaimData
 
 import scala.concurrent.duration._
 import scala.util.Try
-
 
 object JwtUtils {
   val algorithm: JwtHmacAlgorithm = JwtAlgorithm.HS512
   val expirationTime: FiniteDuration = 2000.days
   val secret = "secretKey"
 
-  import webserver.model.ModelJsonProtocol._
+  import webserver.json.JsonModel._
 
   implicit val clock: Clock = Clock.systemUTC
 
