@@ -10,22 +10,41 @@ import utils.RichProperty._
 import scala.util.{Success, Try}
 
 trait PropertyFactory[T] extends OneTimeFactory[Property[T]] {
-  def map[B: JsonFormat](f: T => B): PropertyFactory[B] = () => build().map(f) //TODO: remove if unused
+  def name: String
 
-  def flatMap[B: JsonFormat](f: T => Try[B]): PropertyFactory[B] = () => build().flatMap(f)
+  //TODO: remove if unused
+  def map[B: JsonFormat](f: T => B): PropertyFactory[B] = new PropertyFactory[B] {
+    override def name: String = PropertyFactory.this.name
 
-  def recoverWith(f: Throwable => T): PropertyFactory[T] = () => build().recoverWith(f)
+    override protected def oneTimeBuild(): Property[B] = PropertyFactory.this.build().map(f)
+  }
+
+  def flatMap[B: JsonFormat](f: T => Try[B]): PropertyFactory[B] = new PropertyFactory[B] {
+    override def name: String = PropertyFactory.this.name
+
+    override protected def oneTimeBuild(): Property[B] = PropertyFactory.this.build().flatMap(f)
+  }
+
+  def recoverWith(f: Throwable => T): PropertyFactory[T] = new PropertyFactory[T] {
+    override def name: String = PropertyFactory.this.name
+
+    override protected def oneTimeBuild(): Property[T] = PropertyFactory.this.build().recoverWith(f)
+  }
 }
 
 
 
 object PropertyFactory {
-  def static[T: JsonFormat](propertyName: String, staticValue: T): PropertyFactory[T] = () => new Property[T] {
+  def static[T: JsonFormat](propertyName: String, staticValue: T): PropertyFactory[T] = new PropertyFactory[T] {
     override def name: String = propertyName
 
-    override def value: Try[T] = Success(staticValue)
+    override protected def oneTimeBuild(): Property[T] = new Property[T] {
+      override def name: String = propertyName
 
-    override def jsonFormat: JsonFormat[T] = implicitly[JsonFormat[T]]
+      override def value: Try[T] = Success(staticValue)
+
+      override def jsonFormat: JsonFormat[T] = implicitly[JsonFormat[T]]
+    }
   }
 
   def safe[T: JsonFormat](propertyName: String, outputStream: Source[T, _])(implicit system: ActorSystem): PropertyFactory[T]

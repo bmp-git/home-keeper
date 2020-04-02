@@ -2,19 +2,17 @@ package config.factory.topology
 
 import config.impl.HomeImpl
 import model.Home
+import utils.SetContainer
 
-case class HomeFactory(name: String) extends DigitalTwinFactory[Home] {
-  private var floors = Seq[FloorFactory]()
+case class HomeFactory(override val name: String) extends DigitalTwinFactory[Home] {
+  private var floors = SetContainer[FloorFactory, String](_.name, Set())
 
-  def apply(floors: FloorFactory*): this.type = {
-    this.withFloors(floors:_*)
-    this
-  }
+  def apply(floors: FloorFactory*): this.type = this.withFloors(floors: _*)
 
   def withFloors(floors: FloorFactory*): this.type = {
-    this.floors = this.floors ++ floors
+    this.floors = this.floors.add(floors)
     this
   }
 
-  override def oneTimeBuild(): Home = HomeImpl(name, floors.map(_.build()).toSet, properties.map(_.build()), actions.map(_.build()))
+  override def oneTimeBuild(): Home = HomeImpl(name, floors.content.map(_.build()), properties.map(_.build()), actions.map(_.build()))
 }

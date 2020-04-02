@@ -4,19 +4,26 @@ import config.factory.OneTimeFactory
 import config.factory.action.ActionFactory
 import config.factory.property.PropertyFactory
 import model.DigitalTwin
+import utils.SetContainer
 
 trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
-  var properties: Set[PropertyFactory[_]] = Set[PropertyFactory[_]]()
-  var actions: Set[ActionFactory[_]] = Set[ActionFactory[_]]()
 
-  def withProperties(property: PropertyFactory[_]*): this.type = {
-    properties = properties ++ property
+  private var pContainer = SetContainer[PropertyFactory[_], String](_.name, Set())
+  private var aContainer = SetContainer[ActionFactory[_], String](_.name, Set())
+
+  def properties: Set[PropertyFactory[_]] = pContainer.content
+
+  def actions: Set[ActionFactory[_]] = aContainer.content
+
+  def withProperties(properties: PropertyFactory[_]*): this.type = {
+    pContainer = pContainer.add(properties)
     this
   }
 
-  def withAction(action: ActionFactory[_]*): this.type = {
-    actions = actions ++ action
+  def withAction(actions: ActionFactory[_]*): this.type = {
+    aContainer = aContainer.add(actions)
     this
   }
 
+  def name: String
 }

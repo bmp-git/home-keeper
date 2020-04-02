@@ -27,11 +27,7 @@ object ConfigDsl {
   def room(name: String): RoomFactory = RoomFactory(name)
 
   def door(rooms: (RoomFactory, RoomFactory)): DoorFactory = rooms match {
-    case (roomA, roomB) =>
-      val door = topology.DoorFactory(roomA.name + "<->" + roomB.name, rooms)
-      roomA.withGateways(door)
-      roomB.withGateways(door)
-      door
+    case (roomA, roomB) => topology.DoorFactory(roomA.name + "<->" + roomB.name, rooms)
   }
 
   def window(rooms: (RoomFactory, RoomFactory)): WindowFactory = rooms match {
