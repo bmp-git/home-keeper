@@ -2,18 +2,32 @@
 //Beacon, Pir, Videocamera, Perimetrali
 package model
 
-import scala.util.Try
+import spray.json.{JsValue, JsonFormat}
+
+import scala.util.{Failure, Success, Try}
 
 trait Property[T] {
   def name: String
 
   def value: Try[T]
+
+  def jsonFormat: JsonFormat[T]
+
+  def valueToJson: JsValue = value match {
+    case Failure(exception) => ???
+    case Success(v) => jsonFormat.write(v)
+  }
 }
 
 trait Action[T] {
   def name: String
 
   def trig(t: T): Unit //Unit or Option[Exception] or Future[Try[Done]]?
+/*
+  def jsonFormat: JsonFormat[T]
+
+  def trigFromJson(jsValue: JsValue): Try[Unit] =
+    Try(jsonFormat.read(jsValue)).map(v => trig(v))*/
 }
 
 trait DigitalTwin { //DigitalTwin situated

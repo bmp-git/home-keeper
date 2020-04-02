@@ -5,6 +5,7 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Source
 import model.Property
+import spray.json.JsonFormat
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Try}
@@ -15,6 +16,8 @@ trait ActivePropertyFactory[T] extends PropertyFactory[T] {
   def name: String
 
   def output: Source[Try[T], _]
+
+  def jsonFormat: JsonFormat[T]
 
   override def oneTimeBuild(): Property[T] = new Property[T] {
     implicit val materializer: ActorMaterializer = ActorMaterializer()(actorSystem)
@@ -28,5 +31,7 @@ trait ActivePropertyFactory[T] extends PropertyFactory[T] {
     override def name: String = ActivePropertyFactory.this.name
 
     override def value: Try[T] = v
+
+    override def jsonFormat: JsonFormat[T] = ActivePropertyFactory.this.jsonFormat
   }
 }

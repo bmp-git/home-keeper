@@ -8,10 +8,11 @@ import config.factory.property.{HttpPropertyFactory, MqttPropertyFactory, Proper
 import config.factory.topology
 import config.factory.topology._
 import model.{Home, Property}
-import spray.json.JsonFormat
+import spray.json.{JsObject, JsonFormat}
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success}
+import spray.json.DefaultJsonProtocol._
 
 object ConfigDsl {
 
@@ -59,16 +60,16 @@ object ConfigDsl {
 
   def http_state(name: String, request: HttpRequest, pollingFreq: FiniteDuration): PropertyFactory[String] = ???
 
+
   def http_object[T: JsonFormat](name: String, httpRequest: HttpRequest): PropertyFactory[T] =
     HttpPropertyFactory.toObject[T](name, httpRequest, 1000.millis)
-
 }
 
 
 object Test extends App {
 
   import ConfigDsl._
-  import spray.json.DefaultJsonProtocol._
+
 
   case class SensorState(entity_id: String, last_changed: String, last_updated: String, state: String)
 

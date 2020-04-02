@@ -9,12 +9,13 @@ import akka.http.scaladsl.{ConnectionContext, Http}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Source}
 import javax.net.ssl.{KeyManager, SSLContext, X509TrustManager}
-import spray.json.{JsonParser, JsonReader, ParserInput}
+import spray.json.{JsonFormat, JsonParser, JsonReader, ParserInput}
 import utils.RichFuture._
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Success, Try}
+import spray.json.DefaultJsonProtocol._
 
 object HttpPropertyFactory {
 
@@ -82,7 +83,7 @@ object HttpPropertyFactory {
            (implicit actorSystem: ActorSystem): PropertyFactory[String] =
     PropertyFactory(name, bodySource(request, pollingFreq))
 
-  def toObject[T: JsonReader](name: String, request: HttpRequest, pollingFreq: FiniteDuration)
+  def toObject[T: JsonFormat](name: String, request: HttpRequest, pollingFreq: FiniteDuration)
                              (implicit actorSystem: ActorSystem): PropertyFactory[T] =
     PropertyFactory(name, objectSource[T](request, pollingFreq))
 }

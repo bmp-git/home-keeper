@@ -13,8 +13,9 @@ trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
     this
   }
 
-  def withAction(action: Action[_]*): this.type = { //TODO: FactoryAction
+  /*def withAction(action: Action[_]*): this.type = {
     actions = actions ++ action
     this
-  }
+  }*/
+
 }

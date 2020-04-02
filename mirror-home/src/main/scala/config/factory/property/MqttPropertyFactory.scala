@@ -10,6 +10,7 @@ import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 
 import scala.concurrent.Future
 import scala.util.Success
+import spray.json.DefaultJsonProtocol._
 
 object MqttPropertyFactory {
 
@@ -30,9 +31,9 @@ object MqttPropertyFactory {
     }
   }
 
-  def messages(name: String, brokerAddress: BrokerAddress, topics: String*)
+  /*def messages(name: String, brokerAddress: BrokerAddress, topics: String*)
               (implicit actorSystem: ActorSystem): PropertyFactory[MqttMessage] =
-    PropertyFactory(name, Flows.messages(name, brokerAddress, topics: _*).map(Success.apply))
+    PropertyFactory(name, Flows.messages(name, brokerAddress, topics: _*).map(Success.apply))*/
 
   def payloads(name: String, brokerAddress: BrokerAddress, topics: String*)
               (implicit actorSystem: ActorSystem): PropertyFactory[String] =
