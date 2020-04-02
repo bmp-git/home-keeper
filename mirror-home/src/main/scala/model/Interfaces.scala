@@ -2,7 +2,9 @@
 //Beacon, Pir, Videocamera, Perimetrali
 package model
 
-import spray.json.{JsValue, JsonFormat}
+import spray.json._
+import spray.json.DefaultJsonProtocol._
+import spray.json.{JsObject, JsValue, JsonFormat}
 
 import scala.util.{Failure, Success, Try}
 
@@ -14,7 +16,7 @@ trait Property[T] {
   def jsonFormat: JsonFormat[T]
 
   def valueToJson: JsValue = value match {
-    case Failure(exception) => ???
+    case Failure(exception) => JsObject(("error", exception.getMessage.toJson))
     case Success(v) => jsonFormat.write(v)
   }
 }
