@@ -10,8 +10,6 @@ from collections import namedtuple
 
 from machine import Pin
 
-# from RPi import GPIO
-
 MAX_CHANGES = 67
 
 Protocol = namedtuple('Protocol',
@@ -52,6 +50,7 @@ class RFDevice:
         self._rx_last_timestamp = 0
         self._rx_change_count = 0
         self._rx_repeat_count = 0
+        self.receive_callback = None
         # successful RX values
         self.rx_code = None
         self.rx_code_timestamp = None
@@ -59,48 +58,28 @@ class RFDevice:
         self.rx_bitlength = None
         self.rx_pulselength = None
 
-        # ORIGINAL
-        # change to BOARD numbering schema
-        # GPIO.setmode(GPIO.BCM)
-        # _LOGGER.debug("Using GPIO " + str(gpio))
-
     def cleanup(self):
         """Disable TX and RX and clean up GPIO."""
         if self.tx_enabled:
             self.disable_tx()
         if self.rx_enabled:
             self.disable_rx()
-        #_LOGGER.debug("Cleanup")
-        
-        # ORIGINAL
-        # GPIO.cleanup()
 
     def enable_tx(self):
         """Enable TX, set up GPIO."""
         if self.rx_enabled:
-            #_LOGGER.error("RX is enabled, not enabling TX")
+            # RX is enabled, not enabling TX
             return False
         if not self.tx_enabled:
             self.tx_enabled = True
-            # ORIGINAL
-            # GPIO.setup(self.gpio, GPIO.OUT)
-            
             self.pin = Pin(self.gpio, Pin.OUT)
-            
-            #_LOGGER.debug("TX enabled")
         return True
 
     def disable_tx(self):
         """Disable TX, reset GPIO."""
         if self.tx_enabled:
-            # ORIGINAL
-            # set up GPIO pin as input for safety
-            # GPIO.setup(self.gpio, GPIO.IN)
-
             self.pin = Pin(self.gpio, Pin.IN)
-
             self.tx_enabled = False
-            #_LOGGER.debug("TX disabled")
         return True
 
     def tx_code(self, code, tx_proto=None, tx_pulselength=None, tx_length=None):
@@ -136,12 +115,10 @@ class RFDevice:
                     nexacode = nexacode + "10"
             rawcode = nexacode
             self.tx_length = 64
-        #_LOGGER.debug("TX code: " + str(code))
         return self.tx_bin(rawcode)
 
     def tx_bin(self, rawcode):
         """Send a binary code."""
-        #_LOGGER.debug("TX bin: " + str(rawcode))
         for _ in range(0, self.tx_repeat):
             if self.tx_proto == 6:
                 if not self.tx_sync():
@@ -161,7 +138,7 @@ class RFDevice:
     def tx_l0(self):
         """Send a '0' bit."""
         if not 0 < self.tx_proto < len(PROTOCOLS):
-            #_LOGGER.error("Unknown TX protocol")
+            # Unknown TX protocol
             return False
         return self.tx_waveform(PROTOCOLS[self.tx_proto].zero_high,
                                 PROTOCOLS[self.tx_proto].zero_low)
@@ -169,7 +146,7 @@ class RFDevice:
     def tx_l1(self):
         """Send a '1' bit."""
         if not 0 < self.tx_proto < len(PROTOCOLS):
-            #_LOGGER.error("Unknown TX protocol")
+            # Unknown TX protocol
             return False
         return self.tx_waveform(PROTOCOLS[self.tx_proto].one_high,
                                 PROTOCOLS[self.tx_proto].one_low)
@@ -177,7 +154,7 @@ class RFDevice:
     def tx_sync(self):
         """Send a sync."""
         if not 0 < self.tx_proto < len(PROTOCOLS):
-            #_LOGGER.error("Unknown TX protocol")
+            # Unknown TX protocol
             return False
         return self.tx_waveform(PROTOCOLS[self.tx_proto].sync_high,
                                 PROTOCOLS[self.tx_proto].sync_low)
@@ -185,26 +162,22 @@ class RFDevice:
     def tx_waveform(self, highpulses, lowpulses):
         """Send basic waveform."""
         if not self.tx_enabled:
-            #_LOGGER.error("TX is not enabled, not sending data")
+            # TX is not enabled, not sending data
             return False
-        #GPIO.output(self.gpio, GPIO.HIGH)
         self.pin.on()
         self._sleep((highpulses * self.tx_pulselength) / 1000000)
-        #GPIO.output(self.gpio, GPIO.LOW)
         self.pin.off()
         self._sleep((lowpulses * self.tx_pulselength) / 1000000)
         return True
 
-    def enable_rx(self):
+    def enable_rx(self, receive_callback):
         """Enable RX, set up GPIO and add event detection."""
         if self.tx_enabled:
-            #_LOGGER.error("TX is enabled, not enabling RX")
+            # TX is enabled, not enabling RX
             return False
         if not self.rx_enabled:
             self.rx_enabled = True
-            # GPIO.setup(self.gpio, GPIO.IN)
-            # GPIO.add_event_detect(self.gpio, GPIO.BOTH)
-            # GPIO.add_event_callback(self.gpio, self.rx_callback)
+            self.receive_callback = receive_callback
             self.pin = Pin(self.gpio, Pin.IN)
             self.pin.irq(handler=self.rx_callback)
         return True
@@ -212,10 +185,8 @@ class RFDevice:
     def disable_rx(self):
         """Disable RX, remove GPIO event detection."""
         if self.rx_enabled:
-            #GPIO.remove_event_detect(self.gpio)
             self.pin.irq(handler=None)
             self.rx_enabled = False
-            #_LOGGER.debug("RX disabled")
         return True
 
     # pylint: disable=unused-argument
@@ -231,7 +202,8 @@ class RFDevice:
                 if self._rx_repeat_count == 2:
                     for pnum in range(1, len(PROTOCOLS)):
                         if self._rx_waveform(pnum, self._rx_change_count, timestamp):
-                            #_LOGGER.debug("RX code " + str(self.rx_code))
+                            # TODO call it asynchronously
+                            self.receive_callback(self.rx_code, self.rx_pulselength, self.rx_proto)
                             break
                     self._rx_repeat_count = 0
             self._rx_change_count = 0
