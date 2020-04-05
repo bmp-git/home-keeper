@@ -3,17 +3,31 @@ package webserver
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
-import model.{DigitalTwin, Floor, Home}
-import spray.json.{JsArray, JsObject}
+import config.factory.action.ActionFactory
+import model.{Action, DigitalTwin, Door, Floor, Gateway, Home, Room, Window}
+import spray.json.{JsField, JsObject, JsValue, JsonParser, ParserInput}
 
 import scala.io.StdIn
 import webserver.json.JsonModel._
+
+import scala.util.{Failure, Success, Try}
 
 object RouteGenerator {
 
   def generateGet(completePath: PathMatcher[Unit], value: () => String): Route = {
     (path(completePath) & get) {
       complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, value())))
+    }
+  }
+
+  //TODO: Test these actions
+  def generatePost(completePath: PathMatcher[Unit], action: Action[_]): Route = {
+    (path(completePath) & post & entity(as[String])) { raw =>
+      //TODO: Add a tryTrig to actions to understand if the payload is incorrect?
+      Try { action.trigFromJson(JsonParser(ParserInput(raw))) } match {
+        case Success(_) => complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, "Received")))
+        case Failure(_) => complete(HttpResponse(500))
+      }
     }
   }
 
@@ -25,36 +39,84 @@ object RouteGenerator {
     generateListRoute(properties(dt), startingPath / "properties")
   }
 
-  def generatePropertiesRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): List[Route] = {
-    dt.properties.map(p => generateGet(startingPath / "properties" / p.name, () => property(p).compactPrint)) toList
+  def generateActionListRoute[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
+    generateListRoute(actions(dt), startingPath / "actions")
   }
 
-  def generateDigitalTwinRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): List[Route] = {
-      generatePropertiesRoutes(dt, startingPath) :+
-      generatePropertyListRoute(dt, startingPath) :+
-      //generate post per actions
+  def generatePropertiesRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
+    concat(
+      dt.properties.map(p => generateGet(startingPath / "properties" / p.name, () => property(p).compactPrint)) toList :_*
+    )
+  }
+
+  def generateActionsRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
+    concat (
+      dt.actions.map(a => generatePost(startingPath / "actions" / a.name, a)) toList :_*
+    )
+  }
+
+  def generateDigitalTwinRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
+    concat(
+      generatePropertiesRoutes(dt, startingPath),
+      generatePropertyListRoute(dt, startingPath),
+      generateActionsRoutes(dt, startingPath),
+      generateActionListRoute(dt, startingPath),
       generateGet(startingPath / "name", () => dt.name)
+    )
   }
 
   def generateHomeRoutes(home: Home, startingPath: PathMatcher[Unit]): Route = {
     val path = startingPath / "home"
     concat(
-        generateDigitalTwinRoutes(home, path) :+
-        generateListRoute(floors(home), path / "floors") :+
-        generateGet(path, () => homeFormat.write(home).compactPrint) :+
-        generateFloorsRoutes(home, path) :_*
+      generateDigitalTwinRoutes(home, path),
+      generateGet(path, () => homeFormat.write(home).compactPrint),
+      generateListRoute(floors(home), path / "floors"),
+      generateFloorsRoutes(home, path)
     )
   }
 
   def generateFloorRoutes(floor: Floor, startingPath: PathMatcher[Unit]): Route = {
     concat(
-      generateDigitalTwinRoutes(floor, startingPath) :+
-      generateGet(startingPath, () => floorFormat.write(floor).compactPrint) :_*
+      generateDigitalTwinRoutes(floor, startingPath),
+      generateGet(startingPath, () => floorFormat.write(floor).compactPrint),
+      generateListRoute(rooms(Right(floor)), startingPath / "rooms"),
+      generateRoomsRoutes(floor, startingPath)
     )
   }
 
   def generateFloorsRoutes(home: Home, startingPath: PathMatcher[Unit]): Route = {
-    concat(home.floors.map(f => generateFloorRoutes(f, startingPath / "floors" / f.name)).toList :_*)
+    concat( home.floors.map(f => generateFloorRoutes(f, startingPath / "floors" / f.name)) toList :_* )
+  }
+
+  def generateRoomRoutes(room: Room, startingPath: PathMatcher[Unit]): Route = {
+    concat(
+      generateDigitalTwinRoutes(room, startingPath),
+      generateGet(startingPath, () => roomFormat.write(room) compactPrint),
+      generateListRoute(doors(room), startingPath / "doors"),
+      generateListRoute(windows(room), startingPath / "windows"),
+      generateGatewaysRoutes(room, startingPath)
+    )
+  }
+
+  def generateRoomsRoutes(floor: Floor, startingPath: PathMatcher[Unit]): Route = {
+    concat( floor.rooms.map(r => generateRoomRoutes(r, startingPath / "rooms" / r.name)) toList :_* )
+  }
+
+  def generateGatewayRoutes(gateway: Gateway, startingPath: PathMatcher[Unit]): Route = {
+    concat(
+      generateDigitalTwinRoutes(gateway, startingPath),
+      generateGet(startingPath, () => gatewayFormat.write(gateway) compactPrint),
+      generateListRoute(rooms(Left(gateway)), startingPath / "rooms")
+    )
+  }
+
+  def generateGatewaysRoutes(room: Room, startingPath: PathMatcher[Unit]): Route = {
+    concat(
+      room.gateways.map {
+        case d: Door => generateGatewayRoutes(d, startingPath / "doors" / d.name)
+        case w: Window => generateGatewayRoutes(w, startingPath / "windows" / w.name)
+      } toList :_*
+    )
   }
 
   def generateRoutes(home: Home, startingPath: PathMatcher[Unit]): Route = {
@@ -89,7 +151,9 @@ object Test extends App {
 
   val external = room()
   val hallway = room()
-  val bedRoom = room()
+  val bedRoom = room().withAction(
+    ActionFactory[Int]("action", v => println(s"Acting with $v"))
+  )
 
   val h = home("home")(
     floor("first")(
