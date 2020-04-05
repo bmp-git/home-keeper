@@ -1,4 +1,4 @@
-from umqtt.simple import MQTTClient
+from umqtt.asynclient import MQTTClient
 import uasyncio as asyncio
 from config import MQTT_CLIENT_ID, MQTT_SERVER_ADDRESS, MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_KEEPALIVE
 import wifi
