@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
 import config.factory.action.ActionFactory
 import model.{Action, DigitalTwin, Door, Floor, Gateway, Home, Room, Window}
-import spray.json.{JsField, JsObject, JsValue, JsonParser, ParserInput}
+import spray.json.{JsObject, JsonParser, ParserInput}
 
 import scala.io.StdIn
 import webserver.json.JsonModel._
@@ -13,6 +13,7 @@ import webserver.json.JsonModel._
 import scala.util.{Failure, Success, Try}
 
 object RouteGenerator {
+  val receivedPostMessage = "Action request received"
 
   def generateGet(completePath: PathMatcher[Unit], value: () => String): Route = {
     (path(completePath) & get) {
@@ -22,10 +23,11 @@ object RouteGenerator {
 
   //TODO: Test these actions
   def generatePost(completePath: PathMatcher[Unit], action: Action[_]): Route = {
+    //TODO: maybe something like case class Value[T](value: T)
     (path(completePath) & post & entity(as[String])) { raw =>
       //TODO: Add a tryTrig to actions to understand if the payload is incorrect?
       Try { action.trigFromJson(JsonParser(ParserInput(raw))) } match {
-        case Success(_) => complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, "Received")))
+        case Success(_) => complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage)))
         case Failure(_) => complete(HttpResponse(500))
       }
     }
@@ -139,15 +141,6 @@ object Test extends App {
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
-  case class SensorState(entity_id: String, last_changed: String, last_updated: String, state: String)
-
-  implicit val sensorStateFormat: JsonFormat[SensorState] = lazyFormat(jsonFormat4(SensorState))
-
-  implicit val brokerAddress: BrokerAddress = "192.168.1.10:1883"
-  val hassAuth = Authorization(OAuth2BearerToken("eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJjYjA2Y2Y5OGZlOWY0YmI3Yjk3ZjEwYmQyOWY0M2E0MSIsImlhdCI6MTU3NDE3ODAwMiwiZXhwIjoxODg5NTM4MDAyfQ.QOHLiaA4-cHtV4dOXQ-nCxaHQwo2HRhd6iaJNiXvk8A"))
-  val garageReq = HttpRequest(uri = "https://hass.brb.dynu.net/api/states/sensor.consumo_garage").withHeaders(hassAuth)
-
-
   val external = room()
   val hallway = room()
   val bedRoom = room().withAction(
@@ -168,7 +161,6 @@ object Test extends App {
     tag("color", "green"),
     //http_object[SensorState]("garage", garageReq)
   )
-
 
   val build: Home = h.build()
 
