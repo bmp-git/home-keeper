@@ -8,6 +8,7 @@ import spray.json.{JsObject, JsValue, JsonFormat}
 
 import scala.util.{Failure, Success, Try}
 
+
 trait Property[T] {
   def name: String
 
@@ -39,7 +40,7 @@ trait DigitalTwin { //DigitalTwin situated
 }
 
 trait User extends DigitalTwin {
-  def room:Option[Room]
+
 }
 
 //Home topology

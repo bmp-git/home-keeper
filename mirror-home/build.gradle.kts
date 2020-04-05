@@ -43,7 +43,8 @@ dependencies {
 
     //Tests
     testImplementation("org.scalatest:scalatest_2.12:3.0.1")
-
+    testImplementation("com.typesafe.akka:akka-stream-testkit_2.12:2.5.26")
+    testImplementation("com.typesafe.akka:akka-http-testkit_2.12:10.1.11")
 
     testRuntimeOnly("org.pegdown:pegdown:1.4.2")
     //testImplementation("org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.2.0")
