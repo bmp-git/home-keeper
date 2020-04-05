@@ -38,6 +38,8 @@ dependencies {
     //JWT authentication
     implementation("com.pauldijou:jwt-core_2.12:4.3.0")
 
+    //spire.math ULong, UByte
+    implementation("org.spire-math:spire_2.12:0.13.0")
 
     //Tests
     testImplementation("org.scalatest:scalatest_2.12:3.0.1")
