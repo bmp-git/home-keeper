@@ -47,16 +47,16 @@ object PropertyFactory {
     }
   }
 
-  def safe[T: JsonFormat](propertyName: String, outputStream: Source[T, _])(implicit system: ActorSystem): PropertyFactory[T]
-  = apply(propertyName, outputStream.map(Success.apply))
+  def safe[T: JsonFormat](propertyName: String, outputStreamFactory: () => Source[T, _])(implicit system: ActorSystem): PropertyFactory[T]
+  = apply(propertyName, () => outputStreamFactory().map(Success.apply))
 
-  def apply[T: JsonFormat](propertyName: String, outputStream: Source[Try[T], _])(implicit system: ActorSystem): PropertyFactory[T]
+  def apply[T: JsonFormat](propertyName: String, outputStreamFactory: () => Source[Try[T], _])(implicit system: ActorSystem): PropertyFactory[T]
   = new ActivePropertyFactory[T] {
     override def actorSystem: ActorSystem = system
 
     override def name: String = propertyName
 
-    override def output: Source[Try[T], _] = outputStream
+    override def output: Source[Try[T], _] = outputStreamFactory()
 
     override def jsonFormat: JsonFormat[T] = implicitly[JsonFormat[T]]
   }

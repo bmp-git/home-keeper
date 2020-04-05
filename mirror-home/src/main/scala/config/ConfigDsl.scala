@@ -4,19 +4,20 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.stream.scaladsl.Source
+import config.factory.ble.BleBeaconFactory
 import config.factory.property.{HttpPropertyFactory, MqttPropertyFactory, PropertyFactory}
 import config.factory.topology
 import config.factory.topology._
+import model.Units.{BrokerAddress, MacAddress}
+import model.ble.BeaconData
 import model.{Home, Property}
-import spray.json.{JsObject, JsonFormat}
+import spray.json.DefaultJsonProtocol._
+import spray.json.JsonFormat
 
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
-import spray.json.DefaultJsonProtocol._
 
 object ConfigDsl {
-
-  type BrokerAddress = String //TODO: move
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
@@ -42,7 +43,7 @@ object ConfigDsl {
   implicit val system: ActorSystem = ActorSystem()
 
   def time_now(): PropertyFactory[Long] = PropertyFactory.safe("time",
-    Source.tick(0.second, 1.second, None).map(_ => System.currentTimeMillis))
+    () => Source.tick(0.second, 1.second, None).map(_ => System.currentTimeMillis))
 
   def tag(name: String, value: String): PropertyFactory[String] = PropertyFactory.static(name, value)
 
@@ -60,16 +61,26 @@ object ConfigDsl {
   def http_object[T: JsonFormat](name: String, httpRequest: HttpRequest): PropertyFactory[T] =
     HttpPropertyFactory.toObject[T](name, httpRequest, 1000.millis)
 
-  def text_file(name:String, path:String):Property[String] = new Property[String] { //TODO: remove lol (or do it properly)
+  def text_file(name: String, path: String): Property[String] = new Property[String] { //TODO: remove lol (or do it properly)
     override def name: String = name
 
     val s = scala.io.Source.fromFile("C:\\Users\\Edo\\Desktop\\jwt.txt")
     val v = s.mkString
     s.close()
+
     override def value: Try[String] = Success(v)
 
     override def jsonFormat: JsonFormat[String] = implicitly[JsonFormat[String]]
   }
+
+
+  def ble_beacon(mac: MacAddress, secretKey: String, user: UserFactory): BleBeaconFactory =
+    BleBeaconFactory(mac, secretKey, user)
+
+  def user(name: String): UserFactory = UserFactory(name)
+
+  def ble_receiver(name: String, mac: MacAddress)(implicit beacons: Seq[BleBeaconFactory], brokerAddress: BrokerAddress):
+  PropertyFactory[Seq[BeaconData]] = MqttPropertyFactory.bleBeacon(name, brokerAddress, mac, beacons)
 }
 
 
@@ -87,9 +98,19 @@ object Test extends App {
   val garageReq = HttpRequest(uri = "https://hass.brb.dynu.net/api/states/sensor.consumo_garage").withHeaders(hassAuth)
 
 
-  val external = room()
-  val hallway = room()
-  val bedRoom = room()
+  val mario = user("mario")
+  val luigi = user("luigi")
+  implicit val beacons = Seq(
+    ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", mario),
+    ble_beacon("23daeaac2a2d", "AnotherKey", luigi)
+  )
+  val c1 = ble_receiver("ble", "12dadddc2a2d")
+  val c2 = ble_receiver("ble", "23dadddc2a2d")
+  val c3 = ble_receiver("ble", "34dadddc2a2d")
+
+  val external = room().withProperties(c1)
+  val hallway = room().withProperties(c2)
+  val bedRoom = room().withProperties(c3)
 
   val h = home("home")(
     floor("floor level")(
@@ -123,10 +144,10 @@ object Test extends App {
   }
 
   while (true) {
-    build.floors.head.rooms.head.gateways.head.properties.foreach(p => {
+    /*build.floors.head.rooms.head.gateways.head.properties.foreach(p => {
       printProperty(p)
-    })
-
+    })*/
+    printProperty(c1.build())
     Thread.sleep(1000)
   }
   /*println(Eval[Unit](

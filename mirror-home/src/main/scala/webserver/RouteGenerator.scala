@@ -134,6 +134,7 @@ object Test extends App {
   import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
   import spray.json.JsonFormat
   import webserver.json.JsonModel._
+  import model.Units.BrokerAddress
 
   import akka.stream.ActorMaterializer
 

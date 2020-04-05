@@ -81,10 +81,10 @@ object HttpPropertyFactory {
 
   def apply(name: String, request: HttpRequest, pollingFreq: FiniteDuration)
            (implicit actorSystem: ActorSystem): PropertyFactory[String] =
-    PropertyFactory(name, bodySource(request, pollingFreq))
+    PropertyFactory(name, () => bodySource(request, pollingFreq))
 
   def toObject[T: JsonFormat](name: String, request: HttpRequest, pollingFreq: FiniteDuration)
                              (implicit actorSystem: ActorSystem): PropertyFactory[T] =
-    PropertyFactory(name, objectSource[T](request, pollingFreq))
+    PropertyFactory(name, () => objectSource[T](request, pollingFreq))
 }
 

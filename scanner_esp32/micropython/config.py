@@ -1,8 +1,6 @@
-import bluetooth
+import network
 import binascii
 
-ble = bluetooth.BLE()
-ble.active(True)
 
 WIFI_SSID = 'Home-Keeper'
 WIFI_PASSWORD = '8CUAgjwyuaJu'
@@ -15,4 +13,6 @@ MQTT_PASSWORD = b'8CUAgjwyuaJu'
 MQTT_KEEPALIVE = 30
 
 
-BLE_PUBLISH_TOPIC = 'scanner/' + binascii.hexlify(ble.config('mac')).decode() + '/BLE'
+ROOT_PUBLISH_TOPIC = 'scanner/' + binascii.hexlify(network.WLAN(network.STA_IF).config('mac')).decode()
+BLE_PUBLISH_TOPIC = ROOT_PUBLISH_TOPIC + '/ble'
+RF433_PUBLISH_TOPIC = ROOT_PUBLISH_TOPIC + '/433'
