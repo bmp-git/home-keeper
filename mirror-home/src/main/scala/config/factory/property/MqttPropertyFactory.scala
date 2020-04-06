@@ -8,11 +8,13 @@ import akka.stream.scaladsl
 import akka.stream.scaladsl.{Flow, Source}
 import akka.{Done, NotUsed}
 import config.factory.ble.BleBeaconFactory
-import model.Units.BrokerAddress
+import model.Units.{BrokerAddress, MacAddress}
+import model.ble.Formats._
 import model.ble.{BeaconData, RawBeaconData}
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import spray.json.DefaultJsonProtocol._
-import utils.SetContainer
+import spray.json._
+import utils.RichMap._
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -38,9 +40,16 @@ object MqttPropertyFactory {
     def payloadExtractor: Flow[MqttMessage, String, NotUsed] =
       Flow[MqttMessage].map(_.payload.utf8String)
 
+    def objectExtractor[T: JsonFormat]: Flow[String, Try[T], NotUsed] =
+      Flow[String].map(payload => Try(payload.parseJson.convertTo[T]))
+
     def payloads(brokerAddress: BrokerAddress, topics: String*)
                 (implicit actorSystem: ActorSystem): Source[String, Future[Done]] =
       messages(brokerAddress, topics: _*)(actorSystem).via(payloadExtractor)
+
+    def objects[T: JsonFormat](brokerAddress: BrokerAddress, topics: String*)
+                              (implicit actorSystem: ActorSystem): Source[Try[T], Future[Done]] =
+      payloads(brokerAddress, topics: _*).via(objectExtractor[T])
   }
 
   def payloads(name: String, brokerAddress: BrokerAddress, topics: String*)
@@ -50,34 +59,24 @@ object MqttPropertyFactory {
     PropertyFactory(name, sourceFactory)
   }
 
-  def bleBeacon(name: String, brokerAddress: BrokerAddress, receiverMac: String, beaconsFactory: Seq[BleBeaconFactory])
+  def bleBeacon(name: String, brokerAddress: BrokerAddress, scannerMacAddress: MacAddress, beaconsFactory: Seq[BleBeaconFactory])
                (implicit actorSystem: ActorSystem): PropertyFactory[Seq[BeaconData]] = {
-    import spray.json._
-    import DefaultJsonProtocol._
-    import model.ble.Formats._
+
+    def bleTopic(mac: MacAddress) = s"scanner/$mac/ble"
 
     def sourceFactory(): scaladsl.Source[Try[Seq[BeaconData]], _] = {
       var container = Map[String, BeaconData]()
       val beacons = beaconsFactory.map(_.build())
-      MqttPropertyFactory.Flows.payloads(brokerAddress, s"scanner/$receiverMac/ble").map(payload => {
-        Try(payload.parseJson.convertTo[RawBeaconData])
-      }).map({
-        case Success(raw) =>
-          beacons.find(_.mac == raw.addr) match {
-            case Some(beacon) if beacon.validate(raw.advData) =>
-              val newData = BeaconData(beacon.attachedTo, DateTime.now, raw.rssi)
-              if(container.isDefinedAt(newData.user.name)) {
-                container = container.map {
-                  case (key, _) if key == newData.user.name => newData.user.name -> newData
-                  case x => x
-                }
-              } else {
-                container = container + (newData.user.name -> newData)
-              }
+      Flows.objects[RawBeaconData](brokerAddress, bleTopic(scannerMacAddress)).map({
+        case Success(receivedRaw) =>
+          beacons.find(_.mac == receivedRaw.addr) match {
+            case Some(beacon) if beacon.validate(receivedRaw.advData) =>
+              val beaconData = BeaconData(beacon.attachedTo, DateTime.now, receivedRaw.rssi)
+              container = container.addOrUpdate(beaconData.user.name -> beaconData)
             case _ => //nothing
           }
-          Success(container.toSeq.map(_._2))
-        case Failure(exception) => Failure(exception)
+          Success(container.toValueSeq)
+        case Failure(ex) => Failure(ex)
       })
     }
 
