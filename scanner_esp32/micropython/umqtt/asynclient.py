@@ -11,7 +11,10 @@ class MQTTClient:
 
     def __init__(self, client_id, server, port=1883, user=None, password=None, keepalive=0):
         self.client_id = client_id
-        self.sock = None
+
+        self.reader = None
+        self.writer = None
+
         self.server = server
         self.port = port
         self.pid = 0
@@ -19,40 +22,25 @@ class MQTTClient:
         self.user = user
         self.pswd = password
         self.keepalive = keepalive
-        self.socket_timeout = 3000
+        self.socket_timeout = 3
         self.lw_topic = None
         self.lw_msg = None
         self.lw_qos = 0
         self.lw_retain = False
 
         self.connected = False
+        self.lock = asyncio.Lock()
 
     def isConnected(self):
         return self.connected
 
 
     async def _write(self, message):
-        start = utime.ticks_ms()
-        while len(message):
-            sent = self.sock.send(message)
-            message = message[sent:]
-            if len(message):
-                await asyncio.sleep_ms(100)
-                if utime.ticks_diff(utime.ticks_ms(), start) > self.socket_timeout:
-                    raise OSError
+        self.writer.write(message)
+        await asyncio.wait_for(self.writer.drain(), self.socket_timeout)
     
     async def _read(self, num_bytes):
-        start = utime.ticks_ms()
-        res = bytearray()
-        while num_bytes:
-            rec = self.sock.read(num_bytes)
-            if rec is not None:
-                num_bytes -= len(rec)
-                res += rec
-            if num_bytes:
-                await asyncio.sleep_ms(100)
-                if utime.ticks_diff(utime.ticks_ms(), start) > self.socket_timeout:
-                    raise OSError
+        res = await asyncio.wait_for(self.reader.read(num_bytes), self.socket_timeout)
         return res
 
     def _create_str(self, s):
@@ -82,22 +70,21 @@ class MQTTClient:
     async def connect(self, clean_session=True):
         try:
             if self.connected:
+                print("[Mqtt] Already connected!")
                 return
-            self.sock = socket.socket()
-            addr = socket.getaddrinfo(self.server, self.port)[0][-1]
-            self.sock.connect(addr)
-            self.sock.setblocking(False)
+            print("[Mqtt] Connecting...")
+            self.reader, self.writer = await asyncio.wait_for(asyncio.open_connection(self.server, self.port), self.socket_timeout * 3)
             packet = self._create_connect_packet(clean_session)
-            await self._write(packet)
-            resp = await self._read(4)
+            async with self.lock:
+                await self._write(packet)
+                resp = await self._read(4)
             if not (resp[0] == 0x20 and resp[1] == 0x02):
                 raise OSError
             if resp[3] != 0:
                 raise OSError
             self.connected = True
             print("[Mqtt] Connected!")
-            return resp[2] & 1
-        except OSError:
+        except:
             print("[Mqtt] Connection failed!")
 
     def _create_connect_packet(self, clean_session=True):
@@ -138,7 +125,8 @@ class MQTTClient:
 
     async def disconnect(self):
         await self._write(b"\xe0\0")
-        self.sock.close()
+        self.writer.close()
+        await self.writer.wait_closed()
 
     async def ping(self):
         await self._write(b"\xc0\0")
@@ -154,9 +142,10 @@ class MQTTClient:
         if not self.connected:
             return False
         try:
-            await self._write(packet)
+            async with self.lock:
+                await self._write(packet)
             return True
-        except OSError:
+        except:
             self.connected = False
             return False
 
@@ -180,7 +169,7 @@ class MQTTClient:
         struct.pack_into("!BH", pkt, 1, 2 + 2 + len(topic) + 1, self.pid)
         #print(hex(len(pkt)), hexlify(pkt, ":"))
         await self._write(pkt)
-        await self._send_str(topic)
+        await self._write(self._create_str(topic))
         await self._write(qos.to_bytes(1, "little"))
         while 1:
             op = self.wait_msg()
@@ -198,7 +187,6 @@ class MQTTClient:
     # messages processed internally.
     async def wait_msg(self):
         res = await self._read(1)
-        self.sock.setblocking(True)
         if res is None:
             return None
         if res == b"":
@@ -213,7 +201,7 @@ class MQTTClient:
         sz = await self._recv_len()
         topic_len = await self._read(2)
         topic_len = (topic_len[0] << 8) | topic_len[1]
-        topic = self.sock.read(topic_len)
+        topic = await self._read(topic_len)
         sz -= topic_len + 2
         if op & 6:
             pid = await self._read(2)
@@ -232,6 +220,5 @@ class MQTTClient:
     # If not, returns immediately with None. Otherwise, does
     # the same processing as wait_msg.
     async def check_msg(self):
-        self.sock.setblocking(False)
         res = await self.wait_msg()
         return res

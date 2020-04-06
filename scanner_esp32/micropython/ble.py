@@ -5,26 +5,26 @@ import ujson
 from config import BLE_PUBLISH_TOPIC, BLE_INTERVAL_US, BLE_WINDOW_US
 from micropython import const
 import uasyncio as asyncio
+import gc
 
 _IRQ_SCAN_RESULT = const(1 << 4)
 
+loop = asyncio.get_event_loop()
 
 def bths(array):
     return binascii.hexlify(array)
 
-async def publish_task(data):
-    addr_type, addr, adv_type, rssi, adv_data = data
-    print(addr_type, bths(addr), adv_type, rssi, bths(adv_data))
-    payload = {
-        'addr' : bths(addr).decode(),
-        'rssi' : rssi,
-        'adv_data' : bths(adv_data).decode()
-    }
-    await mqtt.mqtt_publish(BLE_PUBLISH_TOPIC, ujson.dumps(payload))
-
 def bt_irq(event, data):
     if event == _IRQ_SCAN_RESULT:
-        asyncio.get_event_loop().create_task(publish_task(data))
+        addr_type, addr, adv_type, rssi, adv_data = data
+        print("INT:", addr_type, bths(addr), adv_type, rssi, bths(adv_data))
+        payload = {
+                'addr' : bths(addr).decode(),
+                'rssi' : rssi,
+                'adv_data' : bths(adv_data).decode()
+            }
+        mqtt.mqtt_publish(BLE_PUBLISH_TOPIC, ujson.dumps(payload))
+        gc.collect()
 
 async def ble_scan_start():
     ble = bluetooth.BLE()
