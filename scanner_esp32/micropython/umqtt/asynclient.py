@@ -9,16 +9,11 @@ class MQTTException(Exception):
 
 class MQTTClient:
 
-    def __init__(self, client_id, server, port=0, user=None, password=None, keepalive=0,
-                 ssl=False, ssl_params={}):
-        if port == 0:
-            port = 8883 if ssl else 1883
+    def __init__(self, client_id, server, port=1883, user=None, password=None, keepalive=0):
         self.client_id = client_id
         self.sock = None
         self.server = server
         self.port = port
-        self.ssl = ssl
-        self.ssl_params = ssl_params
         self.pid = 0
         self.cb = None
         self.user = user
@@ -30,14 +25,21 @@ class MQTTClient:
         self.lw_qos = 0
         self.lw_retain = False
 
+        self.connected = False
+
+    def isConnected(self):
+        return self.connected
+
+
     async def _write(self, message):
         start = utime.ticks_ms()
         while len(message):
-            not_sent = self.sock.send(message)
-            message = message[not_sent:]
-            await asyncio.sleep_ms(100)
-            if utime.ticks_diff(utime.ticks_ms(), start) > self.socket_timeout:
-                raise OSError
+            sent = self.sock.send(message)
+            message = message[sent:]
+            if len(message):
+                await asyncio.sleep_ms(100)
+                if utime.ticks_diff(utime.ticks_ms(), start) > self.socket_timeout:
+                    raise OSError
     
     async def _read(self, num_bytes):
         start = utime.ticks_ms()
@@ -53,9 +55,8 @@ class MQTTClient:
                     raise OSError
         return res
 
-    async def _send_str(self, s):
-        await self._write(struct.pack("!H", len(s)))
-        await self._write(s)
+    def _create_str(self, s):
+        return bytearray(struct.pack("!H", len(s)) + s)
 
     async def _recv_len(self):
         n = 0
@@ -79,13 +80,27 @@ class MQTTClient:
         self.lw_retain = retain
 
     async def connect(self, clean_session=True):
-        self.sock = socket.socket()
-        addr = socket.getaddrinfo(self.server, self.port)[0][-1]
-        self.sock.connect(addr)
-        self.sock.setblocking(False)
-        if self.ssl:
-            import ussl
-            self.sock = ussl.wrap_socket(self.sock, **self.ssl_params)
+        try:
+            if self.connected:
+                return
+            self.sock = socket.socket()
+            addr = socket.getaddrinfo(self.server, self.port)[0][-1]
+            self.sock.connect(addr)
+            self.sock.setblocking(False)
+            packet = self._create_connect_packet(clean_session)
+            await self._write(packet)
+            resp = await self._read(4)
+            if not (resp[0] == 0x20 and resp[1] == 0x02):
+                raise OSError
+            if resp[3] != 0:
+                raise OSError
+            self.connected = True
+            print("[Mqtt] Connected!")
+            return resp[2] & 1
+        except OSError:
+            print("[Mqtt] Connection failed!")
+
+    def _create_connect_packet(self, clean_session=True):
         premsg = bytearray(b"\x10\0\0\0\0\0")
         msg = bytearray(b"\x04MQTT\x04\x02\0\0")
 
@@ -110,20 +125,16 @@ class MQTTClient:
             i += 1
         premsg[i] = sz
 
-        await self._write(premsg[:i + 2])
-        await self._write(msg)
-        await self._send_str(self.client_id)
+        packet = premsg[:i + 2] + bytearray(msg) + self._create_str(self.client_id)
         if self.lw_topic:
-            await self._send_str(self.lw_topic)
-            await self._send_str(self.lw_msg)
+            packet += self._create_str(self.lw_topic)
+            packet += self._create_str(self.lw_msg)
         if self.user is not None:
-            await self._send_str(self.user)
-            await self._send_str(self.pswd)
-        resp = await self._read(4)
-        assert resp[0] == 0x20 and resp[1] == 0x02
-        if resp[3] != 0:
-            raise MQTTException(resp[3])
-        return resp[2] & 1
+            packet += self._create_str(self.user)
+            packet += self._create_str(self.pswd)
+        
+        return packet
+        
 
     async def disconnect(self):
         await self._write(b"\xe0\0")
@@ -132,14 +143,27 @@ class MQTTClient:
     async def ping(self):
         await self._write(b"\xc0\0")
 
-    async def publish(self, topic, msg, retain=False, qos=0):
-        if self.sock is None:
-            raise OSError
+    async def publish(self, topic, msg, retain=False):
+        res = await self._send_packet(self._create_publish_packet(topic, msg, retain))
+        if not res:
+            print("[Mqtt] Publish failed! Message has been lost (QoS 0).")
+        else:
+            print("[Mqtt] Publish on " + topic + " succeeded!")
+    
+    async def _send_packet(self, packet):
+        if not self.connected:
+            return False
+        try:
+            await self._write(packet)
+            return True
+        except OSError:
+            self.connected = False
+            return False
+
+    def _create_publish_packet(self, topic, msg, retain=False):
         pkt = bytearray(b"\x30\0\0\0")
-        pkt[0] |= qos << 1 | retain
+        pkt[0] |= 0 << 1 | retain
         sz = 2 + len(topic) + len(msg)
-        if qos > 0:
-            sz += 2
         assert sz < 2097152
         i = 1
         while sz > 0x7f:
@@ -147,10 +171,7 @@ class MQTTClient:
             sz >>= 7
             i += 1
         pkt[i] = sz
-
-        await self._write(pkt[:i + 1])
-        await self._send_str(topic)
-        await self._write(msg)
+        return pkt[:i + 1] + self._create_str(topic) + bytearray(msg)
 
     async def subscribe(self, topic, qos=0):
         assert self.cb is not None, "Subscribe callback is not set"

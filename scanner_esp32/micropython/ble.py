@@ -2,7 +2,7 @@ import bluetooth
 import binascii
 import mqtt
 import ujson
-from config import BLE_PUBLISH_TOPIC
+from config import BLE_PUBLISH_TOPIC, BLE_INTERVAL_US, BLE_WINDOW_US
 from micropython import const
 import uasyncio as asyncio
 
@@ -31,5 +31,5 @@ async def ble_scan_start():
     ble.irq(bt_irq)
     ble.active(True)
     print('BLE address:', ble.config('mac'))
-    ble.gap_scan(0, 250, 200)
+    ble.gap_scan(0, BLE_INTERVAL_US, BLE_WINDOW_US)
 
