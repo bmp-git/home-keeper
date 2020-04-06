@@ -19,7 +19,7 @@ object Crypto {
     sb.toString
   }
 
-  def hash265(data: Array[Byte]): Array[Byte] = MessageDigest.getInstance("SHA-256").digest(data)
+  def sha256(data: Array[Byte]): Array[Byte] = MessageDigest.getInstance("SHA-256").digest(data)
 
   object BLEBeacon {
     def hash(counter: ULong, key: String): String = {
@@ -27,7 +27,7 @@ object Crypto {
         ((0 until (8 - counter.toByteArray.length)).map(_ => 0.asInstanceOf[Byte]) ++
           counter.toByteArray.toSeq).toArray
       val keyByte = key.getBytes("ASCII")
-      val hash = hash265(counterByte ++ keyByte ++ counterByte)
+      val hash = sha256(counterByte ++ keyByte ++ counterByte)
       toHexString(hash.take(8))
     }
 
