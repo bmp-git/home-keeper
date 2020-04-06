@@ -5,11 +5,12 @@ import model.User
 import spire.math.ULong
 import utils.Crypto
 
-case class BleBeacon(mac: MacAddress, key: String, attachedTo: User) {
-  var counter: ULong = ULong.fromInt(0) //TODO: restore from file
+case class BleBeacon(mac: MacAddress, key: String, attachedTo: User, initialCounter: ULong, registerNewCounter: ULong => Any) {
+  var counter: ULong = initialCounter
 
+  //TODO: keep expected counter and validate only if in a range
+  //TODO: for the first packet received ignore this
   def validate(advData: String): Boolean = {
-    println(advData)
     if (advData.length != 62) {
       false
     } else {
@@ -17,7 +18,10 @@ case class BleBeacon(mac: MacAddress, key: String, attachedTo: User) {
       val c = advData.slice(42, 58)
       val ret = Crypto.BLEBeacon.verify(counter, c, key, hash)
       if (ret) {
-        counter = Crypto.parseULong(c).get //TODO: save it to file
+        counter = Crypto.parseULong(c) match {
+          case Some(value) => registerNewCounter(value); counter
+          case None => counter
+        }
       }
       ret
     }
