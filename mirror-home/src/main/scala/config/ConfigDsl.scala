@@ -5,7 +5,7 @@ import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.stream.scaladsl.Source
 import config.factory.ble.BleBeaconFactory
-import config.factory.property.{HttpPropertyFactory, MqttPropertyFactory, PropertyFactory}
+import config.factory.property.{BlePropertyFactory, HttpPropertyFactory, MqttPropertyFactory, PropertyFactory}
 import config.factory.topology
 import config.factory.topology._
 import model.Units.{BrokerAddress, MacAddress}
@@ -15,7 +15,7 @@ import spray.json.DefaultJsonProtocol._
 import spray.json.JsonFormat
 
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object ConfigDsl {
 
@@ -42,8 +42,7 @@ object ConfigDsl {
   //Properties
   implicit val system: ActorSystem = ActorSystem()
 
-  def time_now(): PropertyFactory[Long] = PropertyFactory.safe("time",
-    () => Source.tick(0.second, 1.second, None).map(_ => System.currentTimeMillis))
+  def time_now(): PropertyFactory[Long] = PropertyFactory.dynamic("time", () => System.currentTimeMillis)
 
   def tag(name: String, value: String): PropertyFactory[String] = PropertyFactory.static(name, value)
 
@@ -59,7 +58,7 @@ object ConfigDsl {
 
 
   def http_object[T: JsonFormat](name: String, httpRequest: HttpRequest): PropertyFactory[T] =
-    HttpPropertyFactory.toObject[T](name, httpRequest, 1000.millis)
+    HttpPropertyFactory.objects[T](name, httpRequest, 1000.millis)
 
   def text_file(path: String): String = {
     val s = scala.io.Source.fromFile(path)
@@ -74,8 +73,12 @@ object ConfigDsl {
 
   def user(name: String): UserFactory = UserFactory(name)
 
-  def ble_receiver(name: String, mac: MacAddress)(implicit beacons: Seq[BleBeaconFactory], brokerAddress: BrokerAddress):
-  PropertyFactory[Seq[BeaconData]] = MqttPropertyFactory.bleBeacon(name, brokerAddress, mac, beacons)
+  def ble_receiver(name: String, receiverMac: MacAddress)(implicit beacons: Seq[BleBeaconFactory]): Object {
+    def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[Seq[BeaconData]]
+  } = new {
+    def on_mqtt(implicit brokerAddress: BrokerAddress):PropertyFactory[Seq[BeaconData]] =
+      MqttPropertyFactory.ble(name, brokerAddress, receiverMac, beacons)
+  }
 }
 
 
@@ -99,9 +102,11 @@ object Test extends App {
     ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", mario),
     ble_beacon("23daeaac2a2d", "AnotherKey", luigi)
   )
-  val c1 = ble_receiver("ble", "12dadddc2a2d")
-  val c2 = ble_receiver("ble", "23dadddc2a2d")
-  val c3 = ble_receiver("ble", "34dadddc2a2d")
+  val c1 = ble_receiver("ble", "12dadddc2a2d") on_mqtt
+  val c2 = ble_receiver("ble", "23dadddc2a2d") on_mqtt
+  val c3 = ble_receiver("ble", "34dadddc2a2d") on_mqtt
+
+
 
   val external = room().withProperties(c1)
   val hallway = room().withProperties(c2)
@@ -139,9 +144,9 @@ object Test extends App {
   }
 
   while (true) {
-    /*build.floors.head.rooms.head.gateways.head.properties.foreach(p => {
+    build.floors.head.rooms.head.gateways.head.properties.foreach(p => {
       printProperty(p)
-    })*/
+    })
     printProperty(c1.build())
     Thread.sleep(1000)
   }
