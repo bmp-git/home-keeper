@@ -15,6 +15,7 @@ MQTT_USER = b'homekeeper'
 MQTT_PASSWORD = b'8CUAgjwyuaJu'
 MQTT_KEEPALIVE = 30
 
+MQTT_PUBLISH_QUEUE_SIZE = 10
 
 ROOT_PUBLISH_TOPIC = 'scanner/' + binascii.hexlify(network.WLAN(network.STA_IF).config('mac')).decode()
 BLE_PUBLISH_TOPIC = ROOT_PUBLISH_TOPIC + '/ble'
