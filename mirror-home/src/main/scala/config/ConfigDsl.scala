@@ -5,12 +5,13 @@ import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.stream.scaladsl.Source
 import config.factory.ble.BleBeaconFactory
-import config.factory.property.{BlePropertyFactory, HttpPropertyFactory, MqttPropertyFactory, PropertyFactory}
+import config.factory.property.{HttpPropertyFactory, MqttPropertyFactory, PropertyFactory}
 import config.factory.topology
 import config.factory.topology._
 import model.Units.{BrokerAddress, MacAddress}
 import model.ble.BeaconData
 import model.{Home, Property}
+import sources.MqttSource
 import spray.json.DefaultJsonProtocol._
 import spray.json.JsonFormat
 
@@ -18,6 +19,10 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
 object ConfigDsl {
+
+  implicit class RichSource[Out: JsonFormat, Mat](source: Source[Try[Out], Mat]) {
+    def toPropertyFactory(name: String)(implicit system: ActorSystem): PropertyFactory[Out] = PropertyFactory.apply(name, () => source)
+  }
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
@@ -46,13 +51,21 @@ object ConfigDsl {
 
   def tag(name: String, value: String): PropertyFactory[String] = PropertyFactory.static(name, value)
 
-  def mqtt_bool(name: String, stateTopic: String, truePayload: String, falsePayload: String)
+  def mqtt_bool2(name: String, stateTopic: String, truePayload: String, falsePayload: String)
                (implicit brokerAddress: BrokerAddress): PropertyFactory[Boolean] =
     MqttPropertyFactory.payloads(name, brokerAddress, stateTopic).flatMap {
       case `truePayload` => Success(true)
       case `falsePayload` => Success(false)
       case v => Failure(new Exception(s"$name MqttBool property: $v match failure"))
     }
+  def mqtt_bool(name: String, stateTopic: String, truePayload: String, falsePayload: String)
+               (implicit brokerAddress: BrokerAddress): PropertyFactory[Boolean] = {
+    MqttSource.payloads(brokerAddress, stateTopic).map({
+      case `truePayload` => Success(true)
+      case `falsePayload` => Success(false)
+      case v => Failure(new Exception(s"$name MqttBool property: $v match failure"))
+    }).toPropertyFactory(name)
+  }
 
   def http_state(name: String, request: HttpRequest, pollingFreq: FiniteDuration): PropertyFactory[String] = ???
 
@@ -76,9 +89,17 @@ object ConfigDsl {
   def ble_receiver(name: String, receiverMac: MacAddress)(implicit beacons: Seq[BleBeaconFactory]): Object {
     def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[Seq[BeaconData]]
   } = new {
-    def on_mqtt(implicit brokerAddress: BrokerAddress):PropertyFactory[Seq[BeaconData]] =
+    def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[Seq[BeaconData]] =
       MqttPropertyFactory.ble(name, brokerAddress, receiverMac, beacons)
   }
+
+  def magneto_sensor[T:JsonFormat](name:String, logic: String=>Try[T]): Object {
+    def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[T]
+  } = new {
+    def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[T] =
+      MqttSource.payloads(brokerAddress, "scanner/+/433").map(logic).toPropertyFactory(name)
+  }
+
 }
 
 
@@ -125,7 +146,8 @@ object Test extends App {
     tag("color", "green"),
     mqtt_bool("PC", "stat/shelly25_1/POWER1", "ON", "OFF"),
     mqtt_bool("Letto", "stat/shelly25_1/POWER2", "ON", "OFF"),
-    http_object[SensorState]("garage", garageReq)
+    http_object[SensorState]("garage", garageReq),
+    magneto_sensor("magneto", v => Success(v == "345345")) on_mqtt
   )
 
 
