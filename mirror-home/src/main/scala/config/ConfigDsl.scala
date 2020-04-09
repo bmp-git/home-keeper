@@ -10,6 +10,7 @@ import config.factory.topology
 import config.factory.topology._
 import model.Units.{BrokerAddress, MacAddress}
 import model.ble.BeaconData
+import model.mhz433.Raw433MhzData
 import model.{Home, Property}
 import sources.MqttSource
 import spray.json.DefaultJsonProtocol._
@@ -93,11 +94,15 @@ object ConfigDsl {
       MqttPropertyFactory.ble(name, brokerAddress, receiverMac, beacons)
   }
 
-  def magneto_sensor[T:JsonFormat](name:String, logic: String=>Try[T]): Object {
-    def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[T]
-  } = new {
-    def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[T] =
-      MqttSource.payloads(brokerAddress, "scanner/+/433").map(logic).toPropertyFactory(name)
+  def open_closed(name: String, openCode: Int, closedCode: Int):
+  Object { def on_mqtt(topics: String*) (implicit brokerAddress: BrokerAddress): PropertyFactory[Boolean] } = new {
+    def on_mqtt(topics: String*)(implicit brokerAddress: BrokerAddress): PropertyFactory[Boolean] = {
+      import model.mhz433.Formats._
+      MqttSource.objects[Raw433MhzData](brokerAddress, topics:_*).collect({
+        case Success(data) if data.code == openCode => true
+        case Success(data) if data.code == closedCode => false
+      }).map(Success(_)).toPropertyFactory(name)
+    }
   }
 
 }
@@ -127,7 +132,7 @@ object Test extends App {
   val c2 = ble_receiver("ble", "23dadddc2a2d") on_mqtt
   val c3 = ble_receiver("ble", "34dadddc2a2d") on_mqtt
 
-
+  val p3 = open_closed("magneto", openCode = 123, closedCode = 321) on_mqtt "scanner/+/433"
 
   val external = room().withProperties(c1)
   val hallway = room().withProperties(c2)
@@ -147,7 +152,6 @@ object Test extends App {
     mqtt_bool("PC", "stat/shelly25_1/POWER1", "ON", "OFF"),
     mqtt_bool("Letto", "stat/shelly25_1/POWER2", "ON", "OFF"),
     http_object[SensorState]("garage", garageReq),
-    magneto_sensor("magneto", v => Success(v == "345345")) on_mqtt
   )
 
 

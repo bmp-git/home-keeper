@@ -16,5 +16,4 @@ object Formats {
 
     def read(value: JsValue): BeaconData = ??? // nothing?
   }
-
 }
