@@ -35,13 +35,15 @@ trait PropertyFactory[T] extends OneTimeFactory[Property[T]] {
 
 
 object PropertyFactory {
-  def static[T: JsonFormat](propertyName: String, staticValue: T): PropertyFactory[T] = new PropertyFactory[T] {
+  def static[T: JsonFormat](propertyName: String, staticValue: T): PropertyFactory[T] = dynamic(propertyName, () => staticValue)
+
+  def dynamic[T: JsonFormat](propertyName: String, dynamicValue: () => T): PropertyFactory[T] = new PropertyFactory[T] {
     override def name: String = propertyName
 
     override protected def oneTimeBuild(): Property[T] = new Property[T] {
       override def name: String = propertyName
 
-      override def value: Try[T] = Success(staticValue)
+      override def value: Try[T] = Success(dynamicValue())
 
       override def jsonFormat: JsonFormat[T] = implicitly[JsonFormat[T]]
     }

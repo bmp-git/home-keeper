@@ -4,13 +4,13 @@ import model.Units.MacAddress
 import model.User
 import spire.math.ULong
 import utils.Crypto
-
 case class BleBeacon(mac: MacAddress, key: String, attachedTo: User, initialCounter: ULong, registerNewCounter: ULong => Any) {
   var counter: ULong = initialCounter
 
   //TODO: keep expected counter and validate only if in a range
   //TODO: for the first packet received ignore this
   def validate(advData: String): Boolean = {
+
     if (advData.length != 62) {
       false
     } else {

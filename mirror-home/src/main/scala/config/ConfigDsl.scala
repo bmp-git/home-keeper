@@ -11,13 +11,18 @@ import config.factory.topology._
 import model.Units.{BrokerAddress, MacAddress}
 import model.ble.BeaconData
 import model.{Home, Property}
+import sources.MqttSource
 import spray.json.DefaultJsonProtocol._
 import spray.json.JsonFormat
 
 import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object ConfigDsl {
+
+  implicit class RichSource[Out: JsonFormat, Mat](source: Source[Try[Out], Mat]) {
+    def toPropertyFactory(name: String)(implicit system: ActorSystem): PropertyFactory[Out] = PropertyFactory.apply(name, () => source)
+  }
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
@@ -42,24 +47,31 @@ object ConfigDsl {
   //Properties
   implicit val system: ActorSystem = ActorSystem()
 
-  def time_now(): PropertyFactory[Long] = PropertyFactory.safe("time",
-    () => Source.tick(0.second, 1.second, None).map(_ => System.currentTimeMillis))
+  def time_now(): PropertyFactory[Long] = PropertyFactory.dynamic("time", () => System.currentTimeMillis)
 
   def tag(name: String, value: String): PropertyFactory[String] = PropertyFactory.static(name, value)
 
-  def mqtt_bool(name: String, stateTopic: String, truePayload: String, falsePayload: String)
+  def mqtt_bool2(name: String, stateTopic: String, truePayload: String, falsePayload: String)
                (implicit brokerAddress: BrokerAddress): PropertyFactory[Boolean] =
     MqttPropertyFactory.payloads(name, brokerAddress, stateTopic).flatMap {
       case `truePayload` => Success(true)
       case `falsePayload` => Success(false)
       case v => Failure(new Exception(s"$name MqttBool property: $v match failure"))
     }
+  def mqtt_bool(name: String, stateTopic: String, truePayload: String, falsePayload: String)
+               (implicit brokerAddress: BrokerAddress): PropertyFactory[Boolean] = {
+    MqttSource.payloads(brokerAddress, stateTopic).map({
+      case `truePayload` => Success(true)
+      case `falsePayload` => Success(false)
+      case v => Failure(new Exception(s"$name MqttBool property: $v match failure"))
+    }).toPropertyFactory(name)
+  }
 
   def http_state(name: String, request: HttpRequest, pollingFreq: FiniteDuration): PropertyFactory[String] = ???
 
 
   def http_object[T: JsonFormat](name: String, httpRequest: HttpRequest): PropertyFactory[T] =
-    HttpPropertyFactory.toObject[T](name, httpRequest, 1000.millis)
+    HttpPropertyFactory.objects[T](name, httpRequest, 1000.millis)
 
   def text_file(path: String): String = {
     val s = scala.io.Source.fromFile(path)
@@ -74,8 +86,20 @@ object ConfigDsl {
 
   def user(name: String): UserFactory = UserFactory(name)
 
-  def ble_receiver(name: String, mac: MacAddress)(implicit beacons: Seq[BleBeaconFactory], brokerAddress: BrokerAddress):
-  PropertyFactory[Seq[BeaconData]] = MqttPropertyFactory.bleBeacon(name, brokerAddress, mac, beacons)
+  def ble_receiver(name: String, receiverMac: MacAddress)(implicit beacons: Seq[BleBeaconFactory]): Object {
+    def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[Seq[BeaconData]]
+  } = new {
+    def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[Seq[BeaconData]] =
+      MqttPropertyFactory.ble(name, brokerAddress, receiverMac, beacons)
+  }
+
+  def magneto_sensor[T:JsonFormat](name:String, logic: String=>Try[T]): Object {
+    def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[T]
+  } = new {
+    def on_mqtt(implicit brokerAddress: BrokerAddress): PropertyFactory[T] =
+      MqttSource.payloads(brokerAddress, "scanner/+/433").map(logic).toPropertyFactory(name)
+  }
+
 }
 
 
@@ -99,9 +123,11 @@ object Test extends App {
     ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", mario),
     ble_beacon("23daeaac2a2d", "AnotherKey", luigi)
   )
-  val c1 = ble_receiver("ble", "12dadddc2a2d")
-  val c2 = ble_receiver("ble", "23dadddc2a2d")
-  val c3 = ble_receiver("ble", "34dadddc2a2d")
+  val c1 = ble_receiver("ble", "12dadddc2a2d") on_mqtt
+  val c2 = ble_receiver("ble", "23dadddc2a2d") on_mqtt
+  val c3 = ble_receiver("ble", "34dadddc2a2d") on_mqtt
+
+
 
   val external = room().withProperties(c1)
   val hallway = room().withProperties(c2)
@@ -120,7 +146,8 @@ object Test extends App {
     tag("color", "green"),
     mqtt_bool("PC", "stat/shelly25_1/POWER1", "ON", "OFF"),
     mqtt_bool("Letto", "stat/shelly25_1/POWER2", "ON", "OFF"),
-    http_object[SensorState]("garage", garageReq)
+    http_object[SensorState]("garage", garageReq),
+    magneto_sensor("magneto", v => Success(v == "345345")) on_mqtt
   )
 
 
@@ -139,9 +166,9 @@ object Test extends App {
   }
 
   while (true) {
-    /*build.floors.head.rooms.head.gateways.head.properties.foreach(p => {
+    build.floors.head.rooms.head.gateways.head.properties.foreach(p => {
       printProperty(p)
-    })*/
+    })
     printProperty(c1.build())
     Thread.sleep(1000)
   }
