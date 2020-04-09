@@ -1,5 +1,5 @@
 import machine
-from utils.funs import inc
+from irqueue.funs import inc
 
 class IRQueue:
     def __init__(self, recordType, size):
