@@ -31,15 +31,9 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
 
     "allow to read properties" in {
       case class Timer(time: Long)
-      var time = 0L
-      Get("/api/home/properties/time") ~> route ~> check {
+      Get("/api/home/properties/myprop") ~> route ~> check {
         status shouldEqual StatusCodes.OK
-        time = responseAs[String].parseJson.convertTo(jsonFormat1(Timer)).time
-      }
-      Thread.sleep(1000)
-      Get("/api/home/properties/time") ~> route ~> check {
-        status shouldEqual StatusCodes.OK
-        assert(responseAs[String].parseJson.convertTo(jsonFormat1(Timer)).time > time)
+        responseAs[String] shouldEqual "{\"myprop\":\"lol\"}"
       }
     }
 

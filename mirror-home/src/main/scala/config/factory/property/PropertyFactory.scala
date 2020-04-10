@@ -13,6 +13,12 @@ trait PropertyFactory[T] extends OneTimeFactory[Property[T]] {
   def name: String
 
   //TODO: remove if unused
+  def map2[B: JsonFormat](f: Try[T] => Try[B]): PropertyFactory[B] = new PropertyFactory[B] {
+    override def name: String = PropertyFactory.this.name
+
+    override protected def oneTimeBuild(): Property[B] = PropertyFactory.this.build().map2(f)
+  }
+
   def map[B: JsonFormat](f: T => B): PropertyFactory[B] = new PropertyFactory[B] {
     override def name: String = PropertyFactory.this.name
 

@@ -7,6 +7,14 @@ import scala.util.{Failure, Success, Try}
 
 object RichProperty {
   implicit class RickProperty[T](property: Property[T]) {
+    def map2[B:JsonFormat](f: Try[T] => Try[B]): Property[B] = new Property[B] {
+      override def name: String = property.name
+
+      override def value: Try[B] = f(property.value)
+
+      override def jsonFormat: JsonFormat[B] = implicitly[JsonFormat[B]]
+    }
+
     def map[B:JsonFormat](f: T => B): Property[B] = new Property[B] {
       override def name: String = property.name
 

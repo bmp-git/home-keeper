@@ -20,11 +20,11 @@ object Utils {
         bedroom
       )
     )
-    h.withProperties(time_now())
+    h.withProperties(tag("myprop", "lol"))
 
     door(bedroom -> hallway)
     door(hallway -> external).withProperties(
-      time_now(),
+      //time_now(), //don't match
       tag("color", "green"),
     )
 

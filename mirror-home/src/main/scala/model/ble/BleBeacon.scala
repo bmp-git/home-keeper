@@ -19,7 +19,7 @@ case class BleBeacon(mac: MacAddress, key: String, attachedTo: User, initialCoun
       val ret = Crypto.BLEBeacon.verify(counter, c, key, hash)
       if (ret) {
         counter = Crypto.parseULong(c) match {
-          case Some(value) => registerNewCounter(value); counter
+          case Some(value) => registerNewCounter(value); value
           case None => counter
         }
       }
