@@ -1,6 +1,6 @@
 import micropython
-from utils.irqueue import IRQueue
-from utils.ble_scan_record import BLEScanRecord
+from irqueue.irqueue import IRQueue
+from irqueue.ble.ble_scan_record import BLEScanRecord
 
 
 q = IRQueue(BLEScanRecord, 10)

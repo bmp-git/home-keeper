@@ -6,6 +6,7 @@ Sending and receiving 433/315Mhz signals with low-cost GPIO RF Modules on a Rasp
 """
 
 import time
+import micropython
 from collections import namedtuple
 
 from machine import Pin
@@ -51,6 +52,7 @@ class RFDevice:
         self._rx_change_count = 0
         self._rx_repeat_count = 0
         self.receive_callback = None
+        self.internal_receive_callback = self.rx_callback
         # successful RX values
         self.rx_code = None
         self.rx_code_timestamp = None
@@ -192,6 +194,7 @@ class RFDevice:
     # pylint: disable=unused-argument
     def rx_callback(self, gpio):
         """RX callback for GPIO event detection. Handle basic signal detection."""
+        micropython.heap_lock()
         timestamp = int(time.ticks_us())
         duration = timestamp - self._rx_last_timestamp
 
@@ -214,12 +217,14 @@ class RFDevice:
         self._rx_timings[self._rx_change_count] = duration
         self._rx_change_count += 1
         self._rx_last_timestamp = timestamp
+        micropython.heap_unlock()
 
     def _rx_waveform(self, pnum, change_count, timestamp):
         """Detect waveform and format code."""
         code = 0
-        delay = int(self._rx_timings[0] / PROTOCOLS[pnum].sync_low)
-        delay_tolerance = delay * self.rx_tolerance / 100
+        # integer divisions to avoid heap allocation
+        delay = self._rx_timings[0] // PROTOCOLS[pnum].sync_low
+        delay_tolerance = delay * self.rx_tolerance // 100
 
         for i in range(1, change_count, 2):
             if (abs(self._rx_timings[i] - delay * PROTOCOLS[pnum].zero_high) < delay_tolerance and
@@ -235,7 +240,8 @@ class RFDevice:
         if self._rx_change_count > 6 and code != 0:
             self.rx_code = code
             self.rx_code_timestamp = timestamp
-            self.rx_bitlength = int(change_count / 2)
+            # integer division to avoid heap allocation
+            self.rx_bitlength = change_count // 2
             self.rx_pulselength = delay
             self.rx_proto = pnum
             return True

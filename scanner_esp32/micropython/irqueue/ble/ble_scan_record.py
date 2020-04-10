@@ -1,4 +1,4 @@
-from utils.funs import bytearrayCopy
+from irqueue.funs import bytearrayCopy
 class BLEScanRecord:
     def __init__(self):
         self.addr = bytearray(6)
