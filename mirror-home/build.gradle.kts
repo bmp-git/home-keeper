@@ -41,6 +41,9 @@ dependencies {
     //spire.math ULong, UByte
     implementation("org.spire-math:spire_2.12:0.13.0")
 
+    //JavaCV
+    implementation("org.bytedeco:javacv-platform:1.5.2")
+
     //Tests
     testImplementation("org.scalatest:scalatest_2.12:3.0.1")
     testImplementation("com.typesafe.akka:akka-stream-testkit_2.12:2.5.26")
