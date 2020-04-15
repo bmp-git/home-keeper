@@ -1,6 +1,7 @@
 package webserver
 
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Origin`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
 import config.factory.action.ActionFactory
@@ -15,9 +16,11 @@ import scala.util.{Failure, Success, Try}
 object RouteGenerator {
   val receivedPostMessage = "Action request received"
 
+  private val corsResponseHeaders = List(`Access-Control-Allow-Origin`.*)
+
   def generateGet(completePath: PathMatcher[Unit], value: () => String): Route = {
     (path(completePath) & get) {
-      complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, value())))
+      complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, value())).withHeaders(corsResponseHeaders))
     }
   }
 
@@ -27,8 +30,8 @@ object RouteGenerator {
     (path(completePath) & post & entity(as[String])) { raw =>
       //TODO: Add a tryTrig to actions to understand if the payload is incorrect?
       Try { action.trigFromJson(JsonParser(ParserInput(raw))) } match {
-        case Success(_) => complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage)))
-        case Failure(_) => complete(HttpResponse(500))
+        case Success(_) => complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage)).withHeaders(corsResponseHeaders))
+        case Failure(_) => complete(HttpResponse(500).withHeaders(corsResponseHeaders))
       }
     }
   }
@@ -166,8 +169,8 @@ object Test extends App {
 
   val route = RouteGenerator.generateRoutes(build, "api")
 
-  val bindingFuture = Http().bindAndHandle(route, "localhost", 8080)
-  println(s"Server online at http://localhost:8080/\nPress RETURN to stop...")
+  val bindingFuture = Http().bindAndHandle(route, "localhost", 8090)
+  println(s"Server online at http://localhost:8090/\nPress RETURN to stop...")
   StdIn.readLine()
   bindingFuture
     .flatMap(_.unbind())
