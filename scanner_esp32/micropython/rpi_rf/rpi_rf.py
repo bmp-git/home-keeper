@@ -181,7 +181,7 @@ class RFDevice:
             self.rx_enabled = True
             self.receive_callback = receive_callback
             self.pin = Pin(self.gpio, Pin.IN)
-            self.pin.irq(handler=self.rx_callback)
+            self.pin.irq(handler=self.internal_receive_callback)
         return True
 
     def disable_rx(self):
@@ -194,7 +194,6 @@ class RFDevice:
     # pylint: disable=unused-argument
     def rx_callback(self, gpio):
         """RX callback for GPIO event detection. Handle basic signal detection."""
-        micropython.heap_lock()
         timestamp = int(time.ticks_us())
         duration = timestamp - self._rx_last_timestamp
 
@@ -217,7 +216,7 @@ class RFDevice:
         self._rx_timings[self._rx_change_count] = duration
         self._rx_change_count += 1
         self._rx_last_timestamp = timestamp
-        micropython.heap_unlock()
+
 
     def _rx_waveform(self, pnum, change_count, timestamp):
         """Detect waveform and format code."""
