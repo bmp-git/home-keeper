@@ -1,13 +1,13 @@
 package utils
 
-import model.Property
+import model.{JsonProperty, Property}
 import spray.json.JsonFormat
 
 import scala.util.{Failure, Success, Try}
 
 object RichProperty {
-  implicit class RickProperty[T](property: Property[T]) {
-    def map2[B:JsonFormat](f: Try[T] => Try[B]): Property[B] = new Property[B] {
+  implicit class RickJsonProperty[T](property: JsonProperty[T]) {
+    def map2[B:JsonFormat](f: Try[T] => Try[B]): JsonProperty[B] = new JsonProperty[B] {
       override def name: String = property.name
 
       override def value: Try[B] = f(property.value)
@@ -15,7 +15,7 @@ object RichProperty {
       override def jsonFormat: JsonFormat[B] = implicitly[JsonFormat[B]]
     }
 
-    def map[B:JsonFormat](f: T => B): Property[B] = new Property[B] {
+    def map[B:JsonFormat](f: T => B): JsonProperty[B] = new JsonProperty[B] {
       override def name: String = property.name
 
       override def value: Try[B] = property.value.map(f)
@@ -23,7 +23,7 @@ object RichProperty {
       override def jsonFormat: JsonFormat[B] = implicitly[JsonFormat[B]]
     }
 
-    def flatMap[B:JsonFormat](f: T => Try[B]): Property[B]  = new Property[B] {
+    def flatMap[B:JsonFormat](f: T => Try[B]): JsonProperty[B]  = new JsonProperty[B] {
       override def name: String = property.name
 
       override def value: Try[B] = property.value match {
@@ -34,7 +34,7 @@ object RichProperty {
       override def jsonFormat: JsonFormat[B] = implicitly[JsonFormat[B]]
     }
 
-    def recoverWith(f: Throwable => T):Property[T] = new Property[T] {
+    def recoverWith(f: Throwable => T):JsonProperty[T] = new JsonProperty[T] {
       override def name: String = property.name
 
       override def value: Try[T] = property.value match {

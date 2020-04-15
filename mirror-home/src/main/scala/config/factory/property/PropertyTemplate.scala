@@ -19,13 +19,13 @@ abstract class PropertyTemplate[T: JsonFormat : ClassTag](implicit actorSystem: 
   def httpSource(request: HttpRequest, pollingFreq: FiniteDuration): Source[Try[T], _]
 
 
-  def on_mqtt(topics: String*)(implicit brokerConfig: BrokerConfig): PropertyFactory[T]
-  = PropertyFactory(name, () => mqttSource(topics: _*))
+  def on_mqtt(topics: String*)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[T]
+  = JsonPropertyFactory(name, () => mqttSource(topics: _*))
 
-  def on_http(request: HttpRequest, pollingFreq: FiniteDuration): PropertyFactory[T] =
-    PropertyFactory(name, () => httpSource(request, pollingFreq))
+  def on_http(request: HttpRequest, pollingFreq: FiniteDuration): JsonPropertyFactory[T] =
+    JsonPropertyFactory(name, () => httpSource(request, pollingFreq))
 
-  def on_http(request: HttpRequest): PropertyFactory[T] = on_http(request, 1.second)
+  def on_http(request: HttpRequest): JsonPropertyFactory[T] = on_http(request, 1.second)
 
   def map[B: JsonFormat : ClassTag](f: Try[T] => Try[B]): PropertyTemplate[B] =
     DynamicPropertyTemplateMapper(this, f)

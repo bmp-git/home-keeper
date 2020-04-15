@@ -1,10 +1,18 @@
 package webserver
 
+
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
+import akka.stream.scaladsl.{Flow, Source}
+import akka.util.ByteString
+import config.ConfigDsl
 import config.factory.action.ActionFactory
-import model.{Action, DigitalTwin, Door, Floor, Gateway, Home, Room, Window}
+import config.factory.property.ActivePropertyFactory
+import imgproc.Flows.{broadcast2TransformAndMerge, frameToBufferedImageImageFlow, frameToIplImageFlow, iplImageToFrameImageFlow, mimeFrameEncoderFlow}
+import model.{Action, DigitalTwin, Door, Floor, Gateway, Home, Property, Room, Window}
+import org.bytedeco.opencv.opencv_core.IplImage
+import sources.{FrameSource, RealTimeSourceMulticaster}
 import spray.json.{JsObject, JsonParser, ParserInput}
 
 import scala.io.StdIn
@@ -18,6 +26,15 @@ object RouteGenerator {
   def generateGet(completePath: PathMatcher[Unit], value: () => String): Route = {
     (path(completePath) & get) {
       complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, value())))
+    }
+  }
+
+  def generateGet2(completePath: PathMatcher[Unit], property:Property[_]):Route = {
+    (path(completePath) & get) {
+      property.serialized match {
+        case Failure(exception) => complete(HttpResponse(500))
+        case Success(value) => complete(HttpResponse(200, entity = HttpEntity(property.contentType, value)))
+      }
     }
   }
 
@@ -47,7 +64,7 @@ object RouteGenerator {
 
   def generatePropertiesRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
     concat(
-      dt.properties.map(p => generateGet(startingPath / "properties" / p.name, () => property(p).compactPrint)) toList :_*
+      dt.properties.map(p => generateGet2(startingPath / "properties" / p.name, p)) toList :_*
     )
   }
 
@@ -155,10 +172,44 @@ object Test extends App {
   )
   h.withProperties(time_now())
 
+  import imgproc.RichIplImage._
+  import scala.concurrent.duration._
+  val tIdentity = Flow[IplImage]
+  val backgroundFlow = Flow[IplImage].scan[Option[IplImage]](None)({
+    case (Some(lastResult), image) => Some(lastResult.merge(image, 0.03))
+    case (None, image) => Some(image)
+  }).collect {
+    case Some(image) => image
+  }
+  val backGroundDiffFlow = broadcast2TransformAndMerge(backgroundFlow, tIdentity,
+    (background: IplImage, source: IplImage) => background absDiff source).map(_.threshold(80))
+  val movDetector = broadcast2TransformAndMerge(backGroundDiffFlow, tIdentity,
+    (diff: IplImage, source: IplImage) => diff.rectangles(source))
+  val stream = FrameSource.video("http://192.168.1.237/video.cgi")
+    .via(frameToIplImageFlow)
+    .via(movDetector)
+    .via(iplImageToFrameImageFlow)
+    .via(frameToBufferedImageImageFlow)
+    .via(mimeFrameEncoderFlow)
+  val multicaster = RealTimeSourceMulticaster[ByteString](() => stream.idleTimeout(1.seconds), null, 50)
+  val loool = new ActivePropertyFactory[Source[ByteString, Any]] {
+    override def actorSystem: ActorSystem = ConfigDsl.system
+
+    override def name: String = "video"
+
+    override def output: Source[Try[Source[ByteString, Any]], _] =
+      Source.lazily(() => Source.single(Success(multicaster.cast)))
+
+    override def contentType: ContentType =  ContentType(MediaType.customMultipart("x-mixed-replace", Map("boundary" -> "--boundary")))
+
+    override def serializer: Source[ByteString, Any] => Source[ByteString, Any] = a => a
+  }
+
   door(bedRoom -> hallway)
   door(hallway -> external).withProperties(
     time_now(),
     tag("color", "green"),
+    loool
     //http_object[SensorState]("garage", garageReq)
   )
 
