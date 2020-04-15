@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.stream.alpakka.mqtt.{MqttConnectionSettings, MqttMessage, MqttQoS, MqttSubscriptions}
 import akka.stream.scaladsl.{Flow, Source}
 import akka.{Done, NotUsed}
-import model.Units.BrokerAddress
+import model.BrokerConfig
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import spray.json._
 
@@ -12,13 +12,17 @@ import scala.concurrent.Future
 import scala.util.Try
 
 object MqttSource {
-  def messages(brokerAddress: BrokerAddress, topics: String*) //TODO: what if crash?
+  def messages(brokerConfig: BrokerConfig, topics: String*) //TODO: what if crash?
               (implicit actorSystem: ActorSystem): Source[MqttMessage, Future[Done]] = {
-    val connectionSettings = MqttConnectionSettings(
-      s"tcp://$brokerAddress",
+    var connectionSettings = MqttConnectionSettings(
+      s"tcp://${brokerConfig.address}",
       s"mirror-home-property-" + System.currentTimeMillis(), //TODO:random?
       new MemoryPersistence //TODO: need an explanation
-    )
+    ).withAutomaticReconnect(true)
+    connectionSettings = brokerConfig.auth match {
+      case Some((user, pass)) => connectionSettings.withAuth(user, pass)
+      case None => connectionSettings
+    }
 
     akka.stream.alpakka.mqtt.scaladsl.MqttSource.atMostOnce(
       connectionSettings,
@@ -27,13 +31,13 @@ object MqttSource {
     )
   }
 
-  def payloads(brokerAddress: BrokerAddress, topics: String*)
+  def payloads(brokerConfig: BrokerConfig, topics: String*)
               (implicit actorSystem: ActorSystem): Source[String, Future[Done]] =
-    messages(brokerAddress, topics: _*)(actorSystem).via(payloadExtractor)
+    messages(brokerConfig, topics: _*)(actorSystem).via(payloadExtractor)
 
-  def objects[T: JsonFormat](brokerAddress: BrokerAddress, topics: String*)
+  def objects[T: JsonFormat](brokerConfig: BrokerConfig, topics: String*)
                             (implicit actorSystem: ActorSystem): Source[Try[T], Future[Done]] =
-    payloads(brokerAddress, topics: _*).via(objectExtractor[T])
+    payloads(brokerConfig, topics: _*).via(objectExtractor[T])
 
 
   private def payloadExtractor: Flow[MqttMessage, String, NotUsed] =

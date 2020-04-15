@@ -1,14 +1,14 @@
 package config.factory.topology
 
-import config.factory.property.PropertyFactory
+import config.factory.property.JsonPropertyFactory
 import org.scalatest.FunSuite
 import spray.json.DefaultJsonProtocol._
 
 class TopologyFactoryTest extends FunSuite {
   test("Same property name") {
     val factory = HomeFactory("my-home")
-      .withProperties(PropertyFactory.static("my-property", 1234))
-      .withProperties(PropertyFactory.static("my-property", 1235))
+      .withProperties(JsonPropertyFactory.static("my-property", 1234))
+      .withProperties(JsonPropertyFactory.static("my-property", 1235))
     assert(factory.build().properties.size == 1)
     assert(factory.build().properties.head.value.get == 1234)
   }
@@ -30,34 +30,34 @@ class TopologyFactoryTest extends FunSuite {
   test("Home factory test") {
     val factory = HomeFactory("my-home")
       .withFloors(FloorFactory("my-floor"))
-      .withProperties(PropertyFactory.static("my-property", 1234))
+      .withProperties(JsonPropertyFactory.static("my-property", 1234))
     val build = factory.build()
     assert(build.name == "my-home")
     assert(build.floors.exists(_.name == "my-floor"))
     assert(build.properties.exists(_.name == "my-property"))
-    assert(build.properties.find(_.name == "my-property").get.valueToJson.compactPrint == "1234")
+    assert(build.properties.find(_.name == "my-property").get.value.get == 1234)
   }
   test("Floor factory test") {
     val factory = FloorFactory("my-floor")
       .withRooms(RoomFactory("my-room"))
-      .withProperties(PropertyFactory.static("my-property", 1234))
+      .withProperties(JsonPropertyFactory.static("my-property", 1234))
     val build = factory.build()
     assert(build.name == "my-floor")
     assert(build.rooms.exists(_.name == "my-room"))
     assert(build.properties.exists(_.name == "my-property"))
-    assert(build.properties.find(_.name == "my-property").get.valueToJson.compactPrint == "1234")
+    assert(build.properties.find(_.name == "my-property").get.value.get == 1234)
   }
   test("Room factory test") {
     val r1 = RoomFactory("r1")
     val r2 = RoomFactory("r2")
     val factory = RoomFactory("my-room")
       .withGateways(DoorFactory("my-door", (r1, r2)))
-      .withProperties(PropertyFactory.static("my-property", 1234))
+      .withProperties(JsonPropertyFactory.static("my-property", 1234))
     val build = factory.build()
     assert(build.name == "my-room")
     assert(build.gateways.exists(_.name == "my-door"))
     assert(build.properties.exists(_.name == "my-property"))
-    assert(build.properties.find(_.name == "my-property").get.valueToJson.compactPrint == "1234")
+    assert(build.properties.find(_.name == "my-property").get.value.get == 1234)
   }
   test("Gateways factory test") {
     val r1 = RoomFactory("r1")
