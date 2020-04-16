@@ -23,7 +23,7 @@ def bt_irq(event, data):
     if event == _IRQ_SCAN_RESULT:
         global scan_result_queue
         addr_type, addr, adv_type, rssi, adv_data = data
-        #print("[BLE IRQ]", addr_type, addr, adv_type, rssi, adv_data)
+        # print("[BLE IRQ]", addr_type, addr, adv_type, rssi, adv_data)
         scan_result_queue.enqueue(addr, adv_data, rssi)
     #elif event == _IRQ_SCAN_COMPLETE:
     #    print("[BLE] Scan completed. Restarting.")
@@ -39,7 +39,7 @@ async def ble_mqtt_publisher():
             payload = {
                 'addr' : bths(item.addr).decode(),
                 'rssi' : item.rssi,
-                'adv_data' : bths(item.adv_data).decode()
+                'adv_data' : bths(item.adv_data.to_bytearray()).decode()
             }
             print("[BLE] Found:", payload['addr'], payload['rssi'], payload['adv_data'])
             await mqtt.mqtt_publish(BLE_PUBLISH_TOPIC, ujson.dumps(payload))
