@@ -15,7 +15,7 @@ export function handleError(error: any, errorHandler?: (error: any) => void) {
 
 export function getHome(succHandler: (result: any) => void, errorHandler?: (error: any) => void) {
     log("getting home on " + server + "/home");
-    axios.get(server + "/home")
+    return axios.get(server + "/home")
         .then(response => {
             if(succHandler) {
                 succHandler(response.data);

@@ -9,7 +9,7 @@
           {{ room.name }} 
         </div>
       </div>
-    </template>    
+    </template>
   </div>
 </template>
 
@@ -23,5 +23,4 @@ export default {
     HelloWorld,
   }
 };
-
 </script>
