@@ -9,7 +9,7 @@ import akka.stream.scaladsl.{Flow, Source}
 import akka.util.ByteString
 import config.ConfigDsl
 import config.factory.action.ActionFactory
-import config.factory.property.ActivePropertyFactory
+import config.factory.property.{MixedReplaceVideoPropertyFactory}
 import imgproc.Flows.{broadcast2TransformAndMerge, frameToBufferedImageImageFlow, frameToIplImageFlow, iplImageToFrameImageFlow, mimeFrameEncoderFlow}
 import model.{Action, DigitalTwin, Door, Floor, Gateway, Home, Property, Room, Window}
 import org.bytedeco.opencv.opencv_core.IplImage
@@ -176,7 +176,6 @@ object Test extends App {
   h.withProperties(time_now())
 
   import imgproc.RichIplImage._
-  import scala.concurrent.duration._
   val tIdentity = Flow[IplImage]
   val backgroundFlow = Flow[IplImage].scan[Option[IplImage]](None)({
     case (Some(lastResult), image) => Some(lastResult.merge(image, 0.03))
@@ -193,26 +192,13 @@ object Test extends App {
     .via(movDetector)
     .via(iplImageToFrameImageFlow)
     .via(frameToBufferedImageImageFlow)
-    .via(mimeFrameEncoderFlow)
-  val multicaster = RealTimeSourceMulticaster[ByteString](() => stream.idleTimeout(1.seconds), null, 50)
-  val loool = new ActivePropertyFactory[Source[ByteString, Any]] {
-    override def actorSystem: ActorSystem = ConfigDsl.system
-
-    override def name: String = "video"
-
-    override def output: Source[Try[Source[ByteString, Any]], _] =
-      Source.lazily(() => Source.single(Success(multicaster.cast)))
-
-    override def contentType: ContentType =  ContentType(MediaType.customMultipart("x-mixed-replace", Map("boundary" -> "--boundary")))
-
-    override def serializer: Source[ByteString, Any] => Source[ByteString, Any] = a => a
-  }
+  val asd = MixedReplaceVideoPropertyFactory("video", () => stream)
 
   door(bedRoom -> hallway)
   door(hallway -> external).withProperties(
     time_now(),
     tag("color", "green"),
-    loool
+    asd
     //http_object[SensorState]("garage", garageReq)
   )
 
