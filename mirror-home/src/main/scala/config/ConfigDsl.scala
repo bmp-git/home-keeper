@@ -4,7 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.model.{DateTime, HttpRequest}
 import config.factory.ble.BleBeaconFactory
-import config.factory.property.{DynamicPropertyTemplate, PropertyFactory, PropertyTemplate}
+import config.factory.property.{DynamicPropertyTemplate, JsonPropertyFactory, PropertyTemplate}
 import config.factory.topology
 import config.factory.topology._
 import model.Units.MacAddress
@@ -59,9 +59,9 @@ object ConfigDsl {
   implicit val system: ActorSystem = ActorSystem()
 
   /** STATIC PROPERTIES **/
-  def time_now(): PropertyFactory[Long] = PropertyFactory.dynamic("time", () => System.currentTimeMillis)
+  def time_now(): JsonPropertyFactory[Long] = JsonPropertyFactory.dynamic("time", () => System.currentTimeMillis)
 
-  def tag[T: JsonFormat](name: String, value: T): PropertyFactory[T] = PropertyFactory.static(name, value)
+  def tag[T: JsonFormat](name: String, value: T): JsonPropertyFactory[T] = JsonPropertyFactory.static(name, value)
 
   /** DYNAMIC PROPERTIES **/
   def custom_property[T: JsonFormat : ClassTag](name: String): PropertyTemplate[T] =
@@ -74,7 +74,7 @@ object ConfigDsl {
     })
 
   def ble_receiver(name: String, receiverMac: MacAddress)
-                  (implicit beaconsFactory: Seq[BleBeaconFactory], brokerConfig: BrokerConfig): PropertyFactory[Seq[BeaconData]] = {
+                  (implicit beaconsFactory: Seq[BleBeaconFactory], brokerConfig: BrokerConfig): JsonPropertyFactory[Seq[BeaconData]] = {
     import model.ble.Formats._
     import utils.RichMap._
     var container = Map[String, BeaconData]() //context
@@ -150,7 +150,7 @@ object Test extends App {
       case "ON" => true
       case "OFF" => false
     }) on_mqtt "stat/shelly25_1/POWER2",
-    (custom_property[HassSensorState]("garage") on_http garageReq).map(_.state.toInt),
+    (custom_property[HassSensorState]("garage").mapValue(_.state.toInt) on_http garageReq),
     custom_property[String]("AAAA") on_mqtt "stat/shelly25_1/POWER2"
 
   )

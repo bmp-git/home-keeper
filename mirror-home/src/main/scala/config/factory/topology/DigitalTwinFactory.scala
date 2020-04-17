@@ -2,8 +2,8 @@ package config.factory.topology
 
 import config.factory.OneTimeFactory
 import config.factory.action.ActionFactory
-import config.factory.property.PropertyFactory
-import model.DigitalTwin
+import config.factory.property.{JsonPropertyFactory, PropertyFactory}
+import model.{DigitalTwin, Property}
 import utils.SetContainer
 
 trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {

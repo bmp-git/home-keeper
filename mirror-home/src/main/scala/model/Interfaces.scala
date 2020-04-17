@@ -2,6 +2,9 @@
 //Beacon, Pir, Videocamera, Perimetrali
 package model
 
+import akka.http.scaladsl.model.{ContentType, ContentTypes}
+import akka.stream.scaladsl.Source
+import akka.util.ByteString
 import spray.json._
 import spray.json.DefaultJsonProtocol._
 import spray.json.{JsObject, JsValue, JsonFormat}
@@ -14,12 +17,26 @@ trait Property[T] {
 
   def value: Try[T]
 
-  def jsonFormat: JsonFormat[T]
+  def contentType: ContentType
+
+  def serialized: Try[Source[ByteString, Any]]
+}
+
+trait JsonProperty[T] extends Property[T] {
+
+  override def contentType: ContentType = ContentTypes.`application/json`
+
+  override def serialized: Try[Source[ByteString, Any]] = value match {
+    case Success(value) => Success(Source.single(ByteString(JsObject((name, jsonFormat.write(value))).compactPrint)))
+    case Failure(exception) => Failure(exception)
+  }
 
   def valueToJson: JsValue = value match {
     case Failure(exception) => JsObject(("error", exception.getMessage.toJson))
     case Success(v) => jsonFormat.write(v)
   }
+
+  def jsonFormat: JsonFormat[T]
 }
 
 trait Action[T] {

@@ -16,10 +16,6 @@ async def rf433_mqtt_publisher():
     while True:
         item_present = rf433_rx_queue.dequeue(item)
         if item_present:
-            
-            # TODO remove
-            micropython.mem_info()
-            
             print("[RF433] Received: ", item.code, item.pulselength, item.proto)
             payload = {
                 'code' : item.code,
@@ -34,6 +30,7 @@ async def rf433_mqtt_publisher():
 
 def rf433_irq(rx_code, rx_pulselength, rx_proto):
     global rf433_rx_queue
+    #print("[RF433 IRQ] Received: ", rx_code, rx_pulselength, rx_proto)
     rf433_rx_queue.enqueue(rx_code, rx_pulselength, rx_proto)
 
 async def rf433_start_receiving(loop):

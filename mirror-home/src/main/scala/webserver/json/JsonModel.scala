@@ -1,7 +1,7 @@
 package webserver.json
 
 import config.ConfigDsl
-import model.{Action, DigitalTwin, Door, Floor, Gateway, Home, Property, Room, Window}
+import model.{Action, DigitalTwin, Door, Floor, Gateway, Home, JsonProperty, Property, Room, Window}
 import spray.json.{JsValue, _}
 
 final case class LoginRequest(name:String, password:String)
@@ -44,8 +44,12 @@ object JsonModel extends DefaultJsonProtocol {
   }
 
   def property(property: Property[_]): JsObject = {
-    JsObject((property.name, property.valueToJson))
+    property match {
+      case p: JsonProperty[_] => JsObject((property.name, p.valueToJson))
+      case _ => JsObject((property.name, JsString("can't display"))) //TODO: verify
+    }
   }
+
   def properties[T <: DigitalTwin](dt:T): JsObject = {
     JsObject(propertiesField(dt))
   }
