@@ -8,7 +8,8 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.util.Try
 
 
-case class RealTimeSourceMulticaster[T](sourceFactory: () => Source[T, Any], errorDefault: T, maxElementBuffered: Int)
+case class RealTimeSourceMulticaster[T](sourceFactory: () => Source[T, Any], errorDefault: T, maxElementBuffered: Int,
+                                        retryWhenCompleted:Boolean = false)
                                        (implicit actorSystem: ActorSystem) {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
@@ -16,13 +17,18 @@ case class RealTimeSourceMulticaster[T](sourceFactory: () => Source[T, Any], err
   private type Buffer = scala.collection.mutable.Queue[Option[(IsLastElement, T)]]
   private var bufferContainer = Seq[Buffer]()
   private var working = false
+  private var initializing = false
   private val workingLock = new Object()
 
   private def run(): Unit = {
     workingLock synchronized {
-      working = true
+      initializing = true
     }
+    println("RealTimeSourceMulticaster started")
     sourceFactory().runForeach(frame => {
+      workingLock synchronized {
+        working = true
+      }
       println(bufferContainer.length + " clients with " + bufferContainer.map(_.size).sum + " pending messages")
       var closed = Seq[Buffer]()
       bufferContainer.foreach(b => {
@@ -36,9 +42,11 @@ case class RealTimeSourceMulticaster[T](sourceFactory: () => Source[T, Any], err
         }
       })
       bufferContainer = bufferContainer.filterNot(closed.contains)
-    }).onComplete { _ =>
+    }).onComplete { v =>
+      println("RealTimeSourceMulticaster closed " + v)
       workingLock synchronized {
         working = false
+        initializing = false
         bufferContainer.foreach(b => {
           b synchronized {
             b.clear()
@@ -47,6 +55,9 @@ case class RealTimeSourceMulticaster[T](sourceFactory: () => Source[T, Any], err
           }
         })
         bufferContainer = Seq()
+      }
+      if(retryWhenCompleted) {
+        retry()
       }
     }
   }
@@ -68,8 +79,6 @@ case class RealTimeSourceMulticaster[T](sourceFactory: () => Source[T, Any], err
         buffer.dequeue() match {
           case Some((isLastElement, element)) =>
             continue = !isLastElement
-            if (isLastElement) {
-            }
             element
           case None =>
             continue = false
@@ -78,18 +87,18 @@ case class RealTimeSourceMulticaster[T](sourceFactory: () => Source[T, Any], err
       }
   }
 
-  def cast: Source[T, Any] = workingLock synchronized {
+  def cast: Option[Source[T, Any]] = workingLock synchronized {
     if (working) {
-      Source.fromIterator(createNewIterator)
+      Some(Source.fromIterator(createNewIterator))
     } else {
-      Source.empty[T]
+      None
     }
   }
 
   def isTerminated: Boolean = workingLock synchronized !working
 
   def retry(): Unit = workingLock synchronized {
-    if (!working) {
+    if (!initializing) {
       run()
     }
   }

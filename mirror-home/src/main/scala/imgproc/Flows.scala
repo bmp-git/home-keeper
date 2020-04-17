@@ -40,10 +40,10 @@ object Flows {
     Flow[Frame].map(converter.convert)
   }
 
-  def mimeFrameEncoderFlow: Flow[BufferedImage, ByteString, _] = {
+  def mimeFrameEncoderFlow(boundary:String): Flow[BufferedImage, ByteString, _] = {
     Flow[BufferedImage].filter(_ != null).map(image => {
       val data = imageToJpegByteString(image, 1)
-      ByteString("--boundary\r\n") ++
+      ByteString(s"--$boundary\r\n") ++
         ByteString(s"Content-length: ${data.length}\r\n") ++
         ByteString(s"Content-type: image/jpeg\r\n\r\n") ++
         data

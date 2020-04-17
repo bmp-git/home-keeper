@@ -46,7 +46,7 @@ object JsonModel extends DefaultJsonProtocol {
   def property(property: Property[_]): JsObject = {
     property match {
       case p: JsonProperty[_] => JsObject((property.name, p.valueToJson))
-      case _ => JsObject((property.name, JsString("can't display"))) //TODO: verify
+      case p => JsObject((p.name, JsObject(("content-type", JsString(p.contentType.toString()))))) //TODO: verify
     }
   }
 
