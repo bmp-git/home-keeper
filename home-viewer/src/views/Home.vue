@@ -1,26 +1,22 @@
 <template>
-  <div class="home">
-    <img alt="Vue logo" src="../assets/logo.png" />
-    <HelloWorld msg="Welcome to Your Vue.js App" />
-    <template v-if="this.$store.state.home != null">
-      <div v-for="floor in this.$store.state.home.floors" :key="floor.name"> 
-        {{ floor.name }}
-        <div v-for="room in floor.rooms" :key="room.name"> 
-          {{ room.name }} 
-        </div>
-      </div>
-    </template>
-  </div>
+  <v-row align="start" justify="start">
+    <v-col cols="12" sm="4">
+      <p>Floor</p>
+      <v-overflow-btn :items="floors" v-model="selected"></v-overflow-btn>
+      <p>{{ selected }}</p>
+    </v-col>
+  </v-row>
 </template>
 
-<script>
-// @ is an alias to /src
-import HelloWorld from "@/components/HelloWorld.vue";
+<script lang="ts">
+import { Component, Vue } from "vue-property-decorator";
 
-export default {
-  name: "Home",
-  components: {
-    HelloWorld,
-  }
-};
+@Component
+export default class Home extends Vue {
+  private floors = this.$store.state.home.floors.map(
+    (f: { name: string }) => f.name
+  );
+
+  private selected = this.floors[0];
+}
 </script>

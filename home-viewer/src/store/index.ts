@@ -5,7 +5,7 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
   state: {
-    home : {}
+    home: {}
   },
   mutations: {
     updateHome(state, home) {
@@ -13,7 +13,6 @@ export default new Vuex.Store({
       state.home = home;
     }
   },
-  actions: {
-  },
+  actions: {},
   modules: {}
 });
