@@ -1,11 +1,29 @@
 <template>
-  <v-row align="start" justify="start">
-    <v-col cols="12" sm="4">
-      <p>Floor</p>
-      <v-overflow-btn :items="floors" v-model="selected"></v-overflow-btn>
-      <p>{{ selected }}</p>
-    </v-col>
-  </v-row>
+  <v-container fluid>
+    <v-row align="start" justify="start">
+      <v-col cols="12" sm="4">
+        <v-btn-toggle v-model="selectedIndex" mandatory>
+          <v-btn v-for="floor in floors" :key="floor.name">
+            {{ floor }}
+          </v-btn>
+        </v-btn-toggle>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col cols="8">
+        <object
+          v-for="(floor, index) in floors"
+          :key="floor.name"
+          type="image/svg+xml"
+          :data="floor + '.svg'"
+          :hidden="selectedIndex !== index"
+          width="100%"
+        >
+          <!-- fallback here (<img> referencing a PNG version of the graphic, for example) -->
+        </object>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script lang="ts">
@@ -16,7 +34,6 @@ export default class Home extends Vue {
   private floors = this.$store.state.home.floors.map(
     (f: { name: string }) => f.name
   );
-
-  private selected = this.floors[0];
+  private selectedIndex = 0;
 }
 </script>

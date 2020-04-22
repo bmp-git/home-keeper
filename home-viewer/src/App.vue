@@ -23,7 +23,12 @@
       <template v-slot:append>
         <v-list>
           <template v-for="item in bottomItems">
-            <v-list-item v-if="item.text" :key="item.text" link :to="item.route">
+            <v-list-item
+              v-if="item.text"
+              :key="item.text"
+              link
+              :to="item.route"
+            >
               <v-list-item-action>
                 <v-icon>{{ item.icon }}</v-icon>
               </v-list-item-action>
@@ -64,7 +69,7 @@
       </v-btn>
     </v-app-bar>
     <v-content>
-      <v-container fluid> <router-view /> </v-container>
+      <router-view />
     </v-content>
   </v-app>
 </template>
@@ -79,6 +84,8 @@ import "material-design-icons-iconfont/dist/material-design-icons.css";
 export default class App extends Vue {
   private drawer = null;
   private topItems = [{ icon: "home", text: "Home", route: "/" }];
-  private bottomItems = [{ icon: "settings", text: "Settings", route: "/about" }];
+  private bottomItems = [
+    { icon: "settings", text: "Settings", route: "/settings" }
+  ];
 }
 </script>

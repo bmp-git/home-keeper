@@ -3,4 +3,4 @@ declare module "*.vue" {
   export default Vue;
 }
 
-declare module 'vuetify/lib';
+declare module "vuetify/lib";
