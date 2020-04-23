@@ -2,39 +2,33 @@ package webserver
 
 
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{`Access-Control-Allow-Credentials`, `Access-Control-Allow-Headers`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Origin`}
+import akka.http.scaladsl.model.headers.`Access-Control-Allow-Origin`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route}
-import akka.stream.scaladsl.{Flow, Source}
-import akka.util.ByteString
-import config.ConfigDsl
-import config.factory.action.{ActionFactory, JsonActionFactory}
+import akka.stream.scaladsl.Flow
+import config.factory.action.JsonActionFactory
 import config.factory.property.MixedReplaceVideoPropertyFactory
-import imgproc.Flows.{broadcast2TransformAndMerge, frameToBufferedImageImageFlow, frameToIplImageFlow, iplImageToFrameImageFlow, mimeFrameEncoderFlow}
-import model.{Action, DigitalTwin, Door, Floor, Gateway, Home, Property, Room, Window}
+import imgproc.Flows.{broadcast2TransformAndMerge, frameToBufferedImageImageFlow, frameToIplImageFlow, iplImageToFrameImageFlow}
+import model._
 import org.bytedeco.opencv.opencv_core.IplImage
-import sources.HttpSource.{responseDownloadTimeout, responseMaxBufferSize}
-import sources.{FrameSource, RealTimeSourceMulticaster}
-import spray.json.{JsObject, JsonParser, ParserInput}
-
-import scala.io.StdIn
+import sources.FrameSource
+import spray.json.JsObject
 import webserver.json.JsonModel._
 
-import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
+import scala.io.StdIn
+import scala.util.{Failure, Success}
 
 object RouteGenerator {
-  val receivedPostMessage = "Action request received"
+  val receivedPostMessage = "{\"message\": \"Action request received\"}"
 
-  private val corsResponseHeaders = List(`Access-Control-Allow-Origin`.*)
 
   def generateGet(completePath: PathMatcher[Unit], value: () => String): Route = {
     (path(completePath) & get) {
-      complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, value())).withHeaders(corsResponseHeaders))
+      complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, value())))
     }
   }
 
-  def generateGet2(completePath: PathMatcher[Unit], property:Property[_]):Route = {
+  def generateGet2(completePath: PathMatcher[Unit], property: Property[_]): Route = {
     (path(completePath) & get) {
       property.serialized match {
         case Failure(exception) => complete(HttpResponse(500))
@@ -45,15 +39,15 @@ object RouteGenerator {
 
   //TODO: Test these actions
   def generatePost(completePath: PathMatcher[Unit], action: Action[Any]): Route = {
-    (path(completePath) & post & entity(as[String])) { rawBody =>
-      action.deserialize(rawBody) match {
+    (path(completePath) & post & extractRequest & entity(as[String])) { (req, raw) =>
+      action.deserialize(raw) match {
+        /*case Success(_) if req.entity.contentType != action.contentType =>
+          complete(HttpResponse(415))*/  //TODO: check if action.contentType match the post content type
         case Success(value) => action.trig(value)
-          complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage))
-            .withHeaders(corsResponseHeaders))
+          complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage)))
         case Failure(_) =>
-          complete(HttpResponse(500).withHeaders(corsResponseHeaders))
+          complete(HttpResponse(500))
       }
-
     }
   }
 
@@ -141,25 +135,25 @@ object RouteGenerator {
       room.gateways.map {
         case d: Door => generateGatewayRoutes(d, startingPath / "doors" / d.name)
         case w: Window => generateGatewayRoutes(w, startingPath / "windows" / w.name)
-      } toList :_*
+      } toList: _*
     )
   }
 
-  def generateRoutes(home: Home, startingPath: PathMatcher[Unit]): Route = {
-    concat( generateHomeRoutes(home, startingPath) )
-  }
+  def generateRoutes(home: Home, startingPath: PathMatcher[Unit]): Route =
+    respondWithDefaultHeader(`Access-Control-Allow-Origin`.*) {
+      {
+        concat(generateHomeRoutes(home, startingPath))
+      }
+    }
 }
 
 object Test extends App {
-  import config.ConfigDsl._
+
   import akka.actor.ActorSystem
   import akka.http.scaladsl.Http
-  import akka.http.scaladsl.model.HttpRequest
-  import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-  import spray.json.JsonFormat
-  import webserver.json.JsonModel._
-
   import akka.stream.ActorMaterializer
+  import config.ConfigDsl._
+  import webserver.json.JsonModel._
 
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
@@ -170,7 +164,7 @@ object Test extends App {
   val bedRoom = room().withAction(
     JsonActionFactory[Int]("action", v => println(s"Acting with $v"))
   )
-
+  //Source --> Flow --> Sink
   val h = home("home")(
     floor("first")(
       hallway,

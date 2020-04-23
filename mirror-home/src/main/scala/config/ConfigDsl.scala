@@ -3,10 +3,11 @@ package config
 import akka.Done
 import akka.actor.{ActorSystem, Cancellable}
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.model.{DateTime, HttpRequest}
+import akka.http.scaladsl.model.{ContentTypes, DateTime, HttpRequest}
 import akka.stream.scaladsl.Source
+import config.factory.action.{ActionFactory, FileWriterActionFactory}
 import config.factory.ble.BleBeaconFactory
-import config.factory.property.JsonPropertyFactory
+import config.factory.property.{JsonPropertyFactory, PropertyFactory, FileReaderPropertyFactory}
 import config.factory.topology._
 import model.Units.MacAddress
 import model.ble.{BeaconData, RawBeaconData}
@@ -24,12 +25,16 @@ import scala.util.{Failure, Success, Try}
 
 object ConfigDsl {
 
+  val RESOURCE_FOLDER = "resources"
+
   /** TOPOLOGY DSL **/
   def user(name: String): UserFactory = UserFactory(name)
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
   def floor(name: String): FloorFactory = FloorFactory(name)
+    .withProperties(readSvg("svg", s"$RESOURCE_FOLDER\\$name.svg"))
+    .withAction(writeSvg("svg", s"$RESOURCE_FOLDER\\$name.svg"))
 
   def room()(implicit name: sourcecode.Name): RoomFactory = room(name.value)
 
@@ -118,6 +123,11 @@ object ConfigDsl {
 
   def json_from_http[T: JsonFormat](request: HttpRequest, pollingFreq: FiniteDuration = 1.second): Source[Try[T], Cancellable] =
     HttpSource.objects[T](request, pollingFreq)
+
+  def readSvg(name: String, path: String): PropertyFactory[String] = FileReaderPropertyFactory(name, path, ContentTypes.`text/xml(UTF-8)`)
+
+  /** ACTIONS **/
+  def writeSvg(name: String, path: String): ActionFactory[String] = FileWriterActionFactory(name, path, ContentTypes.`text/xml(UTF-8)`)
 }
 
 
@@ -151,6 +161,7 @@ object Test extends App {
   val external = room().withProperties(c1)
   val hallway = room().withProperties(c2)
   val bedRoom = room().withProperties(c3)
+
 
   val h = home("home")(
     floor("floor level")(
