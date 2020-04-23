@@ -3,7 +3,7 @@
 package model
 
 import akka.http.scaladsl.model.{ContentType, ContentTypes}
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import spray.json._
 import spray.json.DefaultJsonProtocol._
@@ -42,12 +42,25 @@ trait JsonProperty[T] extends Property[T] {
 trait Action[T] {
   def name: String
 
-  def trig(t: T): Unit //Unit or Option[Exception] or Future[Try[Done]]?
+  def trig(t: T): Unit
+
+  def deserialize(source: String): Try[T]
+
+  def contentType: ContentType
+}
+
+trait JsonAction[T] extends Action[T] {
+  //Action[Int] <== deserialize == {"value": 10 }
+
+  override def deserialize(source: String): Try[T] = {
+    case class Wrapper[K](value:K)
+    implicit val implicitJsonFormat: JsonFormat[T] = jsonFormat
+    val wrapperFormat:JsonFormat[Wrapper[T]] = jsonFormat1[T, Wrapper[T]](v => Wrapper(v))
+    Try(wrapperFormat.read(JsonParser(ParserInput(source)))).map(_.value)
+  }
+  def contentType: ContentType = ContentTypes.`application/json`
 
   def jsonFormat: JsonFormat[T]
-
-  def trigFromJson(jsValue: JsValue): Try[Unit] =
-    Try(jsonFormat.read(jsValue)).map(v => trig(v))
 }
 
 trait DigitalTwin { //DigitalTwin situated

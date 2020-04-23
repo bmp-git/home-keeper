@@ -8,17 +8,19 @@ import akka.http.scaladsl.server.{PathMatcher, Route}
 import akka.stream.scaladsl.{Flow, Source}
 import akka.util.ByteString
 import config.ConfigDsl
-import config.factory.action.ActionFactory
-import config.factory.property.{MixedReplaceVideoPropertyFactory}
+import config.factory.action.{ActionFactory, JsonActionFactory}
+import config.factory.property.MixedReplaceVideoPropertyFactory
 import imgproc.Flows.{broadcast2TransformAndMerge, frameToBufferedImageImageFlow, frameToIplImageFlow, iplImageToFrameImageFlow, mimeFrameEncoderFlow}
 import model.{Action, DigitalTwin, Door, Floor, Gateway, Home, Property, Room, Window}
 import org.bytedeco.opencv.opencv_core.IplImage
+import sources.HttpSource.{responseDownloadTimeout, responseMaxBufferSize}
 import sources.{FrameSource, RealTimeSourceMulticaster}
 import spray.json.{JsObject, JsonParser, ParserInput}
 
 import scala.io.StdIn
 import webserver.json.JsonModel._
 
+import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
 object RouteGenerator {
@@ -42,14 +44,16 @@ object RouteGenerator {
   }
 
   //TODO: Test these actions
-  def generatePost(completePath: PathMatcher[Unit], action: Action[_]): Route = {
-    //TODO: maybe something like case class Value[T](value: T)
-    (path(completePath) & post & entity(as[String])) { raw =>
-      //TODO: Add a tryTrig to actions to understand if the payload is incorrect?
-      Try { action.trigFromJson(JsonParser(ParserInput(raw))) } match {
-        case Success(_) => complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage)).withHeaders(corsResponseHeaders))
-        case Failure(_) => complete(HttpResponse(500).withHeaders(corsResponseHeaders))
+  def generatePost(completePath: PathMatcher[Unit], action: Action[Any]): Route = {
+    (path(completePath) & post & entity(as[String])) { rawBody =>
+      action.deserialize(rawBody) match {
+        case Success(value) => action.trig(value)
+          complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage))
+            .withHeaders(corsResponseHeaders))
+        case Failure(_) =>
+          complete(HttpResponse(500).withHeaders(corsResponseHeaders))
       }
+
     }
   }
 
@@ -73,7 +77,7 @@ object RouteGenerator {
 
   def generateActionsRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
     concat (
-      dt.actions.map(a => generatePost(startingPath / "actions" / a.name, a)) toList :_*
+      dt.actions.map(a => generatePost(startingPath / "actions" / a.name, a.asInstanceOf[Action[Any]])) toList :_*
     )
   }
 
@@ -164,7 +168,7 @@ object Test extends App {
   val external = room()
   val hallway = room()
   val bedRoom = room().withAction(
-    ActionFactory[Int]("action", v => println(s"Acting with $v"))
+    JsonActionFactory[Int]("action", v => println(s"Acting with $v"))
   )
 
   val h = home("home")(

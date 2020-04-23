@@ -23,7 +23,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
     }
 
     "allow to do actions" in {
-      Post("/api/home/floors/first/rooms/bedroom/actions/action", "10") ~> route ~> check {
+      Post("/api/home/floors/first/rooms/bedroom/actions/action", "{\"value\": 10}") ~> route ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[String] shouldEqual RouteGenerator.receivedPostMessage
       }
