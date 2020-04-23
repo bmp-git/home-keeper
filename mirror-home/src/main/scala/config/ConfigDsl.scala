@@ -3,11 +3,11 @@ package config
 import akka.Done
 import akka.actor.{ActorSystem, Cancellable}
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.model.{ContentTypes, DateTime, HttpRequest}
+import akka.http.scaladsl.model.{ContentType, ContentTypes, DateTime, HttpCharsets, HttpRequest, MediaType}
 import akka.stream.scaladsl.Source
 import config.factory.action.{ActionFactory, FileWriterActionFactory}
 import config.factory.ble.BleBeaconFactory
-import config.factory.property.{JsonPropertyFactory, PropertyFactory, FileReaderPropertyFactory}
+import config.factory.property.{FileReaderPropertyFactory, JsonPropertyFactory, PropertyFactory}
 import config.factory.topology._
 import model.Units.MacAddress
 import model.ble.{BeaconData, RawBeaconData}
@@ -33,8 +33,8 @@ object ConfigDsl {
   def home(name: String): HomeFactory = HomeFactory(name)
 
   def floor(name: String): FloorFactory = FloorFactory(name)
-    .withProperties(readSvg("svg", s"$RESOURCE_FOLDER\\$name.svg"))
-    .withAction(writeSvg("svg", s"$RESOURCE_FOLDER\\$name.svg"))
+    .withProperties(readSvg("plan.svg", s"$RESOURCE_FOLDER\\$name.svg"))
+    .withAction(writeSvg("plan.svg", s"$RESOURCE_FOLDER\\$name.svg"))
 
   def room()(implicit name: sourcecode.Name): RoomFactory = room(name.value)
 
@@ -124,10 +124,10 @@ object ConfigDsl {
   def json_from_http[T: JsonFormat](request: HttpRequest, pollingFreq: FiniteDuration = 1.second): Source[Try[T], Cancellable] =
     HttpSource.objects[T](request, pollingFreq)
 
-  def readSvg(name: String, path: String): PropertyFactory[String] = FileReaderPropertyFactory(name, path, ContentTypes.`text/xml(UTF-8)`)
+  def readSvg(name: String, path: String): PropertyFactory[String] = FileReaderPropertyFactory(name, path, ContentType(MediaType.customWithFixedCharset("image", "svg+xml", HttpCharsets.`UTF-8`)))
 
   /** ACTIONS **/
-  def writeSvg(name: String, path: String): ActionFactory[String] = FileWriterActionFactory(name, path, ContentTypes.`text/xml(UTF-8)`)
+  def writeSvg(name: String, path: String): ActionFactory[String] = FileWriterActionFactory(name, path, ContentType(MediaType.customWithFixedCharset("image", "svg+xml", HttpCharsets.`UTF-8`)))
 }
 
 

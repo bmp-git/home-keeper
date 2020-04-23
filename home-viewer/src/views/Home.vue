@@ -15,7 +15,7 @@
           v-for="(floor, index) in floors"
           :key="floor.name"
           type="image/svg+xml"
-          :data="floor + '.svg'"
+          :data="serverPath + '/home/floors/' + floor + '/properties/plan.svg'"
           :hidden="selectedIndex !== index"
           width="100%"
         >
@@ -28,9 +28,11 @@
 
 <script lang="ts">
 import { Component, Vue } from "vue-property-decorator";
+import { server } from "@/Api.ts";
 
 @Component
 export default class Home extends Vue {
+  private serverPath = server;
   private floors = this.$store.state.home.floors.map(
     (f: { name: string }) => f.name
   );
