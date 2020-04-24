@@ -2,7 +2,7 @@
   <v-container fluid>
     <v-row align="start" justify="start">
       <v-col cols="12" sm="4">
-        <v-btn-toggle v-model="selectedIndex" mandatory>
+        <v-btn-toggle v-model="selectedFloorIndex" mandatory>
           <v-btn v-for="floor in floors" :key="floor.name">
             {{ floor }}
           </v-btn>
@@ -16,7 +16,7 @@
           :key="floor.name"
           type="image/svg+xml"
           :data="serverPath + '/home/floors/' + floor + '/properties/plan.svg'"
-          :hidden="selectedIndex !== index"
+          :hidden="selectedFloorIndex !== index"
           width="100%"
         >
           <!-- fallback here (<img> referencing a PNG version of the graphic, for example) -->
@@ -36,6 +36,6 @@ export default class Home extends Vue {
   private floors = this.$store.state.home.floors.map(
     (f: { name: string }) => f.name
   );
-  private selectedIndex = 0;
+  private selectedFloorIndex = 0;
 }
 </script>
