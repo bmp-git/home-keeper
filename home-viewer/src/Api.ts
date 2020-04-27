@@ -39,3 +39,13 @@ export function uploadSVG(svg: any, floorName: string, succHandler: (result: any
       .catch(error => handleError(error, errorHandler));
 }
 
+export function getSVG(floorName: string, succHandler: (result: any) => void,
+                          errorHandler?: (error: any) => void) {
+    return axios.get(server + "/home/floors/" + floorName + "/properties/plan.svg")
+        .then(response => {
+            if (succHandler) {
+                succHandler(response.data);
+            }
+        })
+        .catch(error => handleError(error, errorHandler));
+}

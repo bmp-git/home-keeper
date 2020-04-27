@@ -4,7 +4,7 @@
       <v-col mb="10">
         <v-btn-toggle v-model="selectedFloorIndex" mandatory>
           <v-btn v-for="floor in floors" :key="floor.name">
-            {{ floor }}
+            {{ floor.name }}
           </v-btn>
         </v-btn-toggle>
       </v-col>
@@ -30,16 +30,13 @@
     </v-row>
     <v-row>
       <v-col lg="9" mb="6">
-        <object
+        <div
           v-for="(floor, index) in floors"
           :key="floor.name"
-          type="image/svg+xml"
-          :data="serverPath + '/home/floors/' + floor + '/properties/plan.svg'"
+          :ref="'obj_' + index"
+          v-html="floor.svg"
           :hidden="selectedFloorIndex !== index"
-          width="100%"
-        >
-          <!-- fallback here (<img> referencing a PNG version of the graphic, for example) -->
-        </object>
+        ></div>
       </v-col>
       <v-col lg="3" mb="6">
         <v-card class="mx-auto text-center justify-center py-2" raised outlined>
@@ -68,20 +65,50 @@
 <script lang="ts">
 import { Component, Vue } from "vue-property-decorator";
 import draggable from "vuedraggable";
-import { server, uploadSVG } from "@/Api.ts";
+import { server, uploadSVG, getSVG } from "@/Api.ts";
+import $ from "jquery";
 
 @Component({ components: { draggable } })
 export default class Settings extends Vue {
-  private serverPath = server;
-
   private selectedFloorIndex = 0;
   private selectedEntityIndex = 0;
 
   private btnuploadloading = false;
 
-  private floors = this.$store.state.home.floors.map(
-    (f: { name: string }) => f.name
-  );
+  mounted() {
+    this.updateFloorsSvg();
+  }
+
+  private updateFloorsSvg() {
+    const promises = [];
+    for (let i = 0; i < this.floors.length; i++) {
+      const index = i;
+      const promise = getSVG(this.floors[index].name, svg => {
+        this.floors[index].svg = svg;
+      });
+      promises.push(promise);
+    }
+
+    Promise.all(promises).then(this.onSvgLoad);
+  }
+
+  private onSvgLoad() {
+    $("svg").attr("height", "100%");
+    $("svg").attr("width", "100%");
+    $(document).on("click", "path", function() {
+      const clickedBtnID = $(this).attr("id"); // or var clickedBtnID = this.id
+      console.log("evento")
+    });
+
+    $('svg').find('*').css("pointer-events", "none")
+    $('svg').find('path').css("pointer-events", "all")
+
+  }
+
+  private floors = this.$store.state.home.floors.map((f: { name: string }) => ({
+    name: f.name,
+    svg: ""
+  }));
 
   get rooms() {
     return this.$store.state.home.floors[this.selectedFloorIndex].rooms;
@@ -112,7 +139,6 @@ export default class Settings extends Vue {
   }
 
   private selectedClass = 0;
-  private properties = this.rooms;
 
   get items() {
     console.log(this.selectedEntityIndex);
@@ -132,7 +158,7 @@ export default class Settings extends Vue {
   }
 
   private loadImage(event: any) {
-    const selectedFloorName = this.floors[this.selectedFloorIndex];
+    const selectedFloor = this.floors[this.selectedFloorIndex];
     const img = event.target.files?.[0];
     if (img) {
       const reader = new FileReader();
@@ -140,10 +166,11 @@ export default class Settings extends Vue {
       reader.onloadend = () => {
         uploadSVG(
           reader.result,
-          selectedFloorName,
+          selectedFloor.name,
           res => {
             console.log("SVG successfully uploaded!");
             this.btnuploadloading = false;
+            this.updateFloorsSvg();
           },
           err => {
             console.log("SVG upload failed!");
