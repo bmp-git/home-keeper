@@ -62,21 +62,32 @@
               {{ c.name }}
             </v-tab>
           </v-tabs>
-          <v-list dense>
-            <v-list-item-group v-model="selectedEntityIndex" color="primary">
-              <v-list-item v-for="item in items" :key="item.name">
-                <v-list-item-icon>
-                  <v-icon v-if="item.isBound" color="light-grey"
-                    >mdi-link-variant</v-icon
+          <v-tabs-items v-model="selectedClassIndex">
+            <v-tab-item v-for="(c, cindex) in classes" :key="c.name">
+              <v-list dense>
+                <v-list-item-group
+                  v-model="selectedEntityIndexs[cindex]"
+                  color="primary"
+                >
+                  <v-list-item
+                    v-for="item in classes[cindex].values"
+                    :key="item.name"
                   >
-                </v-list-item-icon>
+                    <v-list-item-icon>
+                      <v-icon v-if="item && item.isBound" color="light-grey"
+                        >mdi-link-variant</v-icon
+                      >
+                    </v-list-item-icon>
 
-                <v-list-item-content>
-                  <v-list-item-title v-text="item.name"> </v-list-item-title>
-                </v-list-item-content>
-              </v-list-item>
-            </v-list-item-group>
-          </v-list>
+                    <v-list-item-content>
+                      <v-list-item-title v-text="item.name">
+                      </v-list-item-title>
+                    </v-list-item-content>
+                  </v-list-item>
+                </v-list-item-group>
+              </v-list>
+            </v-tab-item>
+          </v-tabs-items>
         </v-card>
       </v-col>
     </v-row>
@@ -92,14 +103,21 @@ import $ from "jquery";
 @Component({ components: { draggable } })
 export default class Settings extends Vue {
   private selectedFloorIndex = 0;
-  private selectedEntityIndex: any = null;
+  private selectedEntityIndexs: any[] = [];
   private lastPathSelected: any = null;
   private selectedClassIndex = 0;
   private bindedEntities: string[] = [];
 
   private btnuploadloading = false;
 
+  private initializeSelectedEntityIndexs() {
+    for (let i = 0; i < this.classes.length; i++) {
+      this.selectedEntityIndexs[i] = null;
+    }
+  }
+
   mounted() {
+    this.initializeSelectedEntityIndexs();
     this.updateFloorsSvg();
   }
 
@@ -111,14 +129,22 @@ export default class Settings extends Vue {
     );
   }
 
+  private getSelectedEntityIndex() {
+    return this.selectedEntityIndexs[this.selectedClassIndex];
+  }
+
+  private setSelectedEntityIndex(value: number) {
+    this.selectedEntityIndexs[this.selectedClassIndex] = value;
+  }
+
   @Watch("selectedClassIndex")
   private onSelectedClassIndex() {
-    this.selectedEntityIndex = null;
+    console.log(this.selectedEntityIndexs);
   }
 
   @Watch("selectedFloorIndex")
   private onSelectedFloorChange() {
-    this.selectedEntityIndex = null;
+    this.initializeSelectedEntityIndexs();
     this.deselectLastPath();
   }
 
@@ -177,7 +203,7 @@ export default class Settings extends Vue {
       for (let j = 0; j < c.values.length; j++) {
         if (c.values[j].name === name) {
           this.selectedClassIndex = i;
-          this.selectedEntityIndex = j;
+          this.setSelectedEntityIndex(j);
           return;
         }
       }
@@ -199,8 +225,15 @@ export default class Settings extends Vue {
     svg: ""
   }));
 
+  private addIsBound(item: any) {
+    item.isBound = this.bindedEntities.includes(item.name);
+    return item;
+  }
+
   get rooms() {
-    return this.$store.state.home.floors[this.selectedFloorIndex].rooms;
+    return this.$store.state.home.floors[this.selectedFloorIndex].rooms.map(
+      this.addIsBound
+    );
   }
 
   private distinctName(value: any, index: any, array: any): boolean {
@@ -210,13 +243,15 @@ export default class Settings extends Vue {
   get doors() {
     return this.$store.state.home.floors[this.selectedFloorIndex].rooms
       .flatMap((r: any) => r.doors)
-      .filter(this.distinctName);
+      .filter(this.distinctName)
+      .map(this.addIsBound);
   }
 
   get windows() {
     return this.$store.state.home.floors[this.selectedFloorIndex].rooms
       .flatMap((r: any) => r.windows)
-      .filter(this.distinctName);
+      .filter(this.distinctName)
+      .map(this.addIsBound);
   }
 
   get classes() {
@@ -227,24 +262,18 @@ export default class Settings extends Vue {
     ];
   }
 
-  get items() {
-    console.log(this.selectedEntityIndex);
-    return this.classes[this.selectedClassIndex].values.map((v: any) => {
-      v.isBound = this.bindedEntities.includes(v.name);
-      return v;
-    });
-  }
-
   get showBindButton() {
     return (
-      !(this.lastPathSelected == null) && !(this.selectedEntityIndex == null)
+      !(this.lastPathSelected == null) && !(this.getSelectedEntityIndex() == null)
     );
   }
 
   get showUnBindButton() {
     let res = false;
-    if (!(this.selectedEntityIndex == null)) {
-      res = this.items[this.selectedEntityIndex].isBound;
+    const selectedEntityIndex = this.getSelectedEntityIndex();
+    if (!(selectedEntityIndex == null)) {
+      res = this.classes[this.selectedClassIndex].values[selectedEntityIndex]
+        .isBound;
     }
     return res;
   }
@@ -265,12 +294,12 @@ export default class Settings extends Vue {
         uploadSVG(
           reader.result,
           selectedFloor.name,
-          res => {
+          () => {
             console.log("SVG successfully uploaded!");
             this.btnuploadloading = false;
             this.updateFloorsSvg();
           },
-          err => {
+          () => {
             console.log("SVG upload failed!");
             this.btnuploadloading = false;
           }
@@ -294,11 +323,11 @@ export default class Settings extends Vue {
   private bindbtnClicked() {
     $(this.lastPathSelected).attr(
       "data-bindid",
-      this.classes[this.selectedClassIndex].values[this.selectedEntityIndex]
+      this.classes[this.selectedClassIndex].values[this.getSelectedEntityIndex()]
         .name
     );
     this.deselectLastPath();
-    this.selectedEntityIndex = null;
+    this.setSelectedEntityIndex(null);
     const html = this.$refs["obj_" + this.selectedFloorIndex] as any;
     const svg = html[0].innerHTML;
     uploadSVG(
