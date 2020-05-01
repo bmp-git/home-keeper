@@ -13,24 +13,24 @@
           :hidden="showBindButton === false"
           color="success"
           class="ma-2 white--text"
-          @click.prevent="bindbtnClicked"
+          @click.prevent="bindBtnClicked"
         >
+          <v-icon left>mdi-link-variant</v-icon>
           Bind
         </v-btn>
         <v-btn
           :hidden="showUnBindButton === false"
           color="warning"
           class="ma-2 white--text"
-          @click.prevent="bindbtnClicked"
+          @click.prevent="unbindBtnClicked"
         >
+          <v-icon left>mdi-link-variant-off</v-icon>
           Unbind
         </v-btn>
         <v-btn
-          :loading="btnuploadloading"
-          :disabled="btnuploadloading"
           color="blue-grey"
           class="ma-2 white--text"
-          @click.prevent="uploadbtnClicked"
+          @click.prevent="uploadBtnClicked"
         >
           Upload
           <v-icon right dark>mdi-cloud-upload</v-icon>
@@ -51,6 +51,7 @@
           :key="floor.name"
           :ref="'obj_' + index"
           :id="'obj_' + index"
+          class="clickable"
           v-html="floor.svg"
           :hidden="selectedFloorIndex !== index"
         ></div>
@@ -66,7 +67,7 @@
             <v-tab-item v-for="(c, cindex) in classes" :key="c.name">
               <v-list dense>
                 <v-list-item-group
-                  v-model="selectedEntityIndexs[cindex]"
+                  v-model="selectedEntityIndexes[cindex]"
                   color="primary"
                 >
                   <v-list-item
@@ -103,49 +104,96 @@ import $ from "jquery";
 @Component({ components: { draggable } })
 export default class Settings extends Vue {
   private selectedFloorIndex = 0;
-  private selectedEntityIndexs: any[] = [];
+  private selectedEntityIndexes: any[] = [];
   private lastPathSelected: any = null;
   private selectedClassIndex = 0;
-  private bindedEntities: string[] = [];
-
-  private btnuploadloading = false;
+  private boundEntities: string[] = [];
 
   private initializeSelectedEntityIndexs() {
     for (let i = 0; i < this.classes.length; i++) {
-      this.selectedEntityIndexs[i] = null;
+      this.selectedEntityIndexes[i] = null;
     }
   }
 
   mounted() {
+    $(".clickable").on("click", "path", event =>
+      this.onPathSelect(event.currentTarget)
+    );
+
+    this.initializeSelectedEntityIndexs();
     this.initializeSelectedEntityIndexs();
     this.updateFloorsSvg();
   }
 
-  private updateBindedEntities() {
-    this.bindedEntities = $.makeArray(
-      $("path[data-bindid]").map((index, domElement) => {
+  private updateBoundEntities() {
+    const floorSelector = $(`#obj_${this.selectedFloorIndex}`);
+    const readEntities = $.makeArray(
+      floorSelector.find("path[data-bindid]").map((index, domElement) => {
         return $(domElement).attr("data-bindid");
       })
+    );
+    this.boundEntities = readEntities.filter(e =>
+      this.classes
+        .flatMap(c => c.values)
+        .map(v => v.name)
+        .includes(e)
+    );
+
+    const toRemove = readEntities.filter(x => !this.boundEntities.includes(x));
+    console.log("Removed incorrect bound ids from svg: " + toRemove);
+    toRemove.forEach(e =>
+      floorSelector
+        .find(`path[data-bindid=${$.escapeSelector(e)}]`)
+        .removeAttr("data-bindid")
     );
   }
 
   private getSelectedEntityIndex() {
-    return this.selectedEntityIndexs[this.selectedClassIndex];
+    return this.selectedEntityIndexes[this.selectedClassIndex];
   }
 
   private setSelectedEntityIndex(value: number) {
-    this.selectedEntityIndexs[this.selectedClassIndex] = value;
+    this.selectedEntityIndexes[this.selectedClassIndex] = value;
+  }
+
+  private getSelectedEntities() {
+    return this.classes[this.selectedClassIndex].values;
+  }
+
+  private getSelectedEntity() {
+    if (!(this.getSelectedEntityIndex() == null)) {
+      return this.getSelectedEntities()[this.getSelectedEntityIndex()];
+    }
+    return null;
+  }
+
+  @Watch("selectedEntityIndexes", { deep: true })
+  private onSelectedEntityIndexes() {
+    const entity = this.getSelectedEntity();
+
+    if (!(entity == null) && entity.isBound) {
+      this.deselectLastPath();
+      this.setCurrentPath(
+        $(`#obj_${this.selectedFloorIndex}`).find(
+          `path[data-bindid=${$.escapeSelector(entity.name)}]`
+        )
+      );
+    } else if ($(this.lastPathSelected).is("[data-bindid]")) {
+      this.deselectLastPath();
+    }
   }
 
   @Watch("selectedClassIndex")
   private onSelectedClassIndex() {
-    console.log(this.selectedEntityIndexs);
+    console.log(this.selectedEntityIndexes);
+    this.onSelectedEntityIndexes();
   }
 
   @Watch("selectedFloorIndex")
   private onSelectedFloorChange() {
     this.initializeSelectedEntityIndexs();
     this.deselectLastPath();
+    this.updateBoundEntities();
   }
 
   private updateFloorsSvg() {
@@ -158,16 +206,12 @@ export default class Settings extends Vue {
       promises.push(promise);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     Promise.all(promises).then(this.onSvgLoad);
   }
 
   private onSvgLoad() {
     $("svg").attr("height", "100%");
     $("svg").attr("width", "100%");
-    $(document).on("click", "path", event =>
-      this.onPathSelect(event.currentTarget)
-    );
     $("svg")
       .find("*")
       .css("pointer-events", "none");
@@ -175,8 +219,8 @@ export default class Settings extends Vue {
       .find("path")
       .css("pointer-events", "all");
 
-    this.updateBindedEntities();
-    console.log(this.bindedEntities);
+    this.updateBoundEntities();
+    console.log(this.boundEntities);
   }
 
   private deselectLastPath() {
@@ -185,7 +229,7 @@ export default class Settings extends Vue {
   }
 
   private setCurrentPath(path: any) {
-    if (this.lastPathSelected) {
+    if (!(this.lastPathSelected == null)) {
       this.deselectLastPath();
     }
     this.lastPathSelected = path;
@@ -194,7 +238,13 @@ export default class Settings extends Vue {
 
   private selectBoundedEntity(path: any) {
     const name = $(path).attr("data-bindid");
+
+    console.log("SVG-selected: " + name);
+
     if (name == null) {
+      if (this.getSelectedEntity()?.isBound) {
+        this.setSelectedEntityIndex(null);
+      }
       return;
     }
 
@@ -217,7 +267,6 @@ export default class Settings extends Vue {
       this.setCurrentPath(path);
       this.selectBoundedEntity(path);
     }
-    console.log("evento");
   }
 
   private floors = this.$store.state.home.floors.map((f: { name: string }) => ({
@@ -226,7 +275,7 @@ export default class Settings extends Vue {
   }));
 
   private addIsBound(item: any) {
-    item.isBound = this.bindedEntities.includes(item.name);
+    item.isBound = this.boundEntities.includes(item.name);
     return item;
   }
 
@@ -264,22 +313,20 @@ export default class Settings extends Vue {
 
   get showBindButton() {
     return (
-      !(this.lastPathSelected == null) && !(this.getSelectedEntityIndex() == null)
+      !(this.getSelectedEntity() == null) &&
+      !(this.lastPathSelected == null) &&
+      !this.getSelectedEntity().isBound
     );
   }
 
   get showUnBindButton() {
-    let res = false;
-    const selectedEntityIndex = this.getSelectedEntityIndex();
-    if (!(selectedEntityIndex == null)) {
-      res = this.classes[this.selectedClassIndex].values[selectedEntityIndex]
-        .isBound;
-    }
-    return res;
+    const propertyTrigger = this.lastPathSelected; //force vue re-computation
+    return (
+      !(this.getSelectedEntity() == null) && this.getSelectedEntity().isBound
+    );
   }
 
-  private uploadbtnClicked() {
-    this.btnuploadloading = true;
+  private uploadBtnClicked() {
     const inputFile = this.$refs.inputFile as any;
     inputFile.click();
   }
@@ -287,6 +334,7 @@ export default class Settings extends Vue {
   private loadImage(event: any) {
     const selectedFloor = this.floors[this.selectedFloorIndex];
     const img = event.target.files?.[0];
+
     if (img) {
       const reader = new FileReader();
 
@@ -296,38 +344,27 @@ export default class Settings extends Vue {
           selectedFloor.name,
           () => {
             console.log("SVG successfully uploaded!");
-            this.btnuploadloading = false;
             this.updateFloorsSvg();
           },
           () => {
             console.log("SVG upload failed!");
-            this.btnuploadloading = false;
           }
         );
       };
 
       reader.onabort = () => {
         alert("Error during file reading! (Aborted).");
-        this.btnuploadloading = false;
       };
 
       reader.onerror = () => {
         alert("Error during file reading!");
-        this.btnuploadloading = false;
       };
 
       reader.readAsText(img);
     }
   }
 
-  private bindbtnClicked() {
-    $(this.lastPathSelected).attr(
-      "data-bindid",
-      this.classes[this.selectedClassIndex].values[this.getSelectedEntityIndex()]
-        .name
-    );
-    this.deselectLastPath();
-    this.setSelectedEntityIndex(null);
+  private uploadCurrentSvg() {
     const html = this.$refs["obj_" + this.selectedFloorIndex] as any;
     const svg = html[0].innerHTML;
     uploadSVG(
@@ -341,6 +378,20 @@ export default class Settings extends Vue {
         console.log("SVG update failed!");
       }
     );
+  }
+
+  private unbindBtnClicked() {
+    $(this.lastPathSelected).removeAttr("data-bindid");
+    this.deselectLastPath();
+    this.setSelectedEntityIndex(null);
+    this.uploadCurrentSvg();
+  }
+
+  private bindBtnClicked() {
+    $(this.lastPathSelected).attr("data-bindid", this.getSelectedEntity().name);
+    this.deselectLastPath();
+    this.setSelectedEntityIndex(null);
+    this.uploadCurrentSvg();
   }
 }
 </script>
