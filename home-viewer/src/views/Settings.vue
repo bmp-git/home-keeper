@@ -2,11 +2,10 @@
   <v-container fluid>
     <v-row align="start" justify="start">
       <v-col mb="10">
-        <v-btn-toggle v-model="selectedFloorIndex" mandatory>
-          <v-btn v-for="floor in floors" :key="floor.name">
-            {{ floor.name }}
-          </v-btn>
-        </v-btn-toggle>
+        <FloorSelector
+          :selected-floor-index.sync="selectedFloorIndex"
+          :floor-names="floors.map(f => f.name)"
+        ></FloorSelector>
       </v-col>
       <v-col mb="1">
         <v-btn
@@ -97,11 +96,11 @@
 
 <script lang="ts">
 import { Component, Vue, Watch } from "vue-property-decorator";
-import draggable from "vuedraggable";
 import { server, uploadSVG, getSVG } from "@/Api.ts";
 import $ from "jquery";
+import FloorSelector from "@/components/FloorSelector.vue";
 
-@Component({ components: { draggable } })
+@Component({ components: { FloorSelector } })
 export default class Settings extends Vue {
   private selectedFloorIndex = 0;
   private selectedEntityIndexes: any[] = [];
@@ -120,7 +119,6 @@ export default class Settings extends Vue {
       this.onPathSelect(event.currentTarget)
     );
 
-    this.initializeSelectedEntityIndexs();
     this.initializeSelectedEntityIndexs();
     this.updateFloorsSvg();
   }
@@ -218,6 +216,9 @@ export default class Settings extends Vue {
     $("svg")
       .find("path")
       .css("pointer-events", "all");
+    $("svg")
+      .find("title")
+      .remove();
 
     this.updateBoundEntities();
     console.log(this.boundEntities);
