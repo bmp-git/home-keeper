@@ -7,6 +7,8 @@ import vuetify from "./plugins/vuetify";
 
 Vue.config.productionTip = false;
 
+const updateIntervalms = 250;
+
 const vue = new Vue({
   router,
   store,
@@ -15,5 +17,13 @@ const vue = new Vue({
 });
 
 getHome(home => {
-  store.commit("updateHome", home);
-}).then(() => vue.$mount("#app"));
+  store.commit("setHomeTopology", home);
+  store.commit("updateHomeProperties", home);
+}).then(() => {
+  setInterval(() => {
+    getHome(home => {
+      store.commit("updateHomeProperties", home);
+    })
+  }, updateIntervalms);
+  vue.$mount("#app")
+});

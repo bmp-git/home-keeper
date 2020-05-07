@@ -30,7 +30,7 @@ export function getHome(
 
 export function uploadSVG(svg: any, floorName: string, succHandler: (result: any) => void,
                           errorHandler?: (error: any) => void) {
-  return axios.post(server + "/home/floors/" + floorName + "/actions/plan.svg", svg, {headers: {'Content-Type': 'application/x-www-form-urlencoded'}})
+  return axios.post(server + "/home/floors/" + floorName + "/actions/svg", svg, {headers: {'Content-Type': 'application/x-www-form-urlencoded'}})
       .then(response => {
         if (succHandler) {
           succHandler(response.data);
@@ -41,7 +41,7 @@ export function uploadSVG(svg: any, floorName: string, succHandler: (result: any
 
 export function getSVG(floorName: string, succHandler: (result: any) => void,
                           errorHandler?: (error: any) => void) {
-    return axios.get(server + "/home/floors/" + floorName + "/properties/plan.svg")
+    return axios.get(server + "/home/floors/" + floorName + "/properties/svg")
         .then(response => {
             if (succHandler) {
                 succHandler(response.data);

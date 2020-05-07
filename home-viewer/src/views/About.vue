@@ -11,7 +11,7 @@ import { Component, Vue } from "vue-property-decorator";
 
 @Component({ components: { G6Graph } })
 export default class About extends Vue {
-  private data: any = generateData(this.$store.state.home);
+  private data: any = generateData(this.$store.state.homeTopology);
   private width: any =
     document.getElementById("container")?.scrollWidth || 1920;
   private height: any =

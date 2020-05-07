@@ -270,7 +270,7 @@ export default class Settings extends Vue {
     }
   }
 
-  private floors = this.$store.state.home.floors.map((f: { name: string }) => ({
+  private floors = this.$store.state.homeTopology.floors.map((f: { name: string }) => ({
     name: f.name,
     svg: ""
   }));
@@ -281,7 +281,7 @@ export default class Settings extends Vue {
   }
 
   get rooms() {
-    return this.$store.state.home.floors[this.selectedFloorIndex].rooms.map(
+    return this.$store.state.homeTopology.floors[this.selectedFloorIndex].rooms.map(
       this.addIsBound
     );
   }
@@ -291,14 +291,14 @@ export default class Settings extends Vue {
   }
 
   get doors() {
-    return this.$store.state.home.floors[this.selectedFloorIndex].rooms
+    return this.$store.state.homeTopology.floors[this.selectedFloorIndex].rooms
       .flatMap((r: any) => r.doors)
       .filter(this.distinctName)
       .map(this.addIsBound);
   }
 
   get windows() {
-    return this.$store.state.home.floors[this.selectedFloorIndex].rooms
+    return this.$store.state.homeTopology.floors[this.selectedFloorIndex].rooms
       .flatMap((r: any) => r.windows)
       .filter(this.distinctName)
       .map(this.addIsBound);

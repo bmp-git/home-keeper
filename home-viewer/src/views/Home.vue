@@ -21,14 +21,7 @@
         ></div>
       </v-col>
     </v-row>
-    <div id="tooltip" role="tooltip" hidden>
-      <div id="arrow" data-popper-arrow></div>
-      {{ tooltipText }}
-      <br>
-      <iframe src="/settings">
-
-      </iframe>
-    </div>
+    <Tooltip ref="tooltip"></Tooltip>
   </v-container>
 </template>
 
@@ -36,23 +29,22 @@
 import { Component, Vue } from "vue-property-decorator";
 import { server } from "@/Api.ts";
 import FloorSelector from "@/components/FloorSelector.vue";
+import Tooltip from "@/components/Tooltip.vue";
 import $ from "jquery";
 import { getSVG } from "@/Api";
-import { createPopper } from "@popperjs/core";
 import axios from "axios";
 
-@Component({ components: { FloorSelector } })
+@Component({ components: { FloorSelector, Tooltip } })
 export default class Home extends Vue {
   private serverPath = server;
 
-  private floors = this.$store.state.home.floors.map((f: { name: string }) => ({
+  private floors = this.$store.state.homeTopology.floors.map((f: { name: string }) => ({
     name: f.name,
     svg: ""
   }));
 
   private selectedFloorIndex = 0;
-  private popper: any = null;
-  private tooltipText = "test";
+  private tooltip: any = null;
 
   mounted() {
     $(".clickable").on("click", "path", event =>
@@ -68,12 +60,7 @@ export default class Home extends Vue {
     );
 
     this.updateFloorsSvg();
-
-    setInterval(() => {
-      axios.get(server + "/home/properties/time").then(response => {
-        this.tooltipText = response.data;
-      });
-    }, 1000);
+    this.tooltip = this.$refs["tooltip"] as any;
   }
 
   private onPathSelect(path: any) {
@@ -83,25 +70,17 @@ export default class Home extends Vue {
 
   private onPathEnter(path: any) {
     console.log("Path hover!");
-
-    const name = $(path).attr("data-bindid");
-
-    if (name == null) {
+    const id = $(path).attr("data-bindid");
+    if (id == null) {
       return;
     }
 
-    this.tooltipText = name;
-    const svgEntity = $(path).get(0);
-    const tooltip = $("#tooltip").get(0);
-    this.popper = createPopper(svgEntity, tooltip, {});
-
-    $("#tooltip").css("display", "block");
+    this.tooltip?.createTooltip(path, this.selectedFloorIndex, id);
   }
 
   private onPathLeave(path: any) {
     console.log("Path hover!");
-    $("#tooltip").css("display", "none");
-    this.popper?.destroy();
+    this.tooltip?.deleteTooltip();
   }
 
   private updateFloorsSvg() {
@@ -134,41 +113,5 @@ export default class Home extends Vue {
 </script>
 
 <style>
-#tooltip {
-  background: #333;
-  color: white;
-  font-weight: bold;
-  padding: 4px 8px;
-  font-size: 13px;
-  border-radius: 4px;
-}
 
-#arrow,
-#arrow::before {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  z-index: -1;
-}
-
-#arrow::before {
-  content: "";
-  transform: rotate(45deg);
-  background: #333;
-}
-#tooltip[data-popper-placement^="top"] > #arrow {
-  bottom: -4px;
-}
-
-#tooltip[data-popper-placement^="bottom"] > #arrow {
-  top: -4px;
-}
-
-#tooltip[data-popper-placement^="left"] > #arrow {
-  right: -4px;
-}
-
-#tooltip[data-popper-placement^="right"] > #arrow {
-  left: -4px;
-}
 </style>

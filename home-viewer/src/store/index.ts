@@ -5,12 +5,17 @@ Vue.use(Vuex);
 
 export default new Vuex.Store({
   state: {
-    home: {}
+    homeTopology: {},
+    homeProperties: {}
   },
   mutations: {
-    updateHome(state, home) {
-      console.log("STORE: updateHome");
-      state.home = home;
+    setHomeTopology(state, home) {
+      console.log("STORE: setHomeTopology");
+      state.homeTopology = home;
+    },
+    updateHomeProperties(state, home) {
+      console.log("STORE: updateHomeProperties");
+      state.homeProperties = home;
     }
   },
   actions: {},
