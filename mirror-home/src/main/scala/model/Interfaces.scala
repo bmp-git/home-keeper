@@ -60,9 +60,7 @@ trait JsonProperty[T] extends Property {
 
   override def source(implicit executor: ExecutionContext): Try[Source[ByteString, Any]] =
     value match {
-      case Success(value) =>
-        Try(ByteString(JsObject((name, jsonFormat.write(value))).compactPrint)).map(data=>
-          Source.single(data))
+      case Success(value) => Try(ByteString(asJsonObject.compactPrint)).map(data=> Source.single(data))
       case Failure(exception) => Failure(exception)
     }
 }
