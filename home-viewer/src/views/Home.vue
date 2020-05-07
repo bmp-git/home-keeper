@@ -20,6 +20,9 @@
           :hidden="selectedFloorIndex !== index"
         ></div>
       </v-col>
+      <v-col lg="3" mb="6">
+        <EntitiesViewer :entities="pinnedEntities" :selected-floor-index="selectedFloorIndex"></EntitiesViewer>
+      </v-col>
     </v-row>
     <Tooltip ref="tooltip"></Tooltip>
   </v-container>
@@ -30,13 +33,14 @@ import { Component, Vue } from "vue-property-decorator";
 import { server } from "@/Api.ts";
 import FloorSelector from "@/components/FloorSelector.vue";
 import Tooltip from "@/components/Tooltip.vue";
+import EntitiesViewer from "@/components/EntitiesViewer.vue";
 import $ from "jquery";
 import { getSVG } from "@/Api";
-import axios from "axios";
 
-@Component({ components: { FloorSelector, Tooltip } })
+@Component({ components: { FloorSelector, Tooltip, EntitiesViewer } })
 export default class Home extends Vue {
   private serverPath = server;
+  private pinnedEntities: { floor: number; entityId: string }[] = [];
 
   private floors = this.$store.state.homeTopology.floors.map((f: { name: string }) => ({
     name: f.name,
@@ -65,7 +69,12 @@ export default class Home extends Vue {
 
   private onPathSelect(path: any) {
     console.log("Path clicked!");
-    return;
+    const id = $(path).attr("data-bindid");
+    if (id == null || this.pinnedEntities.find(e => e.entityId === id)) {
+      return;
+    }
+
+    this.pinnedEntities.push({floor : this.selectedFloorIndex, entityId: id});
   }
 
   private onPathEnter(path: any) {

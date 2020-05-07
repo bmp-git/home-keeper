@@ -11,7 +11,7 @@ object Formats {
     def write(data: BeaconData) = JsObject(
       "rssi" -> JsNumber(data.rssi),
       "user" -> JsString(data.user.name),
-      "last_seen" -> JsString(data.lastSeen.toIsoDateString()),
+      "last_seen" -> JsNumber(data.lastSeen.clicks),
     )
 
     def read(value: JsValue): BeaconData = ??? // nothing?
