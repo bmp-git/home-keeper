@@ -1,8 +1,20 @@
 <template>
   <div id="tooltip" role="tooltip" hidden>
     <div id="arrow" data-popper-arrow></div>
-    <p class="font-weight-black">{{ currentId }}</p>
-    <ul v-for="(prop, index) in tooltipContent" :key="index">
+
+    <h2 class="font-weight-black">
+      <v-icon v-if="currentType === 'door'">
+        mdi-door-closed
+      </v-icon>
+      <v-icon v-else-if="currentType === 'window'">
+        mdi-window-open-variant
+      </v-icon>
+      <v-icon v-else-if="currentType === 'room'">
+        mdi-floor-plan
+      </v-icon>
+      {{ currentId }}
+    </h2>
+    <ul v-for="prop in currentProperties" :key="prop.name">
       <li>{{ prop }}</li>
     </ul>
     <br />
@@ -18,8 +30,9 @@ import { createPopper } from "@popperjs/core";
 @Component
 export default class Tooltip extends Vue {
   private popper: any = null;
-  private tooltipContent: [] = null;
 
+  private currentProperties: [] = null;
+  private currentType: string = null;
   private currentFloor: number = null;
   private currentId: string = null;
 
@@ -30,17 +43,31 @@ export default class Tooltip extends Vue {
 
   private updateTooltipContent() {
     if (!(this.currentFloor == null) && !(this.currentId == null)) {
-      const properties = this.$store.state.homeProperties.floors[
+      const entity = this.$store.state.homeProperties.floors[
         this.currentFloor
       ].rooms
         .flatMap((r: any) => {
-          const room = [{ name: r.name, properties: r.properties }];
-          return room.concat(r.doors, r.windows);
+          const rooms = [
+            { name: r.name, properties: r.properties, type: "room" }
+          ];
+          const doors = r.doors.map((d: any) => ({
+            name: d.name,
+            properties: d.properties,
+            type: "door"
+          }));
+          const windows = r.windows.map((w: any) => ({
+            name: w.name,
+            properties: w.properties,
+            type: "window"
+          }));
+          return rooms.concat(doors, windows);
         })
-        .filter((e: any) => e.name == this.currentId)[0]?.properties;
-      console.log(properties, this.currentFloor, this.currentId);
+        .filter((e: any) => e.name == this.currentId)[0];
 
-      this.tooltipContent = properties;
+      this.currentProperties = entity?.properties;
+      this.currentType = entity?.type;
+
+      console.log(this.currentProperties, this.currentType, this.currentFloor, this.currentId);
     }
   }
 
@@ -62,7 +89,7 @@ export default class Tooltip extends Vue {
     $("#tooltip").css("display", "none");
     this.popper?.destroy();
     this.currentFloor = this.currentId = null;
-    this.tooltipContent = [];
+    this.currentProperties = [];
   }
 }
 </script>
