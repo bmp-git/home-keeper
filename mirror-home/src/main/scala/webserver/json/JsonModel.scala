@@ -1,7 +1,7 @@
 package webserver.json
 
 import config.ConfigDsl
-import model.{Action, DigitalTwin, Door, Floor, Gateway, Home, JsonProperty, Property, Room, Window}
+import model._
 import spray.json.{JsValue, _}
 
 final case class LoginRequest(name:String, password:String)
@@ -81,7 +81,7 @@ object JsonModel extends DefaultJsonProtocol {
     override def read(json: JsValue): Gateway = ???
   })
   implicit def floorFormat: JsonWriter[Floor] = (floor: Floor) => {
-    JsObject( digitalTwinJson(floor) :+ roomsField(Right(floor)) :_* )
+    JsObject(JsObject(digitalTwinJson(floor) :+ roomsField(Right(floor)): _*).fields + ("level" -> JsNumber(floor.level)))
   }
   implicit def homeFormat: JsonWriter[Home] = (home: Home) => {
     JsObject( digitalTwinJson(home) :+ floorsField(home): _* )
@@ -89,15 +89,16 @@ object JsonModel extends DefaultJsonProtocol {
 }
 
 object Examples extends App {
-  import JsonModel._
+
   import ConfigDsl._
+  import JsonModel._
 
   val external = room()
   val hallway = room()
   val bedRoom = room()
 
   val h = home("home")(
-    floor("floor level")(
+    floor("floor level", 0)(
       hallway,
       bedRoom
     )

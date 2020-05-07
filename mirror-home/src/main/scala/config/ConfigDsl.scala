@@ -3,7 +3,7 @@ package config
 import akka.Done
 import akka.actor.{ActorSystem, Cancellable}
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.model.{ContentType, ContentTypes, DateTime, HttpCharsets, HttpRequest, MediaType}
+import akka.http.scaladsl.model.{ContentType, ContentTypes, DateTime, HttpRequest}
 import akka.stream.scaladsl.Source
 import config.factory.action.{ActionFactory, FileWriterActionFactory}
 import config.factory.ble.BleBeaconFactory
@@ -32,7 +32,7 @@ object ConfigDsl {
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
-  def floor(name: String): FloorFactory = FloorFactory(name)
+  def floor(name: String, level: Int): FloorFactory = FloorFactory(name, level)
     .withProperties(fileReader("svg", s"$RESOURCE_FOLDER\\$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
     .withAction(fileWriter("svg", s"$RESOURCE_FOLDER\\$name.svg", ContentTypes.`text/xml(UTF-8)`))
 
@@ -167,7 +167,7 @@ object Test extends App {
 
 
   val h = home("home")(
-    floor("floor level")(
+    floor("floor level", 0)(
       hallway,
       bedRoom
     )

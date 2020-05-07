@@ -5,7 +5,7 @@ import config.impl.FloorImpl
 import model.Floor
 import utils.SetContainer
 
-case class FloorFactory(override val name: String) extends DigitalTwinFactory[Floor] {
+case class FloorFactory(override val name: String, level: Int) extends DigitalTwinFactory[Floor] {
   private var rooms = SetContainer[RoomFactory, String](_.name, Set())
 
   def apply(rooms: RoomFactory*): this.type = withRooms(rooms: _*)
@@ -16,5 +16,5 @@ case class FloorFactory(override val name: String) extends DigitalTwinFactory[Fl
     this
   }
 
-  override def oneTimeBuild(): Floor = FloorImpl(name, rooms.content.map(_.build()), properties.map(_.build()), actions.map(_.build()))
+  override def oneTimeBuild(): Floor = FloorImpl(name, level, rooms.content.map(_.build()), properties.map(_.build()), actions.map(_.build()))
 }

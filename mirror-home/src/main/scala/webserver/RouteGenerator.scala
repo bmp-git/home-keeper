@@ -177,12 +177,13 @@ object Test extends App {
   )
   //Source --> Flow --> Sink
   val h = home("home")(
-    floor("first")(
+    floor("first", 0)(
       hallway,
       bedRoom
     )
   )
-  h.withProperties(time_now())
+  h.withProperties(time_now(),
+    JsonPropertyFactory.dynamic[Int]("lol", () => Failure(new Exception("failed")), "nothing"))
   h.withAction(
     JsonActionFactory[Int]("action", v => println(s"Acting with $v"))
   )
@@ -209,8 +210,8 @@ object Test extends App {
   door(hallway -> external).withProperties(
     time_now(),
     tag("color", "green"),
-    asd,
-    JsonPropertyFactory.dynamic[Int]("lol", () => Failure(new Exception("failed")), "nothing")
+    asd
+
     //http_object[SensorState]("garage", garageReq)
   )
 

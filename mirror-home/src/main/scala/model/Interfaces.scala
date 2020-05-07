@@ -2,13 +2,12 @@
 //Beacon, Pir, Videocamera, Perimetrali
 package model
 
-import akka.{Done, NotUsed}
+import akka.Done
 import akka.http.scaladsl.model.{ContentType, ContentTypes}
-import akka.stream.IOResult
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import spray.json.DefaultJsonProtocol._
-import spray.json.{JsObject, JsValue, JsonFormat, _}
+import spray.json.{JsObject, JsonFormat, _}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -59,10 +58,7 @@ trait JsonProperty[T] extends Property {
   }
 
   override def source(implicit executor: ExecutionContext): Try[Source[ByteString, Any]] =
-    value match {
-      case Success(value) => Try(ByteString(asJsonObject.compactPrint)).map(data=> Source.single(data))
-      case Failure(exception) => Failure(exception)
-    }
+    Success(Source.single(ByteString(asJsonObject.compactPrint)))
 }
 
 trait JsonAction[T] extends Action {
@@ -111,9 +107,10 @@ trait Room extends DigitalTwin {
 }
 trait Floor extends DigitalTwin {
   def rooms: Set[Room]
+
+  def level: Int
 }
 
-//TODO: floors have an order
 trait Home extends DigitalTwin {
   def floors: Set[Floor]
 }
