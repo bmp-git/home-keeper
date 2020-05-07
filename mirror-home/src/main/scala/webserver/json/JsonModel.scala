@@ -43,15 +43,14 @@ object JsonModel extends DefaultJsonProtocol {
     "windows" -> JsArray(r.gateways.filter(_.isInstanceOf[Window]).map(_.toJson).toVector)
   }
 
-  def property(property: Property): JsObject = property.asJsonObject
+  def property(property: Property): JsObject = property.jsonDescription
 
   def properties[T <: DigitalTwin](dt:T): JsObject = {
     JsObject(propertiesField(dt))
   }
 
-  def action(action: Action): JsObject = {
-    JsObject(("name", action.name.toJson))
-  }
+  def action(action: Action): JsObject = action.jsonDescription
+
   def actions[T <: DigitalTwin](dt:T): JsObject = {
     JsObject(actionsField(dt))
   }

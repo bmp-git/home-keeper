@@ -15,7 +15,7 @@ object Utils {
     )
 
     val h = home("home")(
-      floor("first")(
+      floor("first", 0)(
         hallway,
         bedroom
       )

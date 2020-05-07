@@ -22,7 +22,7 @@ trait Property {
 
   def semantic:String
 
-  def asJsonObject: JsObject = {
+  def jsonDescription: JsObject = {
     case class Obj(name:String, contentType: String, semantic:String)
     val wrapperFormat: JsonFormat[Obj] = jsonFormat(Obj, "name", "content-type", "semantic")
     wrapperFormat.write(Obj(name, contentType.toString(), semantic)).asJsObject
@@ -35,6 +35,12 @@ trait Action {
   def contentType: ContentType
 
   def sink(implicit executor: ExecutionContext): Sink[ByteString, Future[Try[Done]]]
+
+  def jsonDescription: JsObject = {
+    case class Obj(name:String, contentType: String)
+    val wrapperFormat: JsonFormat[Obj] = jsonFormat(Obj, "name", "content-type")
+    wrapperFormat.write(Obj(name, contentType.toString())).asJsObject
+  }
 }
 
 trait JsonProperty[T] extends Property {
@@ -45,7 +51,8 @@ trait JsonProperty[T] extends Property {
 
   override def contentType: ContentType = ContentTypes.`application/json`
 
-  override def asJsonObject: JsObject = value match {
+  //TODO: keep content type and use super.jsonDescription + (name -> value.get)
+  override def jsonDescription: JsObject = value match {
     case Failure(exception) =>
       case class FailureWrapper(name:String, error: String, semantic:String)
       val wrapperFormat: JsonFormat[FailureWrapper] = jsonFormat3(FailureWrapper)
@@ -58,7 +65,7 @@ trait JsonProperty[T] extends Property {
   }
 
   override def source(implicit executor: ExecutionContext): Try[Source[ByteString, Any]] =
-    Success(Source.single(ByteString(asJsonObject.compactPrint)))
+    Success(Source.single(ByteString(jsonDescription.compactPrint)))
 }
 
 trait JsonAction[T] extends Action {
@@ -79,6 +86,11 @@ trait JsonAction[T] extends Action {
         }
       }))
   }
+
+  //TODO: check if is feasible to add a json schema
+  override def jsonDescription: JsObject =
+    JsObject(super.jsonDescription.fields + ("schema" -> JsNumber(1)))
+
 
   def contentType: ContentType = ContentTypes.`application/json`
 

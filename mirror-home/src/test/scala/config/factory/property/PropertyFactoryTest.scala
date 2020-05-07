@@ -16,7 +16,7 @@ import scala.util.{Failure, Success, Try}
 
 class PropertyFactoryTest extends FunSuite {
   test("Static property") {
-    val p = JsonPropertyFactory.static("name", 123.4).build()
+    val p = JsonPropertyFactory.static("name", 123.4, "name").build()
         .asInstanceOf[JsonProperty[Double]]
     assert(p.name == "name")
     assert(p.value.getOrElse(0) == 123.4)

@@ -8,8 +8,8 @@ import utils.SetContainer
 
 trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
 
-  private var pContainer = SetContainer[PropertyFactory, String](_.name, Set())
-  private var aContainer = SetContainer[ActionFactory, String](_.name, Set())
+  private var pContainer = SetContainer[PropertyFactory, String](Set(), Seq(_.name))
+  private var aContainer = SetContainer[ActionFactory, String](Set(), Seq(_.name))
 
   def properties: Set[PropertyFactory] = pContainer.content
 

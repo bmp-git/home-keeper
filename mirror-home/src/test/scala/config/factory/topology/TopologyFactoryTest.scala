@@ -8,19 +8,19 @@ import spray.json.DefaultJsonProtocol._
 class TopologyFactoryTest extends FunSuite {
   test("Same property name") {
     val factory = HomeFactory("my-home")
-      .withProperties(JsonPropertyFactory.static("my-property", 1234))
-      .withProperties(JsonPropertyFactory.static("my-property", 1235))
+      .withProperties(JsonPropertyFactory.static("my-property", 1234, "none"))
+      .withProperties(JsonPropertyFactory.static("my-property", 1235, "none"))
     assert(factory.build().properties.size == 1)
     assert(factory.build().properties.head.asInstanceOf[JsonProperty[Int]].value.get == 1234)
   }
   test("Same topology name") {
     val factory = HomeFactory("my-home")
-      .withFloors(FloorFactory("my-floor")
+      .withFloors(FloorFactory("my-floor", 0)
         .withRooms(RoomFactory("my-room")
           .withGateways(DoorFactory("door", (RoomFactory("f"), RoomFactory("f"))))
           .withGateways(DoorFactory("door", (RoomFactory("f"), RoomFactory("f")))))
         .withRooms(RoomFactory("my-room")))
-      .withFloors(FloorFactory("my-floor"))
+      .withFloors(FloorFactory("my-floor", 0))
 
     val build = factory.build()
     assert(build.name == "my-home")
@@ -30,8 +30,8 @@ class TopologyFactoryTest extends FunSuite {
   }
   test("Home factory test") {
     val factory = HomeFactory("my-home")
-      .withFloors(FloorFactory("my-floor"))
-      .withProperties(JsonPropertyFactory.static("my-property", 1234))
+      .withFloors(FloorFactory("my-floor", 0))
+      .withProperties(JsonPropertyFactory.static("my-property", 1234, "none"))
     val build = factory.build()
     assert(build.name == "my-home")
     assert(build.floors.exists(_.name == "my-floor"))
@@ -39,9 +39,9 @@ class TopologyFactoryTest extends FunSuite {
     assert(build.properties.find(_.name == "my-property").get.asInstanceOf[JsonProperty[Int]].value.get == 1234)
   }
   test("Floor factory test") {
-    val factory = FloorFactory("my-floor")
+    val factory = FloorFactory("my-floor", 0)
       .withRooms(RoomFactory("my-room"))
-      .withProperties(JsonPropertyFactory.static("my-property", 1234))
+      .withProperties(JsonPropertyFactory.static("my-property", 1234, "none"))
     val build = factory.build()
     assert(build.name == "my-floor")
     assert(build.rooms.exists(_.name == "my-room"))
@@ -53,7 +53,7 @@ class TopologyFactoryTest extends FunSuite {
     val r2 = RoomFactory("r2")
     val factory = RoomFactory("my-room")
       .withGateways(DoorFactory("my-door", (r1, r2)))
-      .withProperties(JsonPropertyFactory.static("my-property", 1234))
+      .withProperties(JsonPropertyFactory.static("my-property", 1234, "none"))
     val build = factory.build()
     assert(build.name == "my-room")
     assert(build.gateways.exists(_.name == "my-door"))
@@ -65,7 +65,7 @@ class TopologyFactoryTest extends FunSuite {
     val r2 = RoomFactory("r2")
     val r3 = RoomFactory("r3")
     val external = RoomFactory("external")
-    val factory = FloorFactory("my-floor")
+    val factory = FloorFactory("my-floor", 0)
       .withRooms(r1, r2, r3)
     DoorFactory("d1", (r1, r2))
     DoorFactory("d2", (r2, r3))
