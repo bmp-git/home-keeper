@@ -3,7 +3,7 @@ package config
 import akka.Done
 import akka.actor.{ActorSystem, Cancellable}
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.model.{ContentType, ContentTypes, DateTime, HttpRequest}
+import akka.http.scaladsl.model.{ContentType, ContentTypes, DateTime, HttpCharsets, HttpRequest, MediaType}
 import akka.stream.scaladsl.Source
 import config.factory.action.{ActionFactory, FileWriterActionFactory}
 import config.factory.ble.BleBeaconFactory
@@ -35,6 +35,7 @@ object ConfigDsl {
   def floor(name: String): FloorFactory = FloorFactory(name)
     .withProperties(fileReader("svg", s"$RESOURCE_FOLDER\\$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
     .withAction(fileWriter("svg", s"$RESOURCE_FOLDER\\$name.svg", ContentTypes.`text/xml(UTF-8)`))
+
 
   def room()(implicit name: sourcecode.Name): RoomFactory = room(name.value)
 
