@@ -47,7 +47,10 @@ trait JsonProperty[T] extends Property {
   override def contentType: ContentType = ContentTypes.`application/json`
 
   override def asJsonObject: JsObject = value match {
-    case Failure(exception) => JsObject(("error", exception.getMessage.toJson))
+    case Failure(exception) =>
+      case class FailureWrapper(name:String, error: String, semantic:String)
+      val wrapperFormat: JsonFormat[FailureWrapper] = jsonFormat3(FailureWrapper)
+      wrapperFormat.write(FailureWrapper(name, exception.getMessage, semantic)).asJsObject
     case Success(v) =>
       case class SuccessWrapper(name:String, value: T, semantic:String)
       implicit val jsFormat: JsonFormat[T] = jsonFormat
