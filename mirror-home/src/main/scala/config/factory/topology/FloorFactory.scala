@@ -10,6 +10,7 @@ case class FloorFactory(override val name: String) extends DigitalTwinFactory[Fl
 
   def apply(rooms: RoomFactory*): this.type = withRooms(rooms: _*)
 
+  //TODO: check if every name of every DT of this floor is unique
   def withRooms(rooms: RoomFactory*): this.type = {
     this.rooms = this.rooms.add(rooms)
     this

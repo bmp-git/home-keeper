@@ -5,8 +5,8 @@ import utils.Lazy
 
 case class RoomImpl(override val name: String,
                     gatewaysGetter: Lazy[Set[Gateway]],
-                    override val properties: Set[Property[_]],
-                    override val actions: Set[Action[_]]
+                    override val properties: Set[Property],
+                    override val actions: Set[Action]
                    ) extends Room {
   lazy val _gateways: Set[Gateway] = gatewaysGetter.value
   override def gateways: Set[Gateway] = _gateways

@@ -11,8 +11,8 @@ import utils.Lazy
 
 case class DoorImpl(override val name: String,
                             roomsGetter: Lazy[(Room, Room)],
-                            override val properties: Set[Property[_]],
-                            override val actions: Set[Action[_]]) extends Door {
+                            override val properties: Set[Property],
+                            override val actions: Set[Action]) extends Door {
   lazy val _rooms: (Room, Room) = roomsGetter.value
   override def rooms: (Room, Room) = _rooms
 }

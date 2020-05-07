@@ -10,7 +10,7 @@ import spray.json.JsonFormat
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.{Failure, Try}
 
-class JsonStreamPropertyFactory[T: JsonFormat](override val name: String, output: () => Source[Try[T], _])(implicit actorSystem: ActorSystem)
+class JsonStreamPropertyFactory[T: JsonFormat](override val name: String, output: () => Source[Try[T], _], semantic: String)(implicit actorSystem: ActorSystem)
   extends JsonPropertyFactory[T] {
 
   override def oneTimeBuild(): JsonProperty[T] = new JsonProperty[T] {
@@ -27,5 +27,7 @@ class JsonStreamPropertyFactory[T: JsonFormat](override val name: String, output
     override def value: Try[T] = v
 
     override def jsonFormat: JsonFormat[T] = implicitly[JsonFormat[T]]
+
+    override def semantic: String = JsonStreamPropertyFactory.this.semantic
   }
 }

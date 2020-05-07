@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpRequest
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Sink
+import model.JsonProperty
 import org.scalatest.FunSuite
 import sources.HttpSource
 import spray.json.DefaultJsonProtocol._
@@ -16,6 +17,7 @@ import scala.util.{Failure, Success, Try}
 class PropertyFactoryTest extends FunSuite {
   test("Static property") {
     val p = JsonPropertyFactory.static("name", 123.4).build()
+        .asInstanceOf[JsonProperty[Double]]
     assert(p.name == "name")
     assert(p.value.getOrElse(0) == 123.4)
   }

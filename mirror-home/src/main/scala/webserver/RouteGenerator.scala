@@ -1,13 +1,15 @@
 package webserver
 
 
+import akka.Done
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Origin`
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.{PathMatcher, Route}
-import akka.stream.scaladsl.Flow
+import akka.http.scaladsl.server.{PathMatcher, Route, StandardRoute}
+import akka.stream.Materializer
+import akka.stream.scaladsl.{Flow, Keep}
 import config.factory.action.JsonActionFactory
-import config.factory.property.MixedReplaceVideoPropertyFactory
+import config.factory.property.{JsonPropertyFactory, MixedReplaceVideoPropertyFactory}
 import imgproc.Flows.{broadcast2TransformAndMerge, frameToBufferedImageImageFlow, frameToIplImageFlow, iplImageToFrameImageFlow}
 import model._
 import org.bytedeco.opencv.opencv_core.IplImage
@@ -15,12 +17,15 @@ import sources.FrameSource
 import spray.json.JsObject
 import webserver.json.JsonModel._
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
 import scala.util.{Failure, Success}
 
 object RouteGenerator {
   val receivedPostMessage = "{\"message\": \"Action request received\"}"
 
+  def completeWithErrorMessage(throwable: Throwable):StandardRoute = complete(HttpResponse(500, entity =
+    HttpEntity(ContentTypes.`application/json`, "{\"error\":\"" + throwable.getMessage + "\"}")))
 
   def generateGet(completePath: PathMatcher[Unit], value: () => String): Route = {
     (path(completePath) & get) {
@@ -28,26 +33,32 @@ object RouteGenerator {
     }
   }
 
-  def generateGet2(completePath: PathMatcher[Unit], property: Property[_]): Route = {
-    (path(completePath) & get) {
-      property.serialized match {
-        case Failure(exception) => complete(HttpResponse(500))
-        case Success(value) => complete(HttpResponse(200, entity = HttpEntity(property.contentType, value)))
+  def generateGet2(completePath: PathMatcher[Unit], property: Property): Route = {
+    (path(completePath) & get & extractRequestContext) { ctx =>
+      implicit val exe: ExecutionContextExecutor = ctx.executionContext
+      property.source match {
+        case Success(stream) => complete(HttpResponse(200, entity = HttpEntity(property.contentType, stream)))
+        case Failure(exception) => completeWithErrorMessage(exception)
       }
     }
   }
 
   //TODO: Test these actions
-  def generatePost(completePath: PathMatcher[Unit], action: Action[Any]): Route = {
-    (path(completePath) & post & extractRequest & entity(as[String])) { (req, raw) =>
-      action.deserialize(raw) match {
-        /*case Success(_) if req.entity.contentType != action.contentType =>
-          complete(HttpResponse(415))*/  //TODO: check if action.contentType match the post content type
-        case Success(value) => action.trig(value)
-          complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage)))
-        case Failure(_) =>
-          complete(HttpResponse(500))
+  def generatePost(completePath: PathMatcher[Unit], action: Action): Route = {
+    (path(completePath) & post & extractRequest & extractRequestContext) { (req, ctx) =>
+      implicit val mat: Materializer = ctx.materializer
+      implicit val exe: ExecutionContextExecutor = ctx.executionContext
+      val actionExecution = req.entity.dataBytes.toMat(action.sink)(Keep.right).run()
+      onComplete(actionExecution) {
+        case Failure(exception) => completeWithErrorMessage(exception)
+        case Success(Failure(exception)) => completeWithErrorMessage(exception)
+        case Success(Success(Done))  => complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage)))
       }
+
+
+      /* req.entity.contentType != action.contentType =>
+        complete(HttpResponse(415))*/
+      //TODO: check if action.contentType match the post content type
     }
   }
 
@@ -71,7 +82,7 @@ object RouteGenerator {
 
   def generateActionsRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
     concat (
-      dt.actions.map(a => generatePost(startingPath / "actions" / a.name, a.asInstanceOf[Action[Any]])) toList :_*
+      dt.actions.map(a => generatePost(startingPath / "actions" / a.name, a)) toList :_*
     )
   }
 
@@ -172,7 +183,9 @@ object Test extends App {
     )
   )
   h.withProperties(time_now())
-
+  h.withAction(
+    JsonActionFactory[Int]("action", v => println(s"Acting with $v"))
+  )
   import imgproc.RichIplImage._
   val tIdentity = Flow[IplImage]
   val backgroundFlow = Flow[IplImage].scan[Option[IplImage]](None)({
@@ -196,7 +209,8 @@ object Test extends App {
   door(hallway -> external).withProperties(
     time_now(),
     tag("color", "green"),
-    asd
+    asd,
+    JsonPropertyFactory.dynamic[Int]("lol", () => Failure(new Exception("failed")), "nothing")
     //http_object[SensorState]("garage", garageReq)
   )
 
