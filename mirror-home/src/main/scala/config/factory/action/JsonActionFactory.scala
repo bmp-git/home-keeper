@@ -4,7 +4,7 @@ import config.factory.OneTimeFactory
 import model.{Action, JsonAction}
 import spray.json.JsonFormat
 
-trait JsonActionFactory[T] extends ActionFactory[T]
+trait JsonActionFactory[T] extends ActionFactory
 
 object JsonActionFactory {
   //TODO: understand usage of actions

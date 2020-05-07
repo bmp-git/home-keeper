@@ -1,6 +1,7 @@
 package config.factory.topology
 
 import config.factory.property.JsonPropertyFactory
+import model.JsonProperty
 import org.scalatest.FunSuite
 import spray.json.DefaultJsonProtocol._
 
@@ -10,7 +11,7 @@ class TopologyFactoryTest extends FunSuite {
       .withProperties(JsonPropertyFactory.static("my-property", 1234))
       .withProperties(JsonPropertyFactory.static("my-property", 1235))
     assert(factory.build().properties.size == 1)
-    assert(factory.build().properties.head.value.get == 1234)
+    assert(factory.build().properties.head.asInstanceOf[JsonProperty[Int]].value.get == 1234)
   }
   test("Same topology name") {
     val factory = HomeFactory("my-home")
@@ -35,7 +36,7 @@ class TopologyFactoryTest extends FunSuite {
     assert(build.name == "my-home")
     assert(build.floors.exists(_.name == "my-floor"))
     assert(build.properties.exists(_.name == "my-property"))
-    assert(build.properties.find(_.name == "my-property").get.value.get == 1234)
+    assert(build.properties.find(_.name == "my-property").get.asInstanceOf[JsonProperty[Int]].value.get == 1234)
   }
   test("Floor factory test") {
     val factory = FloorFactory("my-floor")
@@ -45,7 +46,7 @@ class TopologyFactoryTest extends FunSuite {
     assert(build.name == "my-floor")
     assert(build.rooms.exists(_.name == "my-room"))
     assert(build.properties.exists(_.name == "my-property"))
-    assert(build.properties.find(_.name == "my-property").get.value.get == 1234)
+    assert(build.properties.find(_.name == "my-property").get.asInstanceOf[JsonProperty[Int]].value.get == 1234)
   }
   test("Room factory test") {
     val r1 = RoomFactory("r1")
@@ -57,7 +58,7 @@ class TopologyFactoryTest extends FunSuite {
     assert(build.name == "my-room")
     assert(build.gateways.exists(_.name == "my-door"))
     assert(build.properties.exists(_.name == "my-property"))
-    assert(build.properties.find(_.name == "my-property").get.value.get == 1234)
+    assert(build.properties.find(_.name == "my-property").get.asInstanceOf[JsonProperty[Int]].value.get == 1234)
   }
   test("Gateways factory test") {
     val r1 = RoomFactory("r1")

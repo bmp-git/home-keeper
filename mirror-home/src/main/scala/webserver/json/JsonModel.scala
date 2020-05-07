@@ -43,18 +43,13 @@ object JsonModel extends DefaultJsonProtocol {
     "windows" -> JsArray(r.gateways.filter(_.isInstanceOf[Window]).map(_.toJson).toVector)
   }
 
-  def property(property: Property[_]): JsObject = {
-    property match {
-      case p: JsonProperty[_] => JsObject((property.name, p.valueToJson))
-      case p => JsObject((p.name, JsObject(("content-type", JsString(p.contentType.toString()))))) //TODO: verify
-    }
-  }
+  def property(property: Property): JsObject = property.asJsonObject
 
   def properties[T <: DigitalTwin](dt:T): JsObject = {
     JsObject(propertiesField(dt))
   }
 
-  def action(action: Action[_]): JsObject = {
+  def action(action: Action): JsObject = {
     JsObject(("name", action.name.toJson))
   }
   def actions[T <: DigitalTwin](dt:T): JsObject = {
