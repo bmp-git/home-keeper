@@ -13,8 +13,8 @@
     <div v-if="currentProperties && currentProperties.length > 0" class="tooltip_content">
       <table>
         <tr v-for="prop in currentProperties" :key="prop.name">
-          <template v-if="prop['content-type']">
-
+          <template v-if="prop['semantic']  === 'video'">
+            <td colspan="2"><img :src="getPropertyPath(prop.name)" style="display:block; width:100%;"/></td>
           </template>
           <template v-else-if="prop['semantic'] === 'time'">
             <td>{{prop.name + ": "}}</td>
@@ -32,9 +32,15 @@
               </table>
             </td>
           </template>
-          <template v-else>
-            <td> {{prop.name + ": "}}</td>
-            <td> {{prop.value}}</td>
+          <template v-else-if="prop['content-type'] === 'application/json'">
+              <template v-if="prop['value']">
+                <td> {{prop.name + ": "}}</td>
+                <td> {{prop.value}}</td>
+              </template>
+              <template v-else-if="prop['error']">
+                <td> {{prop.name + ": "}}</td>
+                <td style="color: red;"> {{prop.error}}</td>
+              </template>
           </template>
         </tr>
       </table>
@@ -45,8 +51,9 @@
 <script lang="ts">
 import $ from "jquery";
 import { Component, Vue, Watch } from "vue-property-decorator";
-import { createPopper } from "@popperjs/core";
+import { createPopper, auto } from "@popperjs/core";
 import {flatHome} from "@/Utils";
+import {server} from "@/Api"
 
 @Component({
   filters: {
@@ -62,19 +69,28 @@ export default class Tooltip extends Vue {
   private currentType: string = null;
   private currentFloor: number = null;
   private currentId: string = null;
+  private currentEntityUrl: string = null;
 
   @Watch("$store.state.homeProperties", { deep: true })
   private onHomePropertiesChange() {
     this.updateTooltipContent();
   }
 
+  private floorName() {
+    return this.$store.state.homeProperties.floors[this.currentFloor].name;
+  }
+  private getPropertyPath(prop:string) {
+    return server + this.currentEntityUrl + "/properties/" + prop;
+  }
+
   private updateTooltipContent() {
     if (!(this.currentFloor == null) && !(this.currentId == null)) {
-      const floor = this.$store.state.homeProperties.floors[this.currentFloor].name;
+      const floor = this.floorName();
       const home = flatHome(this.$store.state.homeProperties);
       const found = home.find((e: any) => e.entity.name === this.currentId && e.floor === floor);
-
+      
       if (found) {
+        this.currentEntityUrl = found.url;
         this.currentProperties = found.entity.properties;
         this.currentType = found.type;
 
@@ -93,7 +109,7 @@ export default class Tooltip extends Vue {
 
     const svgEntity = $(bindto).get(0);
     const tooltip = $("#tooltip").get(0);
-    this.popper = createPopper(svgEntity, tooltip, {});
+    this.popper = createPopper(svgEntity, tooltip, {placement: 'auto'});
     $("#tooltip").css("display", "block");
   }
 
@@ -155,5 +171,6 @@ td {
 
 .tooltip_content {
   margin-top: 10px;
+  max-width: 300px;
 }
 </style>

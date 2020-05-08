@@ -18,10 +18,8 @@
       <div v-if="properties && properties.length > 0" class="text--primary">
         <table>
           <tr v-for="prop in properties" :key="prop.name">
-            <template v-if="prop['content-type']">
-              <template v-if="prop['semantic'] === 'video'">
-
-              </template>
+            <template v-if="prop['semantic'] === 'video'">
+               <td colspan="2"><img :src="getPropertyPath(prop.name)" style="display:block; width:100%;"/></td>
             </template>
             <template v-else-if="prop['semantic'] === 'time'">
               <td>{{prop.name + ": "}}</td>
@@ -39,9 +37,15 @@
                 </table>
               </td>
             </template>
-            <template v-else>
-              <td> {{prop.name + ": "}}</td>
-              <td> {{prop.value}}</td>
+            <template v-else-if="prop['content-type'] === 'application/json'">
+              <template v-if="prop['value']">
+                <td> {{prop.name + ": "}}</td>
+                <td> {{prop.value}}</td>
+              </template>
+              <template v-else-if="prop['error']">
+                <td> {{prop.name + ": "}}</td>
+                <td style="color: red;"> {{prop.error}}</td>
+              </template>
             </template>
           </tr>
         </table>
@@ -53,6 +57,7 @@
 <script lang="ts">
 import {Component, Vue, Prop, Watch} from "vue-property-decorator";
 import { flatHome } from '@/Utils';
+import {server} from "@/Api"
 
 @Component({
   filters: {
@@ -67,11 +72,16 @@ export default class EntityCard extends Vue {
   private entityType = "";
   private properties: [] = [];
   private actions : [] = [];
+  private entityUrl: string = null;
   //TODO: use floor.level instead of floor index.
 
   @Watch("$store.state.homeProperties", {deep: true})
   private onHomePropertiesChange() {
     this.updateCardContent();
+  }
+
+  private getPropertyPath(prop:string) {
+    return server + this.entityUrl + "/properties/" + prop;
   }
 
   private updateCardContent() {
@@ -80,6 +90,7 @@ export default class EntityCard extends Vue {
     const found = home.find((e: any) => e.entity.name === this.entityId && e.floor === floor);
 
     if (found) {
+      this.entityUrl = found.url;
       this.properties = found.entity.properties;
       this.actions = found.entity.actions;
       this.entityType = found.type;

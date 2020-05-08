@@ -33,7 +33,7 @@ object RouteGenerator {
     }
   }
 
-  def generateGet2(completePath: PathMatcher[Unit], property: Property): Route = {
+  def generatePropertyGet(completePath: PathMatcher[Unit], property: Property): Route = {
     (path(completePath) & get & extractRequestContext) { ctx =>
       implicit val exe: ExecutionContextExecutor = ctx.executionContext
       property.source match {
@@ -44,7 +44,7 @@ object RouteGenerator {
   }
 
   //TODO: Test these actions
-  def generatePost(completePath: PathMatcher[Unit], action: Action): Route = {
+  def generateActionPost(completePath: PathMatcher[Unit], action: Action): Route = {
     (path(completePath) & post & extractRequest & extractRequestContext) { (req, ctx) =>
       implicit val mat: Materializer = ctx.materializer
       implicit val exe: ExecutionContextExecutor = ctx.executionContext
@@ -54,8 +54,6 @@ object RouteGenerator {
         case Success(Failure(exception)) => completeWithErrorMessage(exception)
         case Success(Success(Done))  => complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage)))
       }
-
-
       /* req.entity.contentType != action.contentType =>
         complete(HttpResponse(415))*/
       //TODO: check if action.contentType match the post content type
@@ -76,13 +74,14 @@ object RouteGenerator {
 
   def generatePropertiesRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
     concat(
-      dt.properties.map(p => generateGet2(startingPath / "properties" / p.name, p)) toList :_*
+      dt.properties.map(p => generatePropertyGet(startingPath / "properties" / p.name, p)) toList :_*
     )
   }
 
   def generateActionsRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
     concat (
-      dt.actions.map(a => generatePost(startingPath / "actions" / a.name, a)) toList :_*
+      dt.actions.map(a => generateActionPost(startingPath / "actions" / a.name, a)).toList ++
+        dt.actions.map(a => generateGet(startingPath / "actions" / a.name, () => a.jsonDescription.compactPrint)) :_*
     )
   }
 
@@ -156,73 +155,4 @@ object RouteGenerator {
         concat(generateHomeRoutes(home, startingPath))
       }
     }
-}
-
-object Test extends App {
-
-  import akka.actor.ActorSystem
-  import akka.http.scaladsl.Http
-  import akka.stream.ActorMaterializer
-  import config.ConfigDsl._
-  import webserver.json.JsonModel._
-
-  implicit val system = ActorSystem()
-  implicit val materializer = ActorMaterializer()
-  implicit val executionContext = system.dispatcher
-
-  val external = room()
-  val hallway = room()
-  val bedRoom = room().withAction(
-    JsonActionFactory[Int]("action", v => println(s"Acting with $v"))
-  )
-  //Source --> Flow --> Sink
-  val h = home("home")(
-    floor("first", 0)(
-      hallway,
-      bedRoom
-    )
-  )
-  h.withProperties(time_now(),
-    JsonPropertyFactory.dynamic[Int]("lol", () => Failure(new Exception("failed")), "nothing"))
-  h.withAction(
-    JsonActionFactory[Int]("action", v => println(s"Acting with $v"))
-  )
-  import imgproc.RichIplImage._
-  val tIdentity = Flow[IplImage]
-  val backgroundFlow = Flow[IplImage].scan[Option[IplImage]](None)({
-    case (Some(lastResult), image) => Some(lastResult.merge(image, 0.03))
-    case (None, image) => Some(image)
-  }).collect {
-    case Some(image) => image
-  }
-  val backGroundDiffFlow = broadcast2TransformAndMerge(backgroundFlow, tIdentity,
-    (background: IplImage, source: IplImage) => background absDiff source).map(_.threshold(80))
-  val movDetector = broadcast2TransformAndMerge(backGroundDiffFlow, tIdentity,
-    (diff: IplImage, source: IplImage) => diff.rectangles(source))
-  val stream = FrameSource.video("http://192.168.1.237/video.cgi")
-    .via(frameToIplImageFlow)
-    .via(movDetector)
-    .via(iplImageToFrameImageFlow)
-    .via(frameToBufferedImageImageFlow)
-  val asd = MixedReplaceVideoPropertyFactory("video", () => stream)
-
-  door(bedRoom -> hallway)
-  door(hallway -> external).withProperties(
-    time_now(),
-    tag("color", "green"),
-    asd
-
-    //http_object[SensorState]("garage", garageReq)
-  )
-
-  val build: Home = h.build()
-
-  val route = RouteGenerator.generateRoutes(build, "api")
-
-  val bindingFuture = Http().bindAndHandle(route, "localhost", 8090)
-  println(s"Server online at http://localhost:8090/\nPress RETURN to stop...")
-  StdIn.readLine()
-  bindingFuture
-    .flatMap(_.unbind())
-    .onComplete(_ => system.terminate())
 }

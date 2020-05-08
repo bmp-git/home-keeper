@@ -20,12 +20,14 @@ trait Property {
 
   def source(implicit executor: ExecutionContext): Try[Source[ByteString, Any]]
 
-  def semantic:String
+  def semantic: String
+
+  def confidence: Double = 1
 
   def jsonDescription: JsObject = {
-    case class Obj(name:String, contentType: String, semantic:String)
-    val wrapperFormat: JsonFormat[Obj] = jsonFormat(Obj, "name", "content-type", "semantic")
-    wrapperFormat.write(Obj(name, contentType.toString(), semantic)).asJsObject
+    case class Obj(name: String, contentType: String, semantic: String, confidence: Double)
+    val wrapperFormat: JsonFormat[Obj] = jsonFormat(Obj, "name", "content-type", "semantic", "confidence")
+    wrapperFormat.write(Obj(name, contentType.toString(), semantic, confidence)).asJsObject
   }
 }
 
@@ -51,18 +53,12 @@ trait JsonProperty[T] extends Property {
 
   override def contentType: ContentType = ContentTypes.`application/json`
 
-  //TODO: keep content type and use super.jsonDescription + (name -> value.get)
-  override def jsonDescription: JsObject = value match {
-    case Failure(exception) =>
-      case class FailureWrapper(name:String, error: String, semantic:String)
-      val wrapperFormat: JsonFormat[FailureWrapper] = jsonFormat3(FailureWrapper)
-      wrapperFormat.write(FailureWrapper(name, exception.getMessage, semantic)).asJsObject
-    case Success(v) =>
-      case class SuccessWrapper(name:String, value: T, semantic:String)
-      implicit val jsFormat: JsonFormat[T] = jsonFormat
-      val wrapperFormat: JsonFormat[SuccessWrapper] = jsonFormat3(SuccessWrapper)
-      wrapperFormat.write(SuccessWrapper(name, v, semantic)).asJsObject
-  }
+  override def jsonDescription: JsObject =
+    value match {
+      case Failure(exception) =>
+        JsObject(super.jsonDescription.fields + ("error" -> JsString(exception.getMessage)))
+      case Success(v) => JsObject(super.jsonDescription.fields + ("value" -> jsonFormat.write(v)))
+    }
 
   override def source(implicit executor: ExecutionContext): Try[Source[ByteString, Any]] =
     Success(Source.single(ByteString(jsonDescription.compactPrint)))
