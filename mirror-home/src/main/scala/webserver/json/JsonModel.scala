@@ -12,102 +12,43 @@ object JsonModel extends DefaultJsonProtocol {
   implicit val credentialsFormat = jsonFormat2(LoginRequest)
   implicit val jwtClaimDataFormat = jsonFormat1(JwtClaimData)
 
-  private def propertiesField[T <: DigitalTwin](dt:T): JsField = {
-    "properties" -> JsArray(dt.properties.map(property).toVector)
-  }
-  private def nameField[T <: DigitalTwin](dt:T): JsField = {
-    "name" -> JsString(dt.name)
-  }
-  private def actionsField[T <: DigitalTwin](dt:T): JsField = {
-    "actions" -> JsArray(dt.actions.map(action).toVector)
-  }
-  private def digitalTwinJson[T <: DigitalTwin](dt:T): List[JsField] = {
+  def dtFields[T <: DigitalTwin](dt: T): List[JsField] = {
     List(
-      nameField(dt),
-      propertiesField(dt),
-      actionsField(dt)
+      "name" -> JsString(dt.name),
+      "properties" -> propertiesJsArray(dt),
+      "actions" -> actionsJsArray(dt)
     )
   }
 
-  private def floorsField(h: Home): JsField = {
-    "floors" -> JsArray(h.floors.map(_.toJson).toVector)
-  }
-  private def roomsField(e: Either[Gateway, Floor]): JsField = e match {
-    case Right(floor) => "rooms" -> JsArray(floor.rooms.map(_.toJson).toVector)
-    case Left(gateway) => "rooms" -> JsArray(gateway.rooms._1.name.toJson, gateway.rooms._2.name.toJson)
-  }
-  private def doorsField(r: Room): JsField = {
-    "doors" -> JsArray(r.gateways.filter(_.isInstanceOf[Door]).map(_.toJson).toVector)
-  }
-  private def windowsField(r: Room): JsField = {
-    "windows" -> JsArray(r.gateways.filter(_.isInstanceOf[Window]).map(_.toJson).toVector)
+  def propertiesJsArray[T <: DigitalTwin](dt: T): JsArray = JsArray(dt.properties.map(_.jsonDescription).toVector)
+
+  def actionsJsArray[T <: DigitalTwin](dt: T): JsArray = JsArray(dt.actions.map(_.jsonDescription).toVector)
+
+  def floorsJsArray(h: Home): JsArray = JsArray(h.floors.map(_.toJson).toVector)
+
+  def roomsJsArray(e: Either[Gateway, Floor]): JsArray = e match {
+    case Right(floor) => JsArray(floor.rooms.map(_.toJson).toVector)
+    case Left(gateway) => JsArray(gateway.rooms._1.name.toJson, gateway.rooms._2.name.toJson)
   }
 
-  def property(property: Property): JsObject = property.jsonDescription
+  def doorsJsArray(r: Room): JsArray = JsArray(r.gateways.filter(_.isInstanceOf[Door]).map(_.toJson).toVector)
 
-  def properties[T <: DigitalTwin](dt:T): JsObject = {
-    JsObject(propertiesField(dt))
-  }
-
-  def action(action: Action): JsObject = action.jsonDescription
-
-  def actions[T <: DigitalTwin](dt:T): JsObject = {
-    JsObject(actionsField(dt))
-  }
-
-  def floors(h: Home): JsObject = {
-    JsObject(floorsField(h))
-  }
-  def rooms(e: Either[Gateway, Floor]): JsObject = {
-    JsObject(roomsField(e))
-  }
-  def doors(r: Room): JsObject = {
-    JsObject(doorsField(r))
-  }
-  def windows(r: Room): JsObject = {
-    JsObject(windowsField(r))
-  }
-
+  def windowsJsArray(r: Room): JsArray = JsArray(r.gateways.filter(_.isInstanceOf[Window]).map(_.toJson).toVector)
 
   implicit def roomFormat: JsonWriter[Room] = (room: Room) => {
-    JsObject( digitalTwinJson(room) :+ doorsField(room) :+ windowsField(room) : _* )
+    JsObject(dtFields(room) :+ ("doors" -> doorsJsArray(room)) :+ ("windows" -> windowsJsArray(room)): _*)
   }
   implicit def gatewayFormat: JsonFormat[Gateway] = lazyFormat(new JsonFormat[Gateway] {
     def write(gateway: Gateway): JsValue = {
-      JsObject ( digitalTwinJson(gateway) :+ roomsField(Left(gateway)) :_* )
+      JsObject(dtFields(gateway) :+ ("rooms" -> roomsJsArray(Left(gateway))): _*)
     }
 
-    override def read(json: JsValue): Gateway = ???
+    def read(json: JsValue): Gateway = throw new NotImplementedError()
   })
   implicit def floorFormat: JsonWriter[Floor] = (floor: Floor) => {
-    JsObject(JsObject(digitalTwinJson(floor) :+ roomsField(Right(floor)): _*).fields + ("level" -> JsNumber(floor.level)))
+    JsObject(dtFields(floor) :+ ("rooms" -> roomsJsArray(Right(floor))) :+ ("level" -> JsNumber(floor.level)): _*)
   }
   implicit def homeFormat: JsonWriter[Home] = (home: Home) => {
-    JsObject( digitalTwinJson(home) :+ floorsField(home): _* )
-  }
-}
-
-object Examples extends App {
-
-  import ConfigDsl._
-  import JsonModel._
-
-  val external = room()
-  val hallway = room()
-  val bedRoom = room()
-
-  val h = home("home")(
-    floor("floor level", 0)(
-      hallway,
-      bedRoom
-    )
-  )
-
-  door(bedRoom -> hallway).withProperties(time_now())
-  door(hallway -> external)
-  val b = h.build()
-  while(true) {
-    Thread.sleep(1000)
-    println(b.toJson)
+    JsObject(dtFields(home) :+ ("floors" -> floorsJsArray(home)): _*)
   }
 }
