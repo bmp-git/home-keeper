@@ -11,7 +11,7 @@ object Utils {
     val external = room()
     val hallway = room()
     val bedroom = room().withAction(
-      JsonActionFactory[Int]("action", v => println(s"Acting with $v"))
+      JsonActionFactory[Int]("action", v => println(s"Acting with $v"), "print_value")
     )
 
     val h = home("home")(

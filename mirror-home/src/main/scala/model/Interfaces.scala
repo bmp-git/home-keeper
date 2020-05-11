@@ -88,6 +88,15 @@ trait JsonAction[T] extends Action {
       }))
   }
 
+  import com.github.andyglow.jsonschema.AsSpray._
+  import json.schema.Version._
+  import spray.json._
+  override def jsonDescription: JsObject = {
+    JsObject(super.jsonDescription.fields + ("schema" -> jsonSchema.asSpray(Draft04())))
+  }
+
+  def jsonSchema: json.Schema[T]
+
   def contentType: ContentType = ContentTypes.`application/json`
 
   def jsonFormat: JsonFormat[T]

@@ -7,18 +7,12 @@ import akka.http.scaladsl.model.headers.`Access-Control-Allow-Origin`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{PathMatcher, Route, StandardRoute}
 import akka.stream.Materializer
-import akka.stream.scaladsl.{Flow, Keep}
-import config.factory.action.JsonActionFactory
-import config.factory.property.{JsonPropertyFactory, MixedReplaceVideoPropertyFactory}
-import imgproc.Flows.{broadcast2TransformAndMerge, frameToBufferedImageImageFlow, frameToIplImageFlow, iplImageToFrameImageFlow}
+import akka.stream.scaladsl.Keep
 import model._
-import org.bytedeco.opencv.opencv_core.IplImage
-import sources.FrameSource
-import spray.json.{JsObject, JsValue, JsonWriter}
+import spray.json.{JsValue, JsonWriter}
 import webserver.json.JsonModel._
 
 import scala.concurrent.ExecutionContextExecutor
-import scala.io.StdIn
 import scala.util.{Failure, Success}
 
 object RouteGenerator {
@@ -73,6 +67,7 @@ object RouteGenerator {
 
   def generatePropertiesRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
     concat(
+      //dt.properties.map(p => generateJsonGet(startingPath / "properties" / p.name / "name", p.name)).toList ++ //TODO: add path for every known attribute
       dt.properties.map(p => generateJsonGet(startingPath / "properties" / p.name, p.jsonDescription)).toList ++
         dt.properties.map(p => generateRawPropertyGet(startingPath / "properties" / p.name / "raw", p)).toList :_*
     )
@@ -95,13 +90,27 @@ object RouteGenerator {
     )
   }
 
+
+  def generateUserListRoute(home: Home, startingPath: PathMatcher[Unit]): Route =
+    generateJsonGet(startingPath / "users", usersJsArray(home))
+
+  def generateUsersRoutes(home: Home, startingPath: PathMatcher[Unit]): Route =
+    concat(home.users.map(p => generateUserRoutes(p, startingPath)).toList: _*)
+
+  def generateUserRoutes(user: User, startingPath: PathMatcher[Unit]): Route = concat(
+    generateJsonGet(startingPath / "users" / user.name, user),
+    generateDigitalTwinRoutes(user, startingPath / "users" / user.name)
+  )
+
   def generateHomeRoutes(home: Home, startingPath: PathMatcher[Unit]): Route = {
     val path = startingPath / "home"
     concat(
       generateDigitalTwinRoutes(home, path),
       generateJsonGet(path, home),
       generateJsonGet(path / "floors", floorsJsArray(home)),
-      generateFloorsRoutes(home, path)
+      generateFloorsRoutes(home, path),
+      generateUsersRoutes(home, path),
+      generateUserListRoute(home, path),
     )
   }
 

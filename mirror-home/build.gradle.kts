@@ -44,6 +44,10 @@ dependencies {
     //JavaCV
     implementation("org.bytedeco:javacv-platform:1.5.2")
 
+    //JSON Schema
+    implementation("com.github.andyglow:scala-jsonschema-ujson_2.12:0.2.5")
+    implementation("com.github.andyglow:scala-jsonschema-spray-json_2.12:0.2.5")
+
     //Tests
     testImplementation("org.scalatest:scalatest_2.12:3.0.1")
     testImplementation("com.typesafe.akka:akka-stream-testkit_2.12:2.5.26")

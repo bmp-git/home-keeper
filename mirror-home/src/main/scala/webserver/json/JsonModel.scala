@@ -35,6 +35,8 @@ object JsonModel extends DefaultJsonProtocol {
 
   def windowsJsArray(r: Room): JsArray = JsArray(r.gateways.filter(_.isInstanceOf[Window]).map(_.toJson).toVector)
 
+  def usersJsArray(h: Home): JsArray = JsArray(h.users.map(_.toJson).toVector)
+
   implicit def roomFormat: JsonWriter[Room] = (room: Room) => {
     JsObject(dtFields(room) :+ ("doors" -> doorsJsArray(room)) :+ ("windows" -> windowsJsArray(room)): _*)
   }
@@ -49,6 +51,9 @@ object JsonModel extends DefaultJsonProtocol {
     JsObject(dtFields(floor) :+ ("rooms" -> roomsJsArray(Right(floor))) :+ ("level" -> JsNumber(floor.level)): _*)
   }
   implicit def homeFormat: JsonWriter[Home] = (home: Home) => {
-    JsObject(dtFields(home) :+ ("floors" -> floorsJsArray(home)): _*)
+    JsObject(dtFields(home) :+ ("floors" -> floorsJsArray(home)) :+ ("users" -> usersJsArray(home)): _*)
+  }
+  implicit def userFormat: JsonWriter[User] = (user: User) => {
+    JsObject(dtFields(user): _*)
   }
 }

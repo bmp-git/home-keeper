@@ -5,7 +5,7 @@ import akka.actor.{ActorSystem, Cancellable}
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.model.{ContentType, ContentTypes, DateTime, HttpRequest}
 import akka.stream.scaladsl.Source
-import config.factory.action.{ActionFactory, FileWriterActionFactory}
+import config.factory.action.{ActionFactory, FileWriterActionFactory, JsonActionFactory}
 import config.factory.ble.BleBeaconFactory
 import config.factory.property.{FileReaderPropertyFactory, JsonPropertyFactory, PropertyFactory}
 import config.factory.topology._
@@ -127,12 +127,17 @@ object ConfigDsl {
   def json_from_http[T: JsonFormat](request: HttpRequest, pollingFreq: FiniteDuration = 1.second): Source[Try[T], Cancellable] =
     HttpSource.objects[T](request, pollingFreq)
 
-  def fileReader(name: String, path: String, contentType:ContentType, semantic:String): PropertyFactory =
+  def fileReader(name: String, path: String, contentType: ContentType, semantic: String): PropertyFactory =
     FileReaderPropertyFactory(name, path, contentType, semantic)
 
   /** ACTIONS **/
-  def fileWriter(name: String, path: String, contentType:ContentType): ActionFactory =
+  def fileWriter(name: String, path: String, contentType: ContentType): ActionFactory = //TODO
     FileWriterActionFactory(name, path, ContentTypes.`text/xml(UTF-8)`)
+
+  def turn(name: String): JsonActionFactory[Boolean] = {
+    import json._
+    JsonActionFactory[Boolean](name, b => println(s"$name action triggered with $b"), "turn")(implicitly[JsonFormat[Boolean]], Json.schema[Boolean])
+  }
 }
 
 
@@ -174,6 +179,7 @@ object Test extends App {
       bedRoom
     )
   ).withUsers(mario, luigi)
+    .withAction(turn("siren"))
 
   val consumo_garage = json_from_http[HassSensorState](garageReq)
     .mapValue(_.state.toInt)
