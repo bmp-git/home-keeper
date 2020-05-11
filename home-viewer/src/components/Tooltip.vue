@@ -14,7 +14,7 @@
       <table>
         <tr v-for="prop in currentProperties" :key="prop.name">
           <template v-if="prop['semantic']  === 'video'">
-            <td colspan="2"><img :src="getPropertyPath(prop.name)" style="display:block; width:100%;"/></td>
+            <td colspan="2"><img :src="`${getPropertyPath(prop.name)}/raw`" style="display:block; width:100%;"/></td>
           </template>
           <template v-else-if="prop['semantic'] === 'time'">
             <td>{{prop.name + ": "}}</td>

@@ -14,7 +14,7 @@ import imgproc.Flows.{broadcast2TransformAndMerge, frameToBufferedImageImageFlow
 import model._
 import org.bytedeco.opencv.opencv_core.IplImage
 import sources.FrameSource
-import spray.json.JsObject
+import spray.json.{JsObject, JsValue, JsonWriter}
 import webserver.json.JsonModel._
 
 import scala.concurrent.ExecutionContextExecutor
@@ -25,15 +25,17 @@ object RouteGenerator {
   val receivedPostMessage = "{\"message\": \"Action request received\"}"
 
   def completeWithErrorMessage(throwable: Throwable):StandardRoute = complete(HttpResponse(500, entity =
-    HttpEntity(ContentTypes.`application/json`, "{\"error\":\"" + throwable.getMessage + "\"}")))
+    HttpEntity(ContentTypes.`application/json`, throwable.getMessage))) //TODO: case match throwable to better match the return code
 
-  def generateGet(completePath: PathMatcher[Unit], value: () => String): Route = {
+  def generateJsonGet[T:JsonWriter](completePath: PathMatcher[Unit], value: T): Route =
+    generateJsonGet(completePath, implicitly[JsonWriter[T]].write(value))
+
+  def generateJsonGet(completePath: PathMatcher[Unit], jsValue: JsValue): Route =
     (path(completePath) & get) {
-      complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, value())))
+      complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, jsValue.compactPrint)))
     }
-  }
 
-  def generatePropertyGet(completePath: PathMatcher[Unit], property: Property): Route = {
+  def generateRawPropertyGet(completePath: PathMatcher[Unit], property: Property): Route = {
     (path(completePath) & get & extractRequestContext) { ctx =>
       implicit val exe: ExecutionContextExecutor = ctx.executionContext
       property.source match {
@@ -60,28 +62,26 @@ object RouteGenerator {
     }
   }
 
-  def generateListRoute(jsObject: JsObject, fullPath: PathMatcher[Unit]): Route = {
-    generateGet(fullPath, () => jsObject.compactPrint)
-  }
 
   def generatePropertyListRoute[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
-    generateListRoute(properties(dt), startingPath / "properties")
+    generateJsonGet(startingPath / "properties", propertiesJsArray(dt))
   }
 
   def generateActionListRoute[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
-    generateListRoute(actions(dt), startingPath / "actions")
+    generateJsonGet(startingPath / "actions", actionsJsArray(dt))
   }
 
   def generatePropertiesRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
     concat(
-      dt.properties.map(p => generatePropertyGet(startingPath / "properties" / p.name, p)) toList :_*
+      dt.properties.map(p => generateJsonGet(startingPath / "properties" / p.name, p.jsonDescription)).toList ++
+        dt.properties.map(p => generateRawPropertyGet(startingPath / "properties" / p.name / "raw", p)).toList :_*
     )
   }
 
   def generateActionsRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
     concat (
       dt.actions.map(a => generateActionPost(startingPath / "actions" / a.name, a)).toList ++
-        dt.actions.map(a => generateGet(startingPath / "actions" / a.name, () => a.jsonDescription.compactPrint)) :_*
+        dt.actions.map(a => generateJsonGet(startingPath / "actions" / a.name, a.jsonDescription)) :_*
     )
   }
 
@@ -91,7 +91,7 @@ object RouteGenerator {
       generatePropertyListRoute(dt, startingPath),
       generateActionsRoutes(dt, startingPath),
       generateActionListRoute(dt, startingPath),
-      generateGet(startingPath / "name", () => dt.name)
+      generateJsonGet(startingPath / "name", dt.name)
     )
   }
 
@@ -99,8 +99,8 @@ object RouteGenerator {
     val path = startingPath / "home"
     concat(
       generateDigitalTwinRoutes(home, path),
-      generateGet(path, () => homeFormat.write(home).compactPrint),
-      generateListRoute(floors(home), path / "floors"),
+      generateJsonGet(path, home),
+      generateJsonGet(path / "floors", floorsJsArray(home)),
       generateFloorsRoutes(home, path)
     )
   }
@@ -108,9 +108,10 @@ object RouteGenerator {
   def generateFloorRoutes(floor: Floor, startingPath: PathMatcher[Unit]): Route = {
     concat(
       generateDigitalTwinRoutes(floor, startingPath),
-      generateGet(startingPath, () => floorFormat.write(floor).compactPrint),
-      generateListRoute(rooms(Right(floor)), startingPath / "rooms"),
-      generateRoomsRoutes(floor, startingPath)
+      generateJsonGet(startingPath, floor),
+      generateJsonGet(startingPath / "rooms", roomsJsArray(Right(floor))),
+      generateRoomsRoutes(floor, startingPath),
+      generateJsonGet(startingPath / "level", floor.level)
     )
   }
 
@@ -121,9 +122,9 @@ object RouteGenerator {
   def generateRoomRoutes(room: Room, startingPath: PathMatcher[Unit]): Route = {
     concat(
       generateDigitalTwinRoutes(room, startingPath),
-      generateGet(startingPath, () => roomFormat.write(room) compactPrint),
-      generateListRoute(doors(room), startingPath / "doors"),
-      generateListRoute(windows(room), startingPath / "windows"),
+      generateJsonGet(startingPath, room),
+      generateJsonGet(startingPath / "doors", doorsJsArray(room)),
+      generateJsonGet(startingPath / "windows", windowsJsArray(room)),
       generateGatewaysRoutes(room, startingPath)
     )
   }
@@ -135,8 +136,8 @@ object RouteGenerator {
   def generateGatewayRoutes(gateway: Gateway, startingPath: PathMatcher[Unit]): Route = {
     concat(
       generateDigitalTwinRoutes(gateway, startingPath),
-      generateGet(startingPath, () => gatewayFormat.write(gateway) compactPrint),
-      generateListRoute(rooms(Left(gateway)), startingPath / "rooms")
+      generateJsonGet(startingPath, gateway),
+      generateJsonGet(startingPath / "rooms", roomsJsArray(Left(gateway)))
     )
   }
 
@@ -151,8 +152,6 @@ object RouteGenerator {
 
   def generateRoutes(home: Home, startingPath: PathMatcher[Unit]): Route =
     respondWithDefaultHeader(`Access-Control-Allow-Origin`.*) {
-      {
         concat(generateHomeRoutes(home, startingPath))
-      }
     }
 }

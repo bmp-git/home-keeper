@@ -41,7 +41,7 @@ export function uploadSVG(svg: any, floorName: string, succHandler: (result: any
 
 export function getSVG(floorName: string, succHandler: (result: any) => void,
                           errorHandler?: (error: any) => void) {
-    return axios.get(server + "/home/floors/" + floorName + "/properties/svg")
+    return axios.get(server + "/home/floors/" + floorName + "/properties/svg/raw")
         .then(response => {
             if (succHandler) {
                 succHandler(response.data);

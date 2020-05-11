@@ -53,15 +53,18 @@ trait JsonProperty[T] extends Property {
 
   override def contentType: ContentType = ContentTypes.`application/json`
 
-  override def jsonDescription: JsObject =
+  override def jsonDescription: JsObject = //TODO: i would not include the value here but only in source
     value match {
-      case Failure(exception) =>
-        JsObject(super.jsonDescription.fields + ("error" -> JsString(exception.getMessage)))
+      case Failure(exception) => JsObject(super.jsonDescription.fields + ("error" -> JsString(exception.getMessage)))
       case Success(v) => JsObject(super.jsonDescription.fields + ("value" -> jsonFormat.write(v)))
     }
 
   override def source(implicit executor: ExecutionContext): Try[Source[ByteString, Any]] =
-    Success(Source.single(ByteString(jsonDescription.compactPrint)))
+    value match {
+      case Failure(exception) => Failure(exception)
+      case Success(v) => Success(Source.single(ByteString(jsonFormat.write(v).compactPrint)))
+    }
+
 }
 
 trait JsonAction[T] extends Action {
