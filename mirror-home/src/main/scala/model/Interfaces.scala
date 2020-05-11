@@ -38,10 +38,12 @@ trait Action {
 
   def sink(implicit executor: ExecutionContext): Sink[ByteString, Future[Try[Done]]]
 
+  def semantic: String //trig, file_write (content type), turn (boolean), set_position (room_name)
+
   def jsonDescription: JsObject = {
-    case class Obj(name:String, contentType: String)
-    val wrapperFormat: JsonFormat[Obj] = jsonFormat(Obj, "name", "content-type")
-    wrapperFormat.write(Obj(name, contentType.toString())).asJsObject
+    case class Obj(name: String, contentType: String, semantic: String)
+    val wrapperFormat: JsonFormat[Obj] = jsonFormat(Obj, "name", "content-type", "semantic")
+    wrapperFormat.write(Obj(name, contentType.toString(), semantic)).asJsObject
   }
 }
 
@@ -68,7 +70,7 @@ trait JsonProperty[T] extends Property {
 }
 
 trait JsonAction[T] extends Action {
-  //Action[T] must receive a json formatted like this: {"value": `a T value` }
+  //Action[T] must receive a json formatted like this: {"value": `a T value` } //TODO: remove
 
   def trig(t: T): Unit
 
@@ -86,31 +88,26 @@ trait JsonAction[T] extends Action {
       }))
   }
 
-  //TODO: check if is feasible to add a json schema
-  override def jsonDescription: JsObject =
-    JsObject(super.jsonDescription.fields + ("schema" -> JsNumber(1)))
-
-
   def contentType: ContentType = ContentTypes.`application/json`
 
   def jsonFormat: JsonFormat[T]
 }
 
-trait DigitalTwin { //DigitalTwin situated
+trait DigitalTwin {
   def name: String
+
   def properties: Set[Property]
+
   def actions: Set[Action]
+
+  //def dt:Set[DigitalTwin] //TODO
 }
 
-trait User extends DigitalTwin {
+trait User extends DigitalTwin
 
-}
-
-//Home topology
 trait Gateway extends DigitalTwin {
   def rooms: (Room, Room)
 }
-
 trait Door extends Gateway
 trait Window extends Gateway
 trait Room extends DigitalTwin {
@@ -124,5 +121,7 @@ trait Floor extends DigitalTwin {
 
 trait Home extends DigitalTwin {
   def floors: Set[Floor]
+
+  def users: Set[User]
 }
 

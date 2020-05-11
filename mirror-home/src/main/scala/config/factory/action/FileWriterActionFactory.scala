@@ -28,6 +28,8 @@ object FileWriterActionFactory {
           FileIO.toPath(Paths.get(path)).mapMaterializedValue(_.map {
             case IOResult(_, result) => result
           })
+
+        override def semantic: String = "file_write"
       }
     }
 }

@@ -1,6 +1,6 @@
 package utils
 
-case class SetContainer[T, K](content: Set[T], f: Seq[T => Any]) {
+case class SetContainer[T, K](content: Set[T], f: Seq[T => Any]) { //TODO: remove K
   def add(v: T): SetContainer[T, K] = {
     if(f.forall(c => !content.map(c).contains(c(v)))) {
       this.copy(content = content + v)

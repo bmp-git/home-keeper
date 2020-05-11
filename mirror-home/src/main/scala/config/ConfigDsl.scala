@@ -29,6 +29,8 @@ object ConfigDsl {
 
   /** TOPOLOGY DSL **/
   def user(name: String): UserFactory = UserFactory(name)
+    .withProperties(fileReader("avatar", s"$RESOURCE_FOLDER\\$name.jpg", ContentTypes.`text/xml(UTF-8)`, "avatar"))
+    .withAction(fileWriter("avatar", s"$RESOURCE_FOLDER\\$name.jpg", ContentTypes.`text/xml(UTF-8)`)) //TODO
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
@@ -171,7 +173,7 @@ object Test extends App {
       hallway,
       bedRoom
     )
-  )
+  ).withUsers(mario, luigi)
 
   val consumo_garage = json_from_http[HassSensorState](garageReq)
     .mapValue(_.state.toInt)
