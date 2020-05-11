@@ -42,12 +42,13 @@ export default class Home extends Vue {
   private serverPath = server;
   private pinnedEntities: { floor: number; entityId: string }[] = [];
 
-  private floors = this.$store.state.homeTopology.floors.map((f: { name: string }) => ({
+  private floors = this.$store.state.homeTopology.floors.map((f: { name: string, level: number }) => ({
     name: f.name,
+    level: f.level,
     svg: ""
   }));
 
-  private selectedFloorIndex = 0;
+  private selectedFloorIndex = this.floors.findIndex((f: any) => f.level === 0);
   private tooltip: any = null;
 
   mounted() {
@@ -75,6 +76,12 @@ export default class Home extends Vue {
     }
 
     this.pinnedEntities.push({floor : this.selectedFloorIndex, entityId: id});
+  }
+
+  private onCardClose(value: { floor: number; entityId: string } ) {
+    this.pinnedEntities = this.pinnedEntities.filter((obj : any) => {
+      return !(obj.floor === value.floor && obj.entityId === value.entityId);
+    });
   }
 
   private onPathEnter(path: any) {

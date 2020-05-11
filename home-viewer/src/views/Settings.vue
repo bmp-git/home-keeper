@@ -102,7 +102,12 @@ import FloorSelector from "@/components/FloorSelector.vue";
 
 @Component({ components: { FloorSelector } })
 export default class Settings extends Vue {
-  private selectedFloorIndex = 0;
+  private floors = this.$store.state.homeTopology.floors.map((f: { name: string, level: number }) => ({
+    name: f.name,
+    level: f.level,
+    svg: ""
+  }));
+  private selectedFloorIndex = this.floors.findIndex((f: any) => f.level === 0);
   private selectedEntityIndexes: any[] = [];
   private lastPathSelected: any = null;
   private selectedClassIndex = 0;
@@ -269,11 +274,6 @@ export default class Settings extends Vue {
       this.selectBoundedEntity(path);
     }
   }
-
-  private floors = this.$store.state.homeTopology.floors.map((f: { name: string }) => ({
-    name: f.name,
-    svg: ""
-  }));
 
   private addIsBound(item: any) {
     item.isBound = this.boundEntities.includes(item.name);

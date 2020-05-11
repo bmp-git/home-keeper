@@ -1,21 +1,32 @@
 <template>
   <v-card class="entity_card">
+    <v-system-bar
+            color="primary"
+            dark
+    >
+      <v-spacer></v-spacer>
+
+      <v-icon v-if="this.properties.length > 0 || this.actions.length > 0" @click="show = !show">{{ show ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
+      <v-icon v-if="isClosable" @click="closeCard()">mdi-close</v-icon>
+    </v-system-bar>
     <v-card-text>
+        <p class="headline text--primary" style="margin-bottom:8px;">
 
-      <!--<div>{{entityType}}</div>-->
-      <p class="headline text--primary">
+          <v-icon v-if="entityType === 'door'"> mdi-door </v-icon>
+          <v-icon v-else-if="entityType === 'window'"> mdi-window-closed-variant </v-icon>
+          <v-icon v-else-if="entityType === 'room'"> mdi-floor-plan</v-icon>
+          <template v-else-if="entityType === 'floor'">
+            <v-icon v-if="floorLevel >=0 && floorLevel <= 3"> mdi-home-floor-{{floorLevel}} </v-icon>
+            <v-icon v-else-if="floorLevel === -1"> mdi-home-floor-negative-1 </v-icon>
+            <v-icon v-else>mdi-home-minus</v-icon>
+          </template>
+          {{entityId}}
 
-        <v-icon v-if="entityType === 'door'"> mdi-door </v-icon>
-        <v-icon v-else-if="entityType === 'window'"> mdi-window-closed-variant </v-icon>
-        <v-icon v-else-if="entityType === 'room'"> mdi-floor-plan</v-icon>
-        <template v-else-if="entityType === 'floor'">
-          <v-icon v-if="floor <= 3"> mdi-home-floor-{{floor}} </v-icon>
-          <v-icon v-else>mdi-home-minus</v-icon>
-        </template>
-        {{entityId}}
-      </p>
+        </p>
 
-      <div v-if="properties && properties.length > 0" class="text--primary">
+      <v-expand-transition>
+        <div v-show="show">
+          <div v-if="properties && properties.length > 0" class="text--primary">
         <table>
           <tr v-for="prop in properties" :key="prop.name">
             <template v-if="prop['semantic'] === 'video'">
@@ -50,6 +61,9 @@
           </tr>
         </table>
       </div>
+        </div>
+      </v-expand-transition>
+
     </v-card-text>
   </v-card>
 </template>
@@ -69,10 +83,15 @@ import {server} from "@/Api"
 export default class EntityCard extends Vue {
   @Prop() private floor: number;
   @Prop() private entityId: string;
+  @Prop() private isClosable: boolean;
+
   private entityType = "";
   private properties: [] = [];
   private actions : [] = [];
   private entityUrl: string = null;
+  private floorLevel: number = null;
+
+  private show = true;
   //TODO: use floor.level instead of floor index.
 
   @Watch("$store.state.homeProperties", {deep: true})
@@ -94,7 +113,12 @@ export default class EntityCard extends Vue {
       this.properties = found.entity.properties;
       this.actions = found.entity.actions;
       this.entityType = found.type;
+      this.floorLevel = found.level;
     }
+  }
+
+  private closeCard() {
+    (this.$parent as any).onCardClose({ floor: this.floor, entityId: this.entityId })
   }
 }
 </script>
