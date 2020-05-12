@@ -8,7 +8,6 @@ case class BleBeacon(mac: MacAddress, key: String, attachedTo: User, initialCoun
   var counter: ULong = initialCounter
 
   //TODO: keep expected counter and validate only if in a range
-  //TODO: for the first packet received ignore this
   def validate(advData: String): Boolean = {
 
     if (advData.length != 62) {

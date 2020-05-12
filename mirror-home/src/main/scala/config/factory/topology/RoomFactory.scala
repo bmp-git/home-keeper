@@ -5,7 +5,7 @@ import model.{Gateway, Room}
 import utils.{Lazy, SetContainer}
 
 case class RoomFactory(override val name: String) extends DigitalTwinFactory[Room] {
-  private var gateways = SetContainer[GatewayFactory[_ <: Gateway], String](Set(), Seq(_.name))
+  private var gateways = SetContainer[GatewayFactory[_ <: Gateway]](Set(), Seq(_.name))
 
   def apply[T <: Gateway](gateways: GatewayFactory[T]*): this.type = withGateways(gateways: _*)
 

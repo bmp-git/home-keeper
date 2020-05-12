@@ -1,7 +1,6 @@
 package webserver
 
-import config.ConfigDsl.{door, floor, home, room, tag, time_now}
-import config.factory.action.{ActionFactory, JsonActionFactory}
+import config.ConfigDsl._
 import model.Home
 import webserver.json.JsonModel._
 
@@ -11,7 +10,7 @@ object Utils {
     val external = room()
     val hallway = room()
     val bedroom = room().withAction(
-      JsonActionFactory[Int]("action", v => println(s"Acting with $v"), "print_value")
+      turn("action")
     )
 
     val h = home("home")(

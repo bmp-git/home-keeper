@@ -8,8 +8,8 @@ import utils.SetContainer
 
 trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
 
-  private var pContainer = SetContainer[PropertyFactory, String](Set(), Seq(_.name))
-  private var aContainer = SetContainer[ActionFactory, String](Set(), Seq(_.name))
+  private var pContainer = SetContainer[PropertyFactory](Set(), Seq(_.name))
+  private var aContainer = SetContainer[ActionFactory](Set(), Seq(_.name))
 
   def properties: Set[PropertyFactory] = pContainer.content
 
@@ -22,6 +22,12 @@ trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
 
   def withAction(actions: ActionFactory*): this.type = {
     aContainer = aContainer.add(actions)
+    this
+  }
+
+  def withAttribute(attributes:(PropertyFactory, ActionFactory)*): this.type = {
+    pContainer = pContainer.add(attributes.map(_._1))
+    aContainer = aContainer.add(attributes.map(_._2))
     this
   }
 

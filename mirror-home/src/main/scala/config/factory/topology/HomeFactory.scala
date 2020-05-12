@@ -5,8 +5,8 @@ import model.Home
 import utils.SetContainer
 
 case class HomeFactory(override val name: String) extends DigitalTwinFactory[Home] {
-  private var floors = SetContainer[FloorFactory, String](Set(), Seq(_.name, _.level))
-  private var users = SetContainer[UserFactory, String](Set(), Seq(_.name))
+  private var floors = SetContainer[FloorFactory](Set(), Seq(_.name, _.level))
+  private var users = SetContainer[UserFactory](Set(), Seq(_.name))
 
   def apply(floors: FloorFactory*): this.type = this.withFloors(floors: _*)
 

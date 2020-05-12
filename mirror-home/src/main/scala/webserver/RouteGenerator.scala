@@ -1,6 +1,9 @@
 package webserver
 
 
+import java.io.FileNotFoundException
+import java.nio.file.NoSuchFileException
+
 import akka.Done
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Origin`
@@ -16,12 +19,21 @@ import scala.concurrent.ExecutionContextExecutor
 import scala.util.{Failure, Success}
 
 object RouteGenerator {
-  val receivedPostMessage = "{\"message\": \"Action request received\"}"
+  val receivedPostMessage = "{\"message\":\"Action request received\"}"
 
-  def completeWithErrorMessage(throwable: Throwable):StandardRoute = complete(HttpResponse(500, entity =
-    HttpEntity(ContentTypes.`application/json`, throwable.getMessage))) //TODO: case match throwable to better match the return code
+  def completeWithErrorMessage(code: Int, message: String): StandardRoute =
+    complete(HttpResponse(code, entity = HttpEntity(ContentTypes.`application/json`, "{\"error\":\"" + message + "\"}")))
 
-  def generateJsonGet[T:JsonWriter](completePath: PathMatcher[Unit], value: T): Route =
+  def completeWithErrorMessage(throwable: Throwable): StandardRoute = {
+    val (code, message) = throwable match {
+      case _: NoSuchFileException | _: FileNotFoundException => (404, "File not found.")
+      case _: NoSuchElementException => (404, "No such element yet.")
+      case _ => (500, "Unknown error: " + throwable.getMessage)
+    }
+    completeWithErrorMessage(code, message)
+  }
+
+  def generateJsonGet[T: JsonWriter](completePath: PathMatcher[Unit], value: T): Route =
     generateJsonGet(completePath, implicitly[JsonWriter[T]].write(value))
 
   def generateJsonGet(completePath: PathMatcher[Unit], jsValue: JsValue): Route =
@@ -39,20 +51,26 @@ object RouteGenerator {
     }
   }
 
-  //TODO: Test these actions
   def generateActionPost(completePath: PathMatcher[Unit], action: Action): Route = {
     (path(completePath) & post & extractRequest & extractRequestContext) { (req, ctx) =>
       implicit val mat: Materializer = ctx.materializer
       implicit val exe: ExecutionContextExecutor = ctx.executionContext
-      val actionExecution = req.entity.dataBytes.toMat(action.sink)(Keep.right).run()
-      onComplete(actionExecution) {
-        case Failure(exception) => completeWithErrorMessage(exception)
-        case Success(Failure(exception)) => completeWithErrorMessage(exception)
-        case Success(Success(Done))  => complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage)))
+      //TODO: application/x-www-form-urlencoded is sent while uploading svg from home-viewer
+      if (false && req.entity.contentType != action.contentType) {
+        completeWithErrorMessage(415, "Invalid content type: the required type is '" + action.contentType + "' but '" + req.entity.contentType + "' was received")
+      } else {
+        val actionExecution = req.entity.dataBytes.toMat(action.sink)(Keep.right).run()
+        val reqContentType = req.entity.contentType
+        println(reqContentType)
+        onComplete(actionExecution) {
+          case Failure(exception) =>
+            completeWithErrorMessage(exception)
+          case Success(Failure(exception)) =>
+            completeWithErrorMessage(exception)
+          case Success(Success(Done)) =>
+            complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, receivedPostMessage)))
+        }
       }
-      /* req.entity.contentType != action.contentType =>
-        complete(HttpResponse(415))*/
-      //TODO: check if action.contentType match the post content type
     }
   }
 
@@ -67,7 +85,7 @@ object RouteGenerator {
 
   def generatePropertiesRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
     concat(
-      //dt.properties.map(p => generateJsonGet(startingPath / "properties" / p.name / "name", p.name)).toList ++ //TODO: add path for every known attribute
+      dt.properties.map(p => generateJsonGet(startingPath / "properties" / p.name / "name", p.name)).toList ++
       dt.properties.map(p => generateJsonGet(startingPath / "properties" / p.name, p.jsonDescription)).toList ++
         dt.properties.map(p => generateRawPropertyGet(startingPath / "properties" / p.name / "raw", p)).toList :_*
     )

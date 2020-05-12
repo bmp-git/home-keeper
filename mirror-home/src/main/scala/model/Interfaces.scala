@@ -55,7 +55,7 @@ trait JsonProperty[T] extends Property {
 
   override def contentType: ContentType = ContentTypes.`application/json`
 
-  override def jsonDescription: JsObject = //TODO: i would not include the value here but only in source
+  override def jsonDescription: JsObject = //do not include the value here but only in source, will broke home-viewer
     value match {
       case Failure(exception) => JsObject(super.jsonDescription.fields + ("error" -> JsString(exception.getMessage)))
       case Success(v) => JsObject(super.jsonDescription.fields + ("value" -> jsonFormat.write(v)))
@@ -70,16 +70,11 @@ trait JsonProperty[T] extends Property {
 }
 
 trait JsonAction[T] extends Action {
-  //Action[T] must receive a json formatted like this: {"value": `a T value` } //TODO: remove
-
   def trig(t: T): Unit
 
   override def sink(implicit executor: ExecutionContext): Sink[ByteString, Future[Try[Done]]] = {
     Sink.fold[ByteString, ByteString](ByteString())((a, b) => a.concat(b)).mapMaterializedValue(_.map(content => {
-        case class Wrapper[K](value: K)
-        implicit val implicitJsonFormat: JsonFormat[T] = jsonFormat
-        val wrapperFormat: JsonFormat[Wrapper[T]] = jsonFormat1[T, Wrapper[T]](v => Wrapper(v))
-        Try(wrapperFormat.read(JsonParser(ParserInput(content.utf8String)))).map(_.value) match {
+        Try(jsonFormat.read(JsonParser(ParserInput(content.utf8String)))) match {
           case Failure(exception) => Failure(exception)
           case Success(value) =>
             trig(value)
@@ -108,8 +103,6 @@ trait DigitalTwin {
   def properties: Set[Property]
 
   def actions: Set[Action]
-
-  //def dt:Set[DigitalTwin] //TODO
 }
 
 trait User extends DigitalTwin

@@ -23,7 +23,7 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
     }
 
     "allow to do actions" in {
-      Post("/api/home/floors/first/rooms/bedroom/actions/action", "{\"value\": 10}") ~> route ~> check {
+      Post("/api/home/floors/first/rooms/bedroom/actions/action", "true") ~> route ~> check {
         status shouldEqual StatusCodes.OK
         responseAs[String] shouldEqual RouteGenerator.receivedPostMessage
       }
@@ -33,7 +33,9 @@ class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
       case class Timer(time: Long)
       Get("/api/home/properties/myprop") ~> route ~> check {
         status shouldEqual StatusCodes.OK
-        responseAs[String] shouldEqual "{\"name\":\"myprop\",\"semantic\":\"tag\",\"value\":\"lol\"}" //TODO: fix
+        assert(responseAs[String].contains("\"name\":\"myprop\""))
+        assert(responseAs[String].contains("\"semantic\":\"tag\""))
+        assert(responseAs[String].contains("\"value\":\"lol\""))
       }
     }
 

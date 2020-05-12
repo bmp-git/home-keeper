@@ -22,7 +22,7 @@ class PropertyFactoryTest extends FunSuite {
     assert(p.value.getOrElse(0) == 123.4)
   }
 
-  test("Http property") {
+  /*test("Http property") {  //non deterministic test removed
     implicit val system: ActorSystem = ActorSystem()
     implicit val materializer: ActorMaterializer = ActorMaterializer()
     implicit val executionContext = system.dispatcher
@@ -30,7 +30,6 @@ class PropertyFactoryTest extends FunSuite {
     case class ApiTime(currentFileTime: Long)
     implicit val formatter: RootJsonFormat[ApiTime] = jsonFormat1(ApiTime)
 
-    //TODO: unsafe
     val source = HttpSource.objects[ApiTime](HttpRequest(uri = "http://worldclockapi.com/api/json/est/now"), 500.millis)
 
     val taken = 5
@@ -48,5 +47,5 @@ class PropertyFactoryTest extends FunSuite {
     seq.synchronized {
       seq.wait()
     }
-  }
+  }*/
 }
