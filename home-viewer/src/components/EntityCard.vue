@@ -61,7 +61,28 @@
           </tr>
         </table>
       </div>
+          <v-subheader style="padding-left: 0px"
+                  v-if="actions.length > 0"
+          > Actions
+          </v-subheader>
+          <v-divider></v-divider>
+          <div v-if="actions && actions.length > 0" class="text--primary">
+            <v-row v-for="(action, index) in actions" :key="action.name">
+              <v-col>
+              <v-text-field
+                      :label="action.name"
+                      outlined
+                      dense
+                      v-model="payload[index]"
+                      append-outer-icon="mdi-send"
+                      @click:append-outer="onAction(payload[index])"
+              ></v-text-field>
+              </v-col>
+            </v-row>
+
+          </div>
         </div>
+
       </v-expand-transition>
 
     </v-card-text>
@@ -91,6 +112,8 @@ export default class EntityCard extends Vue {
   private entityUrl: string = null;
   private floorLevel: number = null;
 
+  private payload: any[] = [];
+
   private show = true;
   //TODO: use floor.level instead of floor index.
 
@@ -119,6 +142,10 @@ export default class EntityCard extends Vue {
 
   private closeCard() {
     (this.$parent as any).onCardClose({ floor: this.floor, entityId: this.entityId })
+  }
+
+  private onAction(payload: any) {
+    alert(payload);
   }
 }
 </script>
