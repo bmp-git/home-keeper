@@ -18,7 +18,7 @@ object JsonPropertyFactory {
   def safeDynamic[T: JsonFormat](propertyName: String, dynamicValue: () => T, propertySemantic: String): JsonPropertyFactory[T] =
     dynamic(propertyName, () => Success(dynamicValue()), propertySemantic)
 
-  def fromStream[T: JsonFormat](propertyName: String, outputStreamFactory: () => Source[Try[T], _], propertySemantic: String)
+  def fromStream[T: JsonFormat](propertyName: String, outputStreamFactory: () => Source[Try[T], _], propertySemantic: String, initial: Option[T])
                                (implicit system: ActorSystem): JsonStreamPropertyFactory[T] =
-    new JsonStreamPropertyFactory[T](propertyName, outputStreamFactory, propertySemantic)
+    new JsonStreamPropertyFactory[T](propertyName, outputStreamFactory, propertySemantic, initial)
 }

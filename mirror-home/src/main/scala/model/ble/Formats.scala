@@ -8,7 +8,7 @@ object Formats {
     jsonFormat(RawBeaconData.apply, "addr", "rssi", "adv_data")
 
   implicit object BeaconDataJsonFormat extends RootJsonFormat[BeaconData] {
-    def write(data: BeaconData) = JsObject(
+    def write(data: BeaconData): JsObject = JsObject(
       "rssi" -> JsNumber(data.rssi),
       "user" -> JsString(data.user.name),
       "last_seen" -> JsNumber(data.lastSeen.clicks),

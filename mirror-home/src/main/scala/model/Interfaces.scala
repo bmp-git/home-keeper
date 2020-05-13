@@ -38,10 +38,12 @@ trait Action {
 
   def sink(implicit executor: ExecutionContext): Sink[ByteString, Future[Try[Done]]]
 
+  def semantic: String //trig, file_write (content type), turn (boolean), set_position (room_name)
+
   def jsonDescription: JsObject = {
-    case class Obj(name:String, contentType: String)
-    val wrapperFormat: JsonFormat[Obj] = jsonFormat(Obj, "name", "content-type")
-    wrapperFormat.write(Obj(name, contentType.toString())).asJsObject
+    case class Obj(name: String, contentType: String, semantic: String)
+    val wrapperFormat: JsonFormat[Obj] = jsonFormat(Obj, "name", "content-type", "semantic")
+    wrapperFormat.write(Obj(name, contentType.toString(), semantic)).asJsObject
   }
 }
 
@@ -53,7 +55,7 @@ trait JsonProperty[T] extends Property {
 
   override def contentType: ContentType = ContentTypes.`application/json`
 
-  override def jsonDescription: JsObject = //TODO: i would not include the value here but only in source
+  override def jsonDescription: JsObject = //do not include the value here but only in source, will broke home-viewer
     value match {
       case Failure(exception) => JsObject(super.jsonDescription.fields + ("error" -> JsString(exception.getMessage)))
       case Success(v) => JsObject(super.jsonDescription.fields + ("value" -> jsonFormat.write(v)))
@@ -68,16 +70,11 @@ trait JsonProperty[T] extends Property {
 }
 
 trait JsonAction[T] extends Action {
-  //Action[T] must receive a json formatted like this: {"value": `a T value` }
-
   def trig(t: T): Unit
 
   override def sink(implicit executor: ExecutionContext): Sink[ByteString, Future[Try[Done]]] = {
     Sink.fold[ByteString, ByteString](ByteString())((a, b) => a.concat(b)).mapMaterializedValue(_.map(content => {
-        case class Wrapper[K](value: K)
-        implicit val implicitJsonFormat: JsonFormat[T] = jsonFormat
-        val wrapperFormat: JsonFormat[Wrapper[T]] = jsonFormat1[T, Wrapper[T]](v => Wrapper(v))
-        Try(wrapperFormat.read(JsonParser(ParserInput(content.utf8String)))).map(_.value) match {
+        Try(jsonFormat.read(JsonParser(ParserInput(content.utf8String)))) match {
           case Failure(exception) => Failure(exception)
           case Success(value) =>
             trig(value)
@@ -86,31 +83,33 @@ trait JsonAction[T] extends Action {
       }))
   }
 
-  //TODO: check if is feasible to add a json schema
-  override def jsonDescription: JsObject =
-    JsObject(super.jsonDescription.fields + ("schema" -> JsNumber(1)))
+  import com.github.andyglow.jsonschema.AsSpray._
+  import json.schema.Version._
+  import spray.json._
+  override def jsonDescription: JsObject = {
+    JsObject(super.jsonDescription.fields + ("schema" -> jsonSchema.asSpray(Draft04())))
+  }
 
+  def jsonSchema: json.Schema[T]
 
   def contentType: ContentType = ContentTypes.`application/json`
 
   def jsonFormat: JsonFormat[T]
 }
 
-trait DigitalTwin { //DigitalTwin situated
+trait DigitalTwin {
   def name: String
+
   def properties: Set[Property]
+
   def actions: Set[Action]
 }
 
-trait User extends DigitalTwin {
+trait User extends DigitalTwin
 
-}
-
-//Home topology
 trait Gateway extends DigitalTwin {
   def rooms: (Room, Room)
 }
-
 trait Door extends Gateway
 trait Window extends Gateway
 trait Room extends DigitalTwin {
@@ -124,5 +123,7 @@ trait Floor extends DigitalTwin {
 
 trait Home extends DigitalTwin {
   def floors: Set[Floor]
+
+  def users: Set[User]
 }
 

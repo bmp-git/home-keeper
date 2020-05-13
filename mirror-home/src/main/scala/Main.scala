@@ -15,14 +15,16 @@ object Main extends App {
   import akka.http.scaladsl.Http
   import akka.stream.ActorMaterializer
   import config.ConfigDsl._
-  import webserver.json.JsonModel._
   import imgproc.RichIplImage._
+  import webserver.json.JsonModel._
 
   implicit val system = ActorSystem()
   implicit val materializer = ActorMaterializer()
   implicit val executionContext = system.dispatcher
 
 
+  val mario = user("mario")
+  val luigi = user("luigi")
 
   val tIdentity = Flow[IplImage]
   val backgroundFlow = Flow[IplImage].scan[Option[IplImage]](None)({
@@ -74,11 +76,14 @@ object Main extends App {
       sala,
       external
     ),
-    floor("secondfloor", 1) (
+    floor("secondfloor", 1)(
       disimpegno,
       bagnoMarrone
     )
   )
+    .withAction(turn("siren"))
+    .withUsers(mario, luigi)
+
 
   door(sala -> external)
   door(sala -> corridoio)

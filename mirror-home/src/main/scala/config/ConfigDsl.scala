@@ -2,16 +2,17 @@ package config
 
 import akka.Done
 import akka.actor.{ActorSystem, Cancellable}
+import akka.http.scaladsl.model.MediaType.Compressible
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.http.scaladsl.model.{ContentType, ContentTypes, DateTime, HttpRequest}
 import akka.stream.scaladsl.Source
-import config.factory.action.{ActionFactory, FileWriterActionFactory}
+import config.factory.action.{ActionFactory, FileWriterActionFactory, JsonActionFactory}
 import config.factory.ble.BleBeaconFactory
 import config.factory.property.{FileReaderPropertyFactory, JsonPropertyFactory, PropertyFactory}
 import config.factory.topology._
 import model.Units.MacAddress
 import model.ble.{BeaconData, RawBeaconData}
-import model.mhz433.Raw433MhzData
+import model.mhz433.{OpenCloseData, Raw433MhzData}
 import model.{BrokerConfig, Home, JsonProperty, Property}
 import sources.{HttpSource, MqttSource}
 import spray.json.DefaultJsonProtocol._
@@ -29,13 +30,13 @@ object ConfigDsl {
 
   /** TOPOLOGY DSL **/
   def user(name: String): UserFactory = UserFactory(name)
+    .withAttribute(fileAttr("avatar", s"$RESOURCE_FOLDER\\${name}_avatar.jpg",
+      MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
   def floor(name: String, level: Int): FloorFactory = FloorFactory(name, level)
-    .withProperties(fileReader("svg", s"$RESOURCE_FOLDER\\$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
-    .withAction(fileWriter("svg", s"$RESOURCE_FOLDER\\$name.svg", ContentTypes.`text/xml(UTF-8)`))
-
+    .withAttribute(fileAttr("svg", s"$RESOURCE_FOLDER\\$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
 
   def room()(implicit name: sourcecode.Name): RoomFactory = room(name.value)
 
@@ -86,15 +87,15 @@ object ConfigDsl {
         case _ => //nothing
       }
       container.toValueSeq
-    }) asJsonProperty (name, "ble_receiver")
+    }) asJsonProperty(name, "ble_receiver", Seq[BeaconData]())
   }
 
-  def open_closed(name: String, openCode: Int, closedCode: Int)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Boolean] = {
+  def open_closed(name: String, openCode: Int, closedCode: Int)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[OpenCloseData] = {
     import model.mhz433.Formats._
-    json_from_mqtt[Raw433MhzData]("scanner/+/433").ignoreFailures.collectValue {
-      case data if data.code == openCode => true
-      case data if data.code == closedCode => false
-    } asJsonProperty (name, "is_open")
+    json_from_mqtt[Raw433MhzData]("scanner/+/433").ignoreFailures.collectValue[OpenCloseData]({
+      case data if data.code == openCode => model.mhz433.Open(DateTime.now)
+      case data if data.code == closedCode => model.mhz433.Close(DateTime.now)
+    }).asJsonProperty(name, "is_open", model.mhz433.Unknown)
   }
 
   def mqtt_bool(name: String, topic: String, caseTrue: String, caseFalse: String, semantic: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Boolean] =
@@ -109,7 +110,10 @@ object ConfigDsl {
 
   implicit class JsonPropertyFactoryImplicit[T: JsonFormat](source: Source[Try[T], _]) {
     def asJsonProperty(name: String, semantic: String): JsonPropertyFactory[T] =
-      JsonPropertyFactory.fromStream(name, () => source, semantic)
+      JsonPropertyFactory.fromStream(name, () => source, semantic, None)
+
+    def asJsonProperty(name: String, semantic: String, initial: T): JsonPropertyFactory[T] =
+      JsonPropertyFactory.fromStream(name, () => source, semantic, Some(initial))
   }
 
   /** PROPERTY SOURCES **/
@@ -125,19 +129,25 @@ object ConfigDsl {
   def json_from_http[T: JsonFormat](request: HttpRequest, pollingFreq: FiniteDuration = 1.second): Source[Try[T], Cancellable] =
     HttpSource.objects[T](request, pollingFreq)
 
-  def fileReader(name: String, path: String, contentType:ContentType, semantic:String): PropertyFactory =
+  def fileReader(name: String, path: String, contentType: ContentType, semantic: String): PropertyFactory =
     FileReaderPropertyFactory(name, path, contentType, semantic)
 
   /** ACTIONS **/
-  def fileWriter(name: String, path: String, contentType:ContentType): ActionFactory =
-    FileWriterActionFactory(name, path, ContentTypes.`text/xml(UTF-8)`)
+  def fileWriter(name: String, path: String, contentType: ContentType): ActionFactory =
+    FileWriterActionFactory(name, path, contentType)
+
+  def turn(name: String): JsonActionFactory[Boolean] =
+    JsonActionFactory[Boolean](name, b => println(s"$name action triggered with $b"), "turn")(implicitly[JsonFormat[Boolean]], json.Json.schema[Boolean])
+
+  /** ATTRIBUTES **/
+  def fileAttr(name: String, path: String, contentType: ContentType, semantic: String): (PropertyFactory, ActionFactory) =
+    (fileReader(name, path, contentType, semantic), fileWriter(name, path, contentType))
 }
 
 
 object Test extends App {
 
   import ConfigDsl._
-
 
   case class HassSensorState(entity_id: String, last_changed: String, last_updated: String, state: String)
 
@@ -156,14 +166,14 @@ object Test extends App {
     ble_beacon("23daeaac2a2d", "AnotherKey", luigi)
   )
   val c1 = ble_receiver("ble", "12dadddc2a2d")
-  val c2 = ble_receiver("ble", "23dadddc2a2d")
-  val c3 = ble_receiver("ble", "34dadddc2a2d")
+  //val c2 = ble_receiver("ble", "23dadddc2a2d")
+  //val c3 = ble_receiver("ble", "34dadddc2a2d")
 
   val p3 = open_closed("magneto", openCode = 123, closedCode = 321)
 
   val external = room().withProperties(c1)
-  val hallway = room().withProperties(c2)
-  val bedRoom = room().withProperties(c3)
+  val hallway = room() //.withProperties(c2)
+  val bedRoom = room() //.withProperties(c3)
 
 
   val h = home("home")(
@@ -171,7 +181,8 @@ object Test extends App {
       hallway,
       bedRoom
     )
-  )
+  ).withUsers(mario, luigi)
+    .withAction(turn("siren"))
 
   val consumo_garage = json_from_http[HassSensorState](garageReq)
     .mapValue(_.state.toInt)

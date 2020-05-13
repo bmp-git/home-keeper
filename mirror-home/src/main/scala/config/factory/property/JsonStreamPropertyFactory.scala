@@ -8,15 +8,18 @@ import model.JsonProperty
 import spray.json.JsonFormat
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
-class JsonStreamPropertyFactory[T: JsonFormat](override val name: String, output: () => Source[Try[T], _], semantic: String)(implicit actorSystem: ActorSystem)
+class JsonStreamPropertyFactory[T: JsonFormat](override val name: String, output: () => Source[Try[T], _], semantic: String, initial: Option[T])(implicit actorSystem: ActorSystem)
   extends JsonPropertyFactory[T] {
 
   override def oneTimeBuild(): JsonProperty[T] = new JsonProperty[T] {
     implicit val materializer: ActorMaterializer = ActorMaterializer()(actorSystem)
     implicit val executionContext: ExecutionContextExecutor = actorSystem.dispatcher
-    private var v: Try[T] = Failure(new NoSuchElementException("No value yet."))
+    private var v: Try[T] = initial match {
+      case Some(value) => Success(value)
+      case None => Failure(new NoSuchElementException("No value yet."))
+    }
     val end: Future[Done] = output().runForeach(x => v = x)
     end.onComplete { _ => //TODO: check if correct
       println(s"property $name terminated.")
