@@ -1,15 +1,18 @@
 <template>
   <v-container fluid>
     <v-row align="start" justify="start">
-      <v-col mb="10">
+      <v-col cols="9">
         <FloorSelector
           :selected-floor-index.sync="selectedFloorIndex"
           :floor-names="floors.map(f => f.name)"
         ></FloorSelector>
       </v-col>
+      <v-col cols="3">
+        <UsersList :users="usersNames"></UsersList>
+      </v-col>
     </v-row>
     <v-row>
-      <v-col lg="9" mb="6">
+      <v-col cols="9">
         <div
           v-for="(floor, index) in floors"
           :key="floor.name"
@@ -20,7 +23,7 @@
           :hidden="selectedFloorIndex !== index"
         ></div>
       </v-col>
-      <v-col lg="3" mb="6">
+      <v-col cols="3">
         <EntitiesViewer :entities="pinnedEntities" :selected-floor-index="selectedFloorIndex"></EntitiesViewer>
       </v-col>
     </v-row>
@@ -36,11 +39,12 @@ import Tooltip from "@/components/Tooltip.vue";
 import EntitiesViewer from "@/components/EntitiesViewer.vue";
 import $ from "jquery";
 import { getSVG } from "@/Api";
+import UsersList from "@/components/UsersList.vue";
 
-@Component({ components: { FloorSelector, Tooltip, EntitiesViewer } })
+@Component({ components: { FloorSelector, Tooltip, EntitiesViewer, UsersList } })
 export default class Home extends Vue {
-  private serverPath = server;
   private pinnedEntities: { floor: number; entityId: string }[] = [];
+  private usersNames: string[] = this.$store.state.homeTopology.users.map((u: any) => u.name);
 
   private floors = this.$store.state.homeTopology.floors.map((f: { name: string, level: number }) => ({
     name: f.name,

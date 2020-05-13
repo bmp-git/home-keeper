@@ -5,7 +5,8 @@ import akka.actor.{ActorSystem, Cancellable}
 import akka.http.scaladsl.model.MediaType.Compressible
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
-import akka.stream.scaladsl.Source
+import akka.stream.scaladsl.{Sink, Source}
+import akka.util.ByteString
 import config.factory.action.{ActionFactory, FileWriterActionFactory, JsonActionFactory}
 import config.factory.ble.BleBeaconFactory
 import config.factory.property.{FileReaderPropertyFactory, JsonPropertyFactory, PropertyFactory}
@@ -13,14 +14,14 @@ import config.factory.topology._
 import model.Units.MacAddress
 import model.ble.{BeaconData, RawBeaconData}
 import model.mhz433.{OpenCloseData, Raw433MhzData}
-import model.{BrokerConfig, Home, JsonProperty, Property}
+import model.{Action, BrokerConfig, Home, JsonProperty, Property}
 import sources.{HttpSource, MqttSource}
 import spray.json.DefaultJsonProtocol._
-import spray.json.JsonFormat
+import spray.json.{JsNull, JsObject, JsValue, JsonFormat}
 import utils.Lazy
 import utils.RichTrySource._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
@@ -30,13 +31,13 @@ object ConfigDsl {
 
   /** TOPOLOGY DSL **/
   def user(name: String): UserFactory = UserFactory(name)
-    .withAttribute(fileAttr("avatar", s"$RESOURCE_FOLDER\\${name}_avatar.jpg",
+    .withAttribute(fileAttr("avatar", s"$RESOURCE_FOLDER/${name}_avatar.jpg",
       MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
   def floor(name: String, level: Int): FloorFactory = FloorFactory(name, level)
-    .withAttribute(fileAttr("svg", s"$RESOURCE_FOLDER\\$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
+    .withAttribute(fileAttr("svg", s"$RESOURCE_FOLDER/$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
 
   def room()(implicit name: sourcecode.Name): RoomFactory = room(name.value)
 
@@ -139,6 +140,22 @@ object ConfigDsl {
   def turn(name: String): JsonActionFactory[Boolean] =
     JsonActionFactory[Boolean](name, b => println(s"$name action triggered with $b"), "turn")(implicitly[JsonFormat[Boolean]], json.Json.schema[Boolean])
 
+  def trig(actionName: String): ActionFactory = new ActionFactory {
+    override def name: String = actionName
+
+    override protected def oneTimeBuild(): Action = new Action {
+      override def name: String = actionName
+
+      override def contentType: ContentType = ContentTypes.NoContentType
+
+      override def sink(implicit executor: ExecutionContext): Sink[ByteString, Future[Try[Done]]] = {
+        println(name + " triggered")
+        Sink.ignore.mapMaterializedValue(_.map(Success.apply))
+      }
+
+      override def semantic: String = "trig"
+    }
+  }
   /** ATTRIBUTES **/
   def fileAttr(name: String, path: String, contentType: ContentType, semantic: String): (PropertyFactory, ActionFactory) =
     (fileReader(name, path, contentType, semantic), fileWriter(name, path, contentType))

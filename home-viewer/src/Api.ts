@@ -49,3 +49,14 @@ export function getSVG(floorName: string, succHandler: (result: any) => void,
         })
         .catch(error => handleError(error, errorHandler));
 }
+
+export function postAction(relativePath: string, payload: string, succHandler: (result: any) => void,
+                          errorHandler?: (error: any) => void) {
+    return axios.post(server + relativePath, payload, {headers: {'Content-Type': 'application/x-www-form-urlencoded'}})
+        .then(response => {
+            if (succHandler) {
+                succHandler(response.data);
+            }
+        })
+        .catch(error => handleError(error, errorHandler));
+}

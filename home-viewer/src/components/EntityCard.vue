@@ -26,11 +26,18 @@
 
       <v-expand-transition>
         <div v-show="show">
-          <div v-if="properties && properties.length > 0" class="text--primary">
+          <div v-if="properties && properties.length > 0" class="text--primary mt-3">
+            <div class="text--secondary" style="text-align: right">
+              Properties
+            </div>
+            <v-divider class="mb-1"></v-divider>
         <table>
           <tr v-for="prop in properties" :key="prop.name">
             <template v-if="prop['semantic'] === 'video'">
-               <td colspan="2"><img :src="`${getPropertyPath(prop.name)}/raw`" style="display:block; width:100%;"/></td>
+               <td colspan="2">
+                 <div>{{prop['name']}}:</div>
+                 <img :src="`${getPropertyAbsolutePath(prop.name)}/raw`" style="display:block; width:100%;"/>
+               </td>
             </template>
             <template v-else-if="prop['semantic'] === 'time'">
               <td>{{prop.name + ": "}}</td>
@@ -61,25 +68,48 @@
           </tr>
         </table>
       </div>
-          <v-subheader style="padding-left: 0px"
-                  v-if="actions.length > 0"
-          > Actions
-          </v-subheader>
-          <v-divider></v-divider>
-          <div v-if="actions && actions.length > 0" class="text--primary">
+          <div v-if="actions && actions.length > 0" class="text--primary mt-3">
+            <div class="text--secondary"  style="text-align: right">
+              Actions
+            </div>
+            <v-divider class="mb-1"></v-divider>
             <v-row v-for="(action, index) in actions" :key="action.name">
-              <v-col>
-              <v-text-field
-                      :label="action.name"
-                      outlined
-                      dense
-                      v-model="payload[index]"
-                      append-outer-icon="mdi-send"
-                      @click:append-outer="onAction(payload[index])"
-              ></v-text-field>
-              </v-col>
-            </v-row>
+              <template v-if="action['semantic'] === 'trig'">
+                <v-col cols="4">
+                  <p>{{action['name']}}</p>
+                </v-col>
+                <v-col cols="8" align="right">
+                  <v-btn @click="onTrigAction(index)">Trig</v-btn>
+                </v-col>
+              </template>
+              <template v-else-if="action['semantic'] === 'turn'">
+                <v-col cols="4">
+                  <p>{{action['name']}}</p>
+                </v-col>
+                <v-col cols="8" align="right">
+                  <v-btn @click="onTurnActionOff(index)">Off</v-btn>
+                  <v-btn class="ml-2" @click="onTurnActionOn(index)">On</v-btn>
+                </v-col>
+              </template>
+              <template v-else-if="action['semantic'] === 'file_write'">
 
+              </template>
+              <template v-else>
+                <v-col cols="4">
+                  <p>{{action['name']}}</p>
+                </v-col>
+                <v-col cols="8" align="right">
+                  <v-text-field
+                          label="value"
+                          outlined
+                          dense
+                          v-model="payload[index]"
+                          append-outer-icon="send"
+                          @click:append-outer="onGenericAction(index)"
+                  ></v-text-field>
+                </v-col>
+              </template>
+            </v-row>
           </div>
         </div>
 
@@ -92,7 +122,7 @@
 <script lang="ts">
 import {Component, Vue, Prop, Watch} from "vue-property-decorator";
 import { flatHome } from '@/Utils';
-import {server} from "@/Api"
+import {server, postAction} from "@/Api"
 
 @Component({
   filters: {
@@ -122,7 +152,7 @@ export default class EntityCard extends Vue {
     this.updateCardContent();
   }
 
-  private getPropertyPath(prop:string) {
+  private getPropertyAbsolutePath(prop:string) {
     return server + this.entityUrl + "/properties/" + prop;
   }
 
@@ -144,8 +174,40 @@ export default class EntityCard extends Vue {
     (this.$parent as any).onCardClose({ floor: this.floor, entityId: this.entityId })
   }
 
-  private onAction(payload: any) {
-    alert(payload);
+  private getActionRelativePath(name: string) {
+    return `${this.entityUrl}/actions/${name}`;
+  }
+
+  private onGenericAction(index: number) {
+    postAction(this.getActionRelativePath(this.actions[index]['name']), this.payload[index], res => {
+      console.log("Action post " + this.actions[index]['name'] + "succeeded!")
+    }, err => {
+      console.log("Error on post action " + this.actions[index]['name'])
+    })
+  }
+
+  private onTurnActionOn(index: number) {
+    postAction(this.getActionRelativePath(this.actions[index]['name']), "true", res => {
+      console.log("Action post " + this.actions[index]['name'] + "succeeded!")
+    }, err => {
+      console.log("Error on post action " + this.actions[index]['name'])
+    })
+  }
+
+  private onTurnActionOff(index: number) {
+    postAction(this.getActionRelativePath(this.actions[index]['name']), "false", res => {
+      console.log("Action post " + this.actions[index]['name'] + "succeeded!")
+    }, err => {
+      console.log("Error on post action " + this.actions[index]['name'])
+    })
+  }
+
+  private onTrigAction(index: number) {
+    postAction(this.getActionRelativePath(this.actions[index]['name']), "", res => {
+      console.log("Action post " + this.actions[index]['name'] + "succeeded!")
+    }, err => {
+      console.log("Error on post action " + this.actions[index]['name'])
+    })
   }
 }
 </script>

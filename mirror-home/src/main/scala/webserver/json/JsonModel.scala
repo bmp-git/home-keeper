@@ -1,6 +1,5 @@
 package webserver.json
 
-import config.ConfigDsl
 import model._
 import spray.json.{JsValue, _}
 
@@ -24,7 +23,7 @@ object JsonModel extends DefaultJsonProtocol {
 
   def actionsJsArray[T <: DigitalTwin](dt: T): JsArray = JsArray(dt.actions.map(_.jsonDescription).toVector)
 
-  def floorsJsArray(h: Home): JsArray = JsArray(h.floors.map(_.toJson).toVector)
+  def floorsJsArray(h: Home): JsArray = JsArray(h.floors.toVector.sortBy(_.level).map(_.toJson))
 
   def roomsJsArray(e: Either[Gateway, Floor]): JsArray = e match {
     case Right(floor) => JsArray(floor.rooms.map(_.toJson).toVector)

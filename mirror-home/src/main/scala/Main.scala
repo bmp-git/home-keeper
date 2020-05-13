@@ -79,7 +79,11 @@ object Main extends App {
     floor("secondfloor", 1)(
       disimpegno,
       bagnoMarrone
+    ),
+    floor("basement", -1)(
     )
+      .withAction(trig("trigAction"))
+      .withAction(turn("turnAction"))
   )
     .withAction(turn("siren"))
     .withUsers(mario, luigi)

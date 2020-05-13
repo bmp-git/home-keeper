@@ -61,7 +61,6 @@ object RouteGenerator {
       } else {
         val actionExecution = req.entity.dataBytes.toMat(action.sink)(Keep.right).run()
         val reqContentType = req.entity.contentType
-        println(reqContentType)
         onComplete(actionExecution) {
           case Failure(exception) =>
             completeWithErrorMessage(exception)
