@@ -1,11 +1,11 @@
 <template>
-  <v-avatar color="primary">
-    <img
-      v-if="avatarExists"
-      :src="avatarRelativePath"
-      :alt="name"
-      @error="avatarExists = false"
-    />
+  <v-avatar color="white" :size="size">
+      <img
+              v-if="avatarExists"
+              :src="avatarRelativePath"
+              :alt="name"
+              @error="avatarExists = false"
+      />
     <v-icon v-else dark>mdi-account-circle</v-icon>
   </v-avatar>
 </template>
@@ -17,6 +17,7 @@ import { server } from "@/Api";
 @Component
 export default class User extends Vue {
   @Prop() private name: string;
+  @Prop() private size: number;
   private avatarExists = true;
 
   get avatarRelativePath() {

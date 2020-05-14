@@ -68,9 +68,11 @@
         /></v-avatar>
       </v-btn>
     </v-app-bar>
-    <v-content>
-      <router-view />
-    </v-content>
+
+      <v-content>
+        <router-view />
+      </v-content>
+
   </v-app>
 </template>
 
@@ -89,3 +91,7 @@ export default class App extends Vue {
   ];
 }
 </script>
+
+<style>
+
+</style>

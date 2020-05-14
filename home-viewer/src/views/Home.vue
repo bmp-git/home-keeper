@@ -24,7 +24,7 @@
         ></div>
       </v-col>
       <v-col cols="3">
-        <EntitiesViewer :entities="pinnedEntities" :users="pinnedUsers" :selected-floor-index="selectedFloorIndex"></EntitiesViewer>
+        <EntitiesViewer ref="entitiesViewer" :selected-floor-index="selectedFloorIndex"></EntitiesViewer>
       </v-col>
     </v-row>
     <Tooltip ref="tooltip"></Tooltip>
@@ -43,8 +43,6 @@ import UsersList from "@/components/UsersList.vue";
 
 @Component({ components: { FloorSelector, Tooltip, EntitiesViewer, UsersList } })
 export default class Home extends Vue {
-  private pinnedEntities: { floor: number; entityId: string }[] = [];
-  private pinnedUsers: string[] = [];
   private usersNames: string[] = this.$store.state.homeTopology.users.map((u: any) => u.name);
 
   private floors = this.$store.state.homeTopology.floors.map((f: { name: string, level: number }) => ({
@@ -76,27 +74,14 @@ export default class Home extends Vue {
   private onPathSelect(path: any) {
     console.log("Path clicked!");
     const id = $(path).attr("data-bindid");
-    if (id == null || this.pinnedEntities.find(e => e.entityId === id)) {
+    if (id == null) {
       return;
     }
-
-    this.pinnedEntities.push({floor : this.selectedFloorIndex, entityId: id});
+    (this.$refs['entitiesViewer'] as any).addEntity(this.selectedFloorIndex, id, true);
   }
 
   private pinUserCard(userName: string) {
-    if (!this.pinnedUsers.find(e => e === userName)) {
-      this.pinnedUsers.push(userName);
-    }
-  }
-
-  private onCardClose(value: { floor: number; entityId: string } ) {
-    this.pinnedEntities = this.pinnedEntities.filter((obj : any) => {
-      return !(obj.floor === value.floor && obj.entityId === value.entityId);
-    });
-  }
-
-  private onUserCardClose(userName: string) {
-    this.pinnedUsers = this.pinnedUsers.filter(u => u !== userName);
+    (this.$refs['entitiesViewer'] as any).addUser(userName,true);
   }
 
   private onPathEnter(path: any) {
@@ -128,7 +113,7 @@ export default class Home extends Vue {
   }
 
   private onSvgLoad() {
-    $("svg").attr("height", "100%");
+    $("svg").attr("height", "calc(100vh - 231px)");
     $("svg").attr("width", "100%");
     $("svg")
       .find("*")

@@ -1,23 +1,25 @@
 <template>
   <v-card class="entity_card">
-    <v-system-bar color="primary" dark>
+    <v-system-bar color="primary text--primary" dark :class="(this.properties.length > 0 || this.actions.length > 0) && open ? '' : 'minimized_card'">
+
+        <UserAvatar :name="name" size="16"></UserAvatar>
+        <span class="pl-2"> {{name}}: {{position}}</span>
+
+
       <v-spacer></v-spacer>
 
       <v-icon
         v-if="properties.length > 0 || actions.length > 0"
-        @click="show = !show"
-        >{{ show ? "mdi-chevron-up" : "mdi-chevron-down" }}</v-icon
+        @click="open = !open"
+        >{{ open ? "mdi-chevron-up" : "mdi-chevron-down" }}</v-icon
       >
       <v-icon v-if="isClosable" @click="closeCard()">mdi-close</v-icon>
     </v-system-bar>
-    <v-card-text>
-      <p class="headline text--primary" style="margin-bottom:8px;">
-        <UserAvatar :name="name"></UserAvatar>
-        {{name}} <span style="font-size: small">in {{position}}</span>
-      </p>
+    <v-card-text :class="(this.properties.length > 0 || this.actions.length > 0) && open ? 'pt-0' : 'pb-0 pt-0'">
+
 
       <v-expand-transition>
-        <div v-show="show">
+        <div v-show="open">
           <PropertiesViewer
             :properties="properties"
             :entity-url="`/home/users/${name}`"
@@ -47,7 +49,7 @@ export default class UserCard extends Vue {
   private actions: [] = [];
   private position = "";
 
-  private show = true;
+  private open = true;
 
   mounted() {
     this.updateCardContent();
@@ -76,5 +78,10 @@ export default class UserCard extends Vue {
 <style scoped>
 .entity_card {
   margin-bottom: 5px;
+}
+
+.minimized_card {
+  border-bottom-right-radius: inherit;
+  border-bottom-left-radius: inherit;
 }
 </style>
