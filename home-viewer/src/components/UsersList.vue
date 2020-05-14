@@ -1,6 +1,6 @@
 <template>
   <v-row justify="space-around">
-    <User v-for="(user, index) in users" :key="index" :name="user"></User>
+    <User v-for="(user, index) in users" :key="index" :name="user" size="48"></User>
   </v-row>
 </template>
 

@@ -13,3 +13,17 @@ export function flatHome(home: any) {
         }));
     })
 }
+
+export function addToArrayIfNot(array: any[], predicate: (obj:any) => boolean, element: any) {
+    if(array.find(predicate)) {
+        return;
+    }
+    array.push(element);
+}
+
+export function removeFromArray(array: any[], predicate: (obj:any) => boolean) {
+    const index = array.findIndex(predicate);
+    if (index > -1) {
+        array.splice(index, 1);
+    }
+}

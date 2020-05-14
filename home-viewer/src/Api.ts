@@ -17,7 +17,7 @@ export function getHome(
   succHandler: (result: any) => void,
   errorHandler?: (error: any) => void
 ) {
-  log("getting home on " + server + "/home");
+  //log("getting home on " + server + "/home");
   return axios
     .get(server + "/home")
     .then(response => {

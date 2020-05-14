@@ -10,11 +10,9 @@ export default new Vuex.Store({
   },
   mutations: {
     setHomeTopology(state, home) {
-      console.log("STORE: setHomeTopology");
       state.homeTopology = home;
     },
     updateHomeProperties(state, home) {
-      console.log("STORE: updateHomeProperties");
       state.homeProperties = home;
     }
   },
