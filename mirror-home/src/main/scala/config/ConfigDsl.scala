@@ -12,37 +12,32 @@ import config.factory.ble.BleBeaconFactory
 import config.factory.property.{FileReaderPropertyFactory, JsonPropertyFactory, PropertyFactory}
 import config.factory.topology._
 import model.Units.MacAddress
+import model._
 import model.ble.{BeaconData, RawBeaconData}
 import model.mhz433.{OpenCloseData, Raw433MhzData}
-import model.{Action, BrokerConfig, Home, JsonProperty, Property}
 import sources.{HttpSource, MqttSource}
 import spray.json.DefaultJsonProtocol._
-import spray.json.{JsNull, JsObject, JsValue, JsonFormat}
+import spray.json.JsonFormat
 import utils.Lazy
 import utils.RichTrySource._
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 object ConfigDsl {
 
   val RESOURCE_FOLDER = "resources"
 
-  def variableAttribute[T: JsonFormat : json.Schema](name: String, initialValue: T, semantic: String): (PropertyFactory, ActionFactory) = {
-    var value: T = initialValue
-    (JsonPropertyFactory.safeDynamic(name, () => value, semantic), JsonActionFactory(name, (newValue : T) => value = newValue, "update_" + semantic))
-  }
   /** TOPOLOGY DSL **/
   def user(name: String): UserFactory = UserFactory(name)
-    .withAttribute(fileAttr("avatar", s"$RESOURCE_FOLDER/${name}_avatar.jpg",
-      MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
-    .withAttribute(variableAttribute("position", "Away", "user_position")(implicitly[JsonFormat[String]], json.Json.schema[String]))
+    .withAttribute(file_attr("avatar", s"$RESOURCE_FOLDER/${name}_avatar.jpg", MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
+    .withAttribute(var_attr("position", "Away", "user_position")(implicitly[JsonFormat[String]], json.Json.schema[String]))
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
   def floor(name: String, level: Int): FloorFactory = FloorFactory(name, level)
-    .withAttribute(fileAttr("svg", s"$RESOURCE_FOLDER/$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
+    .withAttribute(file_attr("svg", s"$RESOURCE_FOLDER/$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
 
   def room()(implicit name: sourcecode.Name): RoomFactory = room(name.value)
 
@@ -65,15 +60,9 @@ object ConfigDsl {
   def ble_beacon(mac: MacAddress, secretKey: String, user: UserFactory): BleBeaconFactory =
     BleBeaconFactory(mac, secretKey, user)
 
-  /** UTILS **/
-  def load_file(path: String): String = {
-    val s = scala.io.Source.fromFile(path)
-    val v = s.mkString
-    s.close()
-    v
-  }
-
   /** PREDEFINED VALUE BASED PROPERTIES **/
+  def json_property[T: JsonFormat](name: String, value: () => T, semantic: String): JsonPropertyFactory[T] = JsonPropertyFactory.safeDynamic(name, value, semantic)
+
   def time_now(): JsonPropertyFactory[Long] = JsonPropertyFactory.safeDynamic("time", () => System.currentTimeMillis, "time")
 
   def tag[T: JsonFormat](name: String, value: T): JsonPropertyFactory[T] = JsonPropertyFactory.static(name, value, "tag")
@@ -122,6 +111,13 @@ object ConfigDsl {
       JsonPropertyFactory.fromStream(name, () => source, semantic, Some(initial))
   }
 
+  implicit class JsonPropertyDoubleFactoryImplicit(source: Source[Try[Double], _]) {
+    def integrate: Source[Try[Double], Any] = source.mapValue(v => (System.currentTimeMillis(), v))
+      .scanValue((System.currentTimeMillis(), 0.0))({
+        case ((lastTime, energy), (now, watt)) => (now, energy + watt * ((now - lastTime) / 1000.0))
+      }).mapValue(_._2)
+  }
+
   /** PROPERTY SOURCES **/
   def payload_from_mqtt(topics: String*)(implicit brokerConfig: BrokerConfig): Source[Try[String], Future[Done]] =
     MqttSource.payloads(brokerConfig, topics: _*).map(Success.apply)
@@ -139,7 +135,9 @@ object ConfigDsl {
     FileReaderPropertyFactory(name, path, contentType, semantic)
 
   /** ACTIONS **/
-  def fileWriter(name: String, path: String, contentType: ContentType): ActionFactory =
+  def json_action[T: JsonFormat : json.Schema](name: String, run: T => Unit, semantic: String) = JsonActionFactory(name, run, semantic)
+
+  def file_writer(name: String, path: String, contentType: ContentType): ActionFactory =
     FileWriterActionFactory(name, path, contentType)
 
   def turn(name: String): JsonActionFactory[Boolean] =
@@ -161,9 +159,15 @@ object ConfigDsl {
       override def semantic: String = "trig"
     }
   }
+
   /** ATTRIBUTES **/
-  def fileAttr(name: String, path: String, contentType: ContentType, semantic: String): (PropertyFactory, ActionFactory) =
-    (fileReader(name, path, contentType, semantic), fileWriter(name, path, contentType))
+  def file_attr(name: String, path: String, contentType: ContentType, semantic: String): (PropertyFactory, ActionFactory) =
+    (fileReader(name, path, contentType, semantic), file_writer(name, path, contentType))
+
+  def var_attr[T: JsonFormat : json.Schema](name: String, initialValue: T, semantic: String): (PropertyFactory, ActionFactory) = {
+    var value: T = initialValue
+    (json_property(name, () => value, semantic), json_action[T](name, value = _, "update_" + semantic))
+  }
 }
 
 
@@ -173,10 +177,10 @@ object Test extends App {
 
   case class HassSensorState(entity_id: String, last_changed: String, last_updated: String, state: String)
 
-  implicit val hassSensorStateFormat: JsonFormat[HassSensorState] = lazyFormat(jsonFormat4(HassSensorState))
+  implicit val hassSensorStateFormat: JsonFormat[HassSensorState] = jsonFormat4(HassSensorState)
 
   implicit val brokerConfig: BrokerConfig = BrokerConfig("192.168.1.10:1883")
-  val hassAuth = Authorization(OAuth2BearerToken(load_file("C:\\Users\\Edo\\Desktop\\jwt.txt")))
+  val hassAuth = Authorization(OAuth2BearerToken(utils.File.read("C:\\Users\\Edo\\Desktop\\jwt.txt").getOrElse("")))
   val garageReq = HttpRequest(uri = "https://hass.brb.dynu.net/api/states/sensor.consumo_garage").withHeaders(hassAuth)
   val lucePcReq = HttpRequest(uri = "https://hass.brb.dynu.net/api/states/light.lampada_edo").withHeaders(hassAuth)
 
@@ -188,14 +192,14 @@ object Test extends App {
     ble_beacon("23daeaac2a2d", "AnotherKey", luigi)
   )
   val c1 = ble_receiver("ble", "12dadddc2a2d")
-  //val c2 = ble_receiver("ble", "23dadddc2a2d")
-  //val c3 = ble_receiver("ble", "34dadddc2a2d")
+  val c2 = ble_receiver("ble", "23dadddc2a2d")
+  val c3 = ble_receiver("ble", "34dadddc2a2d")
 
   val p3 = open_closed("magneto", openCode = 123, closedCode = 321)
 
   val external = room().withProperties(c1)
-  val hallway = room() //.withProperties(c2)
-  val bedRoom = room() //.withProperties(c3)
+  val hallway = room().withProperties(c2)
+  val bedRoom = room().withProperties(c3)
 
 
   val h = home("home")(
@@ -207,15 +211,11 @@ object Test extends App {
     .withAction(turn("siren"))
 
   val consumo_garage = json_from_http[HassSensorState](garageReq)
-    .mapValue(_.state.toInt)
+    .mapValue(_.state.toDouble)
     .asJsonProperty("garage (W)", "power")
 
   val energia_garage = json_from_http[HassSensorState](garageReq)
-    .mapValue(_.state.toInt)
-    .mapValue(v => (System.currentTimeMillis(), v))
-    .scanValue((System.currentTimeMillis(), 0.0))({
-      case ((lastTime, energy), (now, watt)) => (now, energy + watt * ((now - lastTime) / 1000.0))
-    }).mapValue(_._2)
+    .mapValue(_.state.toDouble).integrate
     .asJsonProperty("garage (J)", "energy")
 
   door(hallway -> external).withProperties(

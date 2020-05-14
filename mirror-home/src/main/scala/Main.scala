@@ -15,7 +15,7 @@ object Main extends App {
   import akka.http.scaladsl.Http
   import akka.stream.ActorMaterializer
   import config.ConfigDsl._
-  import imgproc.RichIplImage._
+  import imgproc.VideoAnalysis._
   import webserver.json.JsonModel._
 
   implicit val system = ActorSystem()
@@ -26,29 +26,11 @@ object Main extends App {
   val mario = user("mario")
   val luigi = user("luigi")
 
-  val tIdentity = Flow[IplImage]
-  val backgroundFlow = Flow[IplImage].scan[Option[IplImage]](None)({
-    case (Some(lastResult), image) => Some(lastResult.merge(image, 0.03))
-    case (None, image) => Some(image)
-  }).collect {
-    case Some(image) => image
-  }
-  val backGroundDiffFlow = broadcast2TransformAndMerge(backgroundFlow, tIdentity,
-    (background: IplImage, source: IplImage) => background absDiff source).map(_.threshold(80))
-  val movDetector = broadcast2TransformAndMerge(backGroundDiffFlow, tIdentity,
-    (diff: IplImage, source: IplImage) => diff.rectangles(source))
-  val localStream = FrameSource.video("http://192.168.1.237/video.cgi")
-    .via(frameToIplImageFlow)
-    .via(movDetector)
-    .via(iplImageToFrameImageFlow)
-    .via(frameToBufferedImageImageFlow)
+
+  val localStream = FrameSource.video("http://192.168.1.237/video.cgi").via(motion_detection)
   val localVideo = MixedReplaceVideoPropertyFactory("video", () => localStream)
 
-  val remoteStream = FrameSource.video("http://185.39.101.26/mjpg/video.mjpg")
-    .via(frameToIplImageFlow)
-    .via(movDetector)
-    .via(iplImageToFrameImageFlow)
-    .via(frameToBufferedImageImageFlow)
+  val remoteStream = FrameSource.video("http://185.39.101.26/mjpg/video.mjpg").via(motion_detection)
   val remoteVideo = MixedReplaceVideoPropertyFactory("video", () => remoteStream)
 
   val external = room().withProperties(remoteVideo)
