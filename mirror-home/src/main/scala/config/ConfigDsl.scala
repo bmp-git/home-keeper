@@ -29,10 +29,15 @@ object ConfigDsl {
 
   val RESOURCE_FOLDER = "resources"
 
+  def variableAttribute[T: JsonFormat : json.Schema](name: String, initialValue: T, semantic: String): (PropertyFactory, ActionFactory) = {
+    var value: T = initialValue
+    (JsonPropertyFactory.safeDynamic(name, () => value, semantic), JsonActionFactory(name, (newValue : T) => value = newValue, "update_" + semantic))
+  }
   /** TOPOLOGY DSL **/
   def user(name: String): UserFactory = UserFactory(name)
     .withAttribute(fileAttr("avatar", s"$RESOURCE_FOLDER/${name}_avatar.jpg",
       MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
+    .withAttribute(variableAttribute("position", "Away", "user_position")(implicitly[JsonFormat[String]], json.Json.schema[String]))
 
   def home(name: String): HomeFactory = HomeFactory(name)
 

@@ -24,7 +24,7 @@
         ></div>
       </v-col>
       <v-col cols="3">
-        <EntitiesViewer :entities="pinnedEntities" :selected-floor-index="selectedFloorIndex"></EntitiesViewer>
+        <EntitiesViewer :entities="pinnedEntities" :users="pinnedUsers" :selected-floor-index="selectedFloorIndex"></EntitiesViewer>
       </v-col>
     </v-row>
     <Tooltip ref="tooltip"></Tooltip>
@@ -44,6 +44,7 @@ import UsersList from "@/components/UsersList.vue";
 @Component({ components: { FloorSelector, Tooltip, EntitiesViewer, UsersList } })
 export default class Home extends Vue {
   private pinnedEntities: { floor: number; entityId: string }[] = [];
+  private pinnedUsers: string[] = [];
   private usersNames: string[] = this.$store.state.homeTopology.users.map((u: any) => u.name);
 
   private floors = this.$store.state.homeTopology.floors.map((f: { name: string, level: number }) => ({
@@ -82,10 +83,20 @@ export default class Home extends Vue {
     this.pinnedEntities.push({floor : this.selectedFloorIndex, entityId: id});
   }
 
+  private pinUserCard(userName: string) {
+    if (!this.pinnedUsers.find(e => e === userName)) {
+      this.pinnedUsers.push(userName);
+    }
+  }
+
   private onCardClose(value: { floor: number; entityId: string } ) {
     this.pinnedEntities = this.pinnedEntities.filter((obj : any) => {
       return !(obj.floor === value.floor && obj.entityId === value.entityId);
     });
+  }
+
+  private onUserCardClose(userName: string) {
+    this.pinnedUsers = this.pinnedUsers.filter(u => u !== userName);
   }
 
   private onPathEnter(path: any) {
