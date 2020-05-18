@@ -1,5 +1,5 @@
 <template>
-  <v-avatar color="white" :size="size">
+  <v-avatar :size="size">
       <img
               v-if="avatarExists"
               :src="avatarRelativePath"
@@ -12,7 +12,6 @@
 
 <script lang="ts">
 import { Component, Vue, Prop } from "vue-property-decorator";
-import { server } from "@/Api";
 
 @Component
 export default class User extends Vue {
@@ -21,7 +20,7 @@ export default class User extends Vue {
   private avatarExists = true;
 
   get avatarRelativePath() {
-    return server + `/home/users/${this.name}/properties/avatar/raw`;
+    return this.$store.state.serverAddress + `/home/users/${this.name}/properties/avatar/raw`;
   }
 }
 </script>

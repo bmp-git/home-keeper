@@ -53,7 +53,6 @@ import $ from "jquery";
 import { Component, Vue, Watch } from "vue-property-decorator";
 import { createPopper, auto } from "@popperjs/core";
 import {flatHome} from "@/Utils";
-import {server} from "@/Api"
 
 @Component({
   filters: {
@@ -80,7 +79,7 @@ export default class Tooltip extends Vue {
     return this.$store.state.homeProperties.floors[this.currentFloor].name;
   }
   private getPropertyPath(prop:string) {
-    return server + this.currentEntityUrl + "/properties/" + prop;
+    return this.$store.state.serverAddress + this.currentEntityUrl + "/properties/" + prop;
   }
 
   private updateTooltipContent() {

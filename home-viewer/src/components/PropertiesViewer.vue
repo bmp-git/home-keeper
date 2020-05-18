@@ -48,7 +48,6 @@
 
 <script lang="ts">
 import { Component, Vue, Prop } from "vue-property-decorator";
-import { server } from "@/Api";
 
 @Component({
   filters: {
@@ -62,7 +61,7 @@ export default class PropertiesViewer extends Vue {
   @Prop() private entityUrl: string;
 
   private getPropertyAbsolutePath(prop: string) {
-    return `${server}${this.entityUrl}/properties/${prop}`;
+    return `${this.$store.state.serverAddress}${this.entityUrl}/properties/${prop}`;
   }
 }
 </script>

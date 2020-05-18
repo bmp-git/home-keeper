@@ -1,6 +1,8 @@
 import axios from "axios";
+import store from "./store";
 
-export const server = "http://127.0.0.1:8090/api";
+
+
 
 export function log(message: string) {
   console.log("API => " + message);
@@ -17,9 +19,9 @@ export function getHome(
   succHandler: (result: any) => void,
   errorHandler?: (error: any) => void
 ) {
-  //log("getting home on " + server + "/home");
+  //log("getting home on " + store.state.serverAddress + "/home");
   return axios
-    .get(server + "/home")
+    .get(store.state.serverAddress + "/home")
     .then(response => {
       if (succHandler) {
         succHandler(response.data);
@@ -30,7 +32,7 @@ export function getHome(
 
 export function uploadSVG(svg: any, floorName: string, succHandler: (result: any) => void,
                           errorHandler?: (error: any) => void) {
-  return axios.post(server + "/home/floors/" + floorName + "/actions/svg", svg, {headers: {'Content-Type': 'application/x-www-form-urlencoded'}})
+  return axios.post(store.state.serverAddress + "/home/floors/" + floorName + "/actions/svg", svg, {headers: {'Content-Type': 'application/x-www-form-urlencoded'}})
       .then(response => {
         if (succHandler) {
           succHandler(response.data);
@@ -41,7 +43,7 @@ export function uploadSVG(svg: any, floorName: string, succHandler: (result: any
 
 export function getSVG(floorName: string, succHandler: (result: any) => void,
                           errorHandler?: (error: any) => void) {
-    return axios.get(server + "/home/floors/" + floorName + "/properties/svg/raw")
+    return axios.get(store.state.serverAddress + "/home/floors/" + floorName + "/properties/svg/raw")
         .then(response => {
             if (succHandler) {
                 succHandler(response.data);
@@ -52,7 +54,7 @@ export function getSVG(floorName: string, succHandler: (result: any) => void,
 
 export function postAction(relativePath: string, payload: string, succHandler: (result: any) => void,
                           errorHandler?: (error: any) => void) {
-    return axios.post(server + relativePath, payload, {headers: {'Content-Type': 'application/x-www-form-urlencoded'}})
+    return axios.post(store.state.serverAddress + relativePath, payload, {headers: {'Content-Type': 'application/x-www-form-urlencoded'}})
         .then(response => {
             if (succHandler) {
                 succHandler(response.data);

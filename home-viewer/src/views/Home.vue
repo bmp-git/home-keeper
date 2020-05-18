@@ -33,7 +33,6 @@
 
 <script lang="ts">
 import { Component, Vue } from "vue-property-decorator";
-import { server } from "@/Api.ts";
 import FloorSelector from "@/components/FloorSelector.vue";
 import Tooltip from "@/components/Tooltip.vue";
 import EntitiesViewer from "@/components/EntitiesViewer.vue";

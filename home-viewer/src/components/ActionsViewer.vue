@@ -35,8 +35,10 @@
                             outlined
                             dense
                             v-model="payload[index]"
+                            :error-messages="errors[index]"
                             append-outer-icon="send"
                             @click:append-outer="onGenericAction(index)"
+                            @keyup.enter="onGenericAction(index)"
                     ></v-text-field>
                 </v-col>
             </template>
@@ -53,7 +55,8 @@
         @Prop() private actions: [];
         @Prop() private entityUrl: string;
 
-        private payload: any[] = [];
+        private payload: string[] = [];
+        private errors: string[] = [];
 
         private getActionRelativePath(name: string) {
             return `${this.entityUrl}/actions/${name}`;
@@ -62,8 +65,11 @@
         private onGenericAction(index: number) {
             postAction(this.getActionRelativePath(this.actions[index]['name']), this.payload[index], res => {
                 console.log("Action post " + this.actions[index]['name'] + "succeeded!")
+                this.payload[index] = "";
+                this.errors[index] = "";
             }, err => {
                 console.log("Error on post action " + this.actions[index]['name'])
+                this.errors[index] = "Invalid payload.";
             })
         }
 

@@ -1,8 +1,8 @@
 <template>
-  <div @click="pinUserCard" class="pointer">
-    <p style="text-align: center; margin-bottom: 0px">{{ name }}</p>
-    <UserAvatar :name="this.name"></UserAvatar>
-    <h6 style="text-align: center">
+  <div @click="pinUserCard" class="pointer" style="text-align: center">
+    <p style=" margin-bottom: 0px">{{ name }}</p>
+    <UserAvatar :name="this.name" style="display: inline-block;"></UserAvatar>
+    <h6>
       {{ userProperties.get("position").value }}
     </h6>
   </div>

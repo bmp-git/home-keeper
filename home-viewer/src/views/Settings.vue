@@ -96,7 +96,7 @@
 
 <script lang="ts">
 import { Component, Vue, Watch } from "vue-property-decorator";
-import { server, uploadSVG, getSVG } from "@/Api.ts";
+import { uploadSVG, getSVG } from "@/Api.ts";
 import $ from "jquery";
 import FloorSelector from "@/components/FloorSelector.vue";
 

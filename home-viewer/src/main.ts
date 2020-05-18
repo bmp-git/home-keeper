@@ -16,14 +16,18 @@ const vue = new Vue({
   render: h => h(App)
 });
 
+
+
 getHome(home => {
   store.commit("setHomeTopology", home);
   store.commit("updateHomeProperties", home);
-}).then(() => {
   setInterval(() => {
     getHome(home => {
       store.commit("updateHomeProperties", home);
     })
   }, updateIntervalms);
   vue.$mount("#app")
-});
+}, () => {
+  console.log("Error loading home topology.")
+  vue.$mount("#app")
+})
