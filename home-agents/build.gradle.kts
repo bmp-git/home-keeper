@@ -4,7 +4,7 @@ version = "1.0"
 val masPath = "homeAgents.mas2j"
 
 plugins {
-    java
+    scala
 }
 
 task<JavaExec>("run") {
@@ -17,6 +17,7 @@ task<JavaExec>("run") {
 
 repositories {
     mavenCentral()
+    jcenter()
     maven("http://jacamo.sourceforge.net/maven2")
     maven("https://jade.tilab.com/maven")
 }
@@ -30,10 +31,13 @@ sourceSets {
 }
 
 dependencies {
+    implementation("org.scala-lang:scala-library:2.12.11")
+    //JSON
     implementation("org.jason-lang", "jason", "2.5-SNAPSHOT")
-    testImplementation("junit", "junit", "4.12")
-}
 
-configure<JavaPluginConvention> {
-    sourceCompatibility = JavaVersion.VERSION_1_8
+    //JSON
+    implementation("com.typesafe.play", "play-json_2.12", "2.8.1")
+
+    //HTTP client
+    implementation("com.softwaremill.sttp.client","core_2.12", "2.1.1")
 }
