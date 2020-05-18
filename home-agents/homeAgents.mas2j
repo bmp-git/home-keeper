@@ -1,0 +1,12 @@
+MAS homeAgents {
+
+	infrastructure: Centralised // no distribution, the whole MAS runs in the same host
+
+	environment: env.HomeEnvironment()
+
+	agents: // which agents partecipates the MAS?
+		helloworld helloworld_agent;
+
+	aslSourcePath: // where to find agents' source code
+		"src/main/asl";
+}
