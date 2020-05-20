@@ -1,57 +1,79 @@
 <template>
   <v-container fluid>
     <v-row align="start" justify="start">
-      <v-col cols="9">
+      <v-col cols="8">
         <FloorSelector
           :selected-floor-index.sync="selectedFloorIndex"
           :floor-names="floors.map(f => f.name)"
         ></FloorSelector>
+      </v-col>
+      <v-col cols="1" align="end" justify="end">
+        <v-btn @click="toggleSvg()" :disabled="disableToggleSvg">
+          {{showSvg ? "Hide map" : "Show map"}}
+        </v-btn>
       </v-col>
       <v-col cols="3">
         <UsersList :users="usersNames"></UsersList>
       </v-col>
     </v-row>
     <v-row>
-      <v-col cols="9">
-        <div
-          v-for="(floor, index) in floors"
-          :key="floor.name"
-          :ref="'obj_' + index"
-          :id="'obj_' + index"
-          class="clickable"
-          v-html="floor.svg"
-          :hidden="selectedFloorIndex !== index"
-        ></div>
+      <transition name="custom-transition" enter-active-class="animate__animated animate__bounceInLeft" leave-active-class="animate__animated animate__bounceOutLeft">
+        <v-col cols="9" v-show="showSvg">
+          <div
+            v-for="(floor, index) in floors"
+            :key="floor.name"
+            :ref="'obj_' + index"
+            :id="'obj_' + index"
+            class="clickable"
+            v-html="floor.svg"
+            :hidden="selectedFloorIndex !== index"
+          ></div>
+        </v-col>
+      </transition>
+      <transition name="custom-transition" enter-active-class="animate__animated animate__bounceIn" leave-active-class="animate__animated animate__bounceOut">
+      <v-col v-show="showCards">
+        <EntitiesViewer
+          ref="entitiesViewer"
+          :selected-floor-index="selectedFloorIndex"
+        ></EntitiesViewer>
       </v-col>
-      <v-col cols="3">
-        <EntitiesViewer ref="entitiesViewer" :selected-floor-index="selectedFloorIndex"></EntitiesViewer>
-      </v-col>
+      </transition>
     </v-row>
     <Tooltip ref="tooltip"></Tooltip>
   </v-container>
 </template>
 
 <script lang="ts">
-import { Component, Vue } from "vue-property-decorator";
+import { Component, Vue, Watch } from "vue-property-decorator";
 import FloorSelector from "@/components/FloorSelector.vue";
 import Tooltip from "@/components/Tooltip.vue";
 import EntitiesViewer from "@/components/EntitiesViewer.vue";
 import $ from "jquery";
 import { getSVG } from "@/Api";
 import UsersList from "@/components/UsersList.vue";
+import { flatHome } from "@/Utils";
 
-@Component({ components: { FloorSelector, Tooltip, EntitiesViewer, UsersList } })
+@Component({
+  components: { FloorSelector, Tooltip, EntitiesViewer, UsersList }
+})
 export default class Home extends Vue {
-  private usersNames: string[] = this.$store.state.homeTopology.users.map((u: any) => u.name);
+  private usersNames: string[] = this.$store.state.homeTopology.users.map(
+    (u: any) => u.name
+  );
 
-  private floors = this.$store.state.homeTopology.floors.map((f: { name: string, level: number }) => ({
-    name: f.name,
-    level: f.level,
-    svg: ""
-  }));
+  private floors = this.$store.state.homeTopology.floors.map(
+    (f: { name: string; level: number }) => ({
+      name: f.name,
+      level: f.level,
+      svg: ""
+    })
+  );
 
   private selectedFloorIndex = this.floors.findIndex((f: any) => f.level === 0);
   private tooltip: any = null;
+  private showSvg = true;
+  private showCards = true;
+  private disableToggleSvg = false;
 
   mounted() {
     $(".clickable").on("click", "path", event =>
@@ -70,17 +92,39 @@ export default class Home extends Vue {
     this.tooltip = this.$refs["tooltip"] as any;
   }
 
+  private toggleSvg() {
+    this.disableToggleSvg = true;
+    const opening = !this.showSvg;
+
+    this.showCards = !this.showCards;
+    if (!opening) {
+      this.showSvg = !this.showSvg;
+    }
+
+    setTimeout(() => {
+      if (opening) {
+        this.showSvg = !this.showSvg;
+      }
+      this.showCards = !this.showCards;
+      this.disableToggleSvg = false;
+    }, 1000)
+  }
+
   private onPathSelect(path: any) {
     console.log("Path clicked!");
     const id = $(path).attr("data-bindid");
     if (id == null) {
       return;
     }
-    (this.$refs['entitiesViewer'] as any).addEntity(this.selectedFloorIndex, id, true);
+    (this.$refs["entitiesViewer"] as any).addEntity(
+      this.selectedFloorIndex,
+      id,
+      true
+    );
   }
 
   private pinUserCard(userName: string) {
-    (this.$refs['entitiesViewer'] as any).addUser(userName,true);
+    (this.$refs["entitiesViewer"] as any).addUser(userName, true);
   }
 
   private onPathEnter(path: any) {
@@ -124,9 +168,70 @@ export default class Home extends Vue {
       .find("title")
       .remove();
   }
+
+  @Watch("$store.state.homeProperties", { deep: true })
+  private onHomePropertiesChange() {
+    this.updateSvgContent();
+  }
+
+  private updateSvgContent() {
+    const floor = this.$store.state.homeProperties.floors[
+      this.selectedFloorIndex
+    ].name;
+    const home = flatHome(this.$store.state.homeProperties);
+    const entities = home.filter((h: any) => h.floor === floor);
+
+    entities.forEach((e: any) => {
+      const svgEntity = $(`#obj_${this.selectedFloorIndex}`).find(`path[data-bindid=${$.escapeSelector(e.entity.name)}]`);
+      if (svgEntity[0]) {
+        this.cleanSvgStyle(svgEntity);
+        e.entity.properties.forEach((p: any) => {
+          switch (p.semantic) {
+            case "is_open":
+              svgEntity.addClass(p.value ? "is_open" : "is_closed");
+              break;
+            case "light_on":
+              svgEntity.addClass(p.value ? "is_light_on" : "is_light_off");
+              break;
+          }
+        });
+      }
+    });
+  }
+
+  private cleanSvgStyle(svgEntity: any) {
+    svgEntity.removeClass([
+      "is_open",
+      "is_closed",
+      "is_light_on",
+      "is_light_off"
+    ]);
+  }
 }
 </script>
 
 <style>
+.is_open {
+  fill: orange !important;
+  fill-opacity: 0.3 !important;
+}
 
+.is_closed {
+  fill: green !important;
+  fill-opacity: 0.3 !important;
+}
+
+.is_light_on {
+  fill: rgba(255, 255, 0, 0.99) !important;
+  fill-opacity: 0.3 !important;
+}
+
+.is_light_off {
+  fill: rgba(9, 9, 8, 0.39) !important;
+  fill-opacity: 0.5 !important;
+}
+
+.entity_card {
+  width: 350px;
+}
 </style>

@@ -33,7 +33,7 @@
             </td>
           </template>
           <template v-else-if="prop['content-type'] === 'application/json'">
-              <template v-if="prop['value']">
+              <template v-if="prop['value'] !== undefined">
                 <td> {{prop.name + ": "}}</td>
                 <td> {{prop.value}}</td>
               </template>

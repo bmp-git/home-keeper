@@ -36,7 +36,6 @@ export default class EntitiesViewer extends Vue {
   private users: { name: string }[] = [];
 
 
-
   private addEntity(floor: number, entityId: string) {
     addToArrayIfNot(this.entities, e => e.entityId === entityId && e.floor === floor, {floor : floor, entityId: entityId})
   }
@@ -64,4 +63,12 @@ export default class EntitiesViewer extends Vue {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+.entity_viewer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  align-items: flex-start;
+  align-content: flex-end;
+}
+</style>
