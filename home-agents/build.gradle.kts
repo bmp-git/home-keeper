@@ -1,7 +1,7 @@
 group = "org.bmp"
 version = "1.0"
 
-val masPath = "homeAgents.mas2j"
+val masPath = "homeAgents.jcm"
 
 plugins {
     scala
@@ -10,7 +10,7 @@ plugins {
 task<JavaExec>("run") {
     group = "run"
     classpath = sourceSets.getByName("main").runtimeClasspath
-    main = "jason.infra.centralised.RunCentralisedMAS"
+    main = "jacamo.infra.JaCaMoLauncher"
     args(masPath)
     standardInput = System.`in`
 }
@@ -33,7 +33,8 @@ sourceSets {
 dependencies {
     implementation("org.scala-lang:scala-library:2.12.11")
     //JSON
-    implementation("org.jason-lang", "jason", "2.5-SNAPSHOT")
+    // implementation("org.jason-lang", "jason", "2.5-SNAPSHOT")
+    implementation("org.jacamo", "jacamo", "0.8")
 
     //JSON
     implementation("com.typesafe.play", "play-json_2.12", "2.8.1")

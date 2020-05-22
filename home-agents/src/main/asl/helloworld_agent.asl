@@ -13,10 +13,27 @@ action_name(e(_,name(Name),_,_), Name).
 /* Plans */
 
 +!start : true <-
-    .wait(home_actions([A|AS]));
-    ?action_name(A, Name);
-    ?home_properties([P|Ps]);
-    ?property_value(P, Value);
-	.print(Name);
-	.print(Value)
-	!start.
+     println("Hello, world!");
+     makeArtifact("creator", "env.CreatorArtifact", [], H);
+     create;
+
+     //.findall(Id, lookupArtifactByType("env.FloorArtifact", Id), Ids);
+
+     lookupArtifactByType("env.FloorArtifact", Id);
+     focus(Id);
+     svg.
+
+
+/*     makeArtifact("a0", "env.SampleArtifact2", [], H2);
+     println(H1);
+     println(H2);
+     focus(H1);
+     ?task(X);
+     println(X);
+     my_op;
+     ?task(Y);
+     println(Y);
+     lookupArtifact("sam", Id);
+     focus(Id);
+     ?asd(K);
+     println(K).*/

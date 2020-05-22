@@ -1,0 +1,11 @@
+mas homeAgents {
+
+    // no distribution, the whole MAS runs in the same host
+	// infrastructure: Centralised
+
+	//environment: c4jason.CartagoEnvironment
+
+	agent helloworld: helloworld_agent.asl
+
+	asl-path: "src/main/asl"
+}
