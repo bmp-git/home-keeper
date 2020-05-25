@@ -1,13 +1,12 @@
 package env
 
-import cartago.{Artifact}
+import cartago.OPERATION
+import model.Room
 
-class RoomArtifact extends Artifact {
-  import cartago.OPERATION
+class RoomArtifact extends DigitalTwinArtifact {
 
-  @OPERATION def init(): Unit = {
-
+  @OPERATION def init(room: Room): Unit = {
+    super.dtInit(room)
+    println(s"Room artifact ${this.getId.getName} created!")
   }
-
-
 }

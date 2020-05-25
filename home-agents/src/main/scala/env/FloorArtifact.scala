@@ -1,12 +1,12 @@
 package env
 
-import cartago.{Artifact, OPERATION}
-import play.api.libs.json.{JsObject, JsValue}
+import cartago.OPERATION
+import model.Floor
 
 class FloorArtifact extends DigitalTwinArtifact {
 
-  @OPERATION override def init(floor: JsObject): Unit = {
-    super.init(floor)
+  @OPERATION def init(floor: Floor): Unit = {
+    super.dtInit(floor)
     println(s"Floor artifact ${this.getId.getName} created!")
   }
 }

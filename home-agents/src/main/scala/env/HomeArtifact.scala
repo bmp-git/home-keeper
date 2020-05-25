@@ -1,12 +1,12 @@
 package env
 
 import cartago.OPERATION
-import play.api.libs.json.JsObject
+import model.Home
 
 class HomeArtifact extends DigitalTwinArtifact {
 
-  @OPERATION override def init(home: JsObject): Unit = {
-    super.init(home)
+  @OPERATION def init(home: Home): Unit = {
+    super.dtInit(home)
     println(s"Home artifact created!")
   }
 
