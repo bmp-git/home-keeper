@@ -10,12 +10,25 @@
 +!start : true <-
      println("Hello, world!");
      .wait({ +world_created[source(creator)] });
-     lookupArtifact("firstfloor", F);
+     lookupArtifact("ble_artifact", F);
      focus(F);
      !work.
 
 +!work : true <-
-     ?time(T, S);
+    ?receivers(Data);
+    .println(Data);
+    ?time_now(Now);
+    for( .member(userdata(mario, Infos), Data)) {
+       for( .member(info(Room, Time, Rssi), Infos)) {
+               DT=Now-Time;
+               .println(DT)
+           }
+    }.
+
+/*
++!work : true <-
+     ?property(N, T, S);
      .println(T);
      .wait(1000);
-     !work.
+     loll;
+     !work.*/

@@ -52,54 +52,90 @@ object Unmarshallers {
 
   def dtFields: JsonUnmarshaller[(String, Set[Property], Set[Action])] = data =>
     for (name <- str("name")(data);
-         actions <- arrayOf[Action]("actions").apply(data);
-         properties <- arrayOf[Property]("properties").apply(data))
+         actions <- arrayOf[Action]("actions")(actionUnmarshaller)(data);
+         properties <- arrayOf[Property]("properties")(anyPropertyUnmarshaller).apply(data))
       yield (name, properties.toSet, actions.toSet)
 
-  implicit def propertyReads: JsonUnmarshaller[Property] = data =>
+  def anyPropertyUnmarshaller: JsonUnmarshaller[Property] =
+    first(Seq(
+      bleReceiverPropertyUnmarshaller,
+      timePropertyUnmarshaller,
+      unknownPropertyUnmarshaller))
+
+  def beaconDataUnmarshaller: JsonUnmarshaller[BeaconData] = data =>
+    for (name <- str("user")(data);
+         rssi <- int("rssi")(data);
+         last_seen <- long("last_seen")(data))
+      yield BeaconData(name, last_seen, rssi)
+  
+  def beaconDataSeqUnmarshaller: JsonUnmarshaller[Seq[BeaconData]] = {
+    case JsArray(value) =>
+      Some(value.map(beaconDataUnmarshaller).collect {
+        case Some(v) => v
+      })
+    case _ => None
+  }
+
+  def bleReceiverPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
+    for (name <- str("name")(data);
+         "ble_receiver" <- str("semantic")(data);
+         value <- beaconDataSeqUnmarshaller(data))
+      yield Property(name, value, "ble_receiver")
+
+  def timePropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
+    for (name <- str("name")(data);
+         "time" <- str("semantic")(data);
+         value <- str("value")(data)) yield Property(name, value, "time")
+
+  def unknownPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
     for (name <- str("name")(data);
          value <- anyStr("value")(data);
          semantic <- str("semantic")(data)) yield Property(name, value, semantic)
 
-  implicit def actionReads: JsonUnmarshaller[Action] = data =>
+  def actionUnmarshaller: JsonUnmarshaller[Action] = data =>
     for (name <- str("name")(data);
          semantic <- str("semantic")(data)) yield Action(name, semantic)
 
-  implicit def doorReads: JsonUnmarshaller[Door] = data =>
-    for ((name, properties, actions) <- dtFields(data)) yield Door(name, properties, actions)
+  def doorUnmarshaller(floorName: String, roomName: String): JsonUnmarshaller[Door] = data =>
+    for ((name, properties, actions) <- dtFields(data)) yield Door(name, properties, actions,
+      s"/api/home/floors/$floorName/rooms/$roomName/doors/$name")
 
-  implicit def windowReads: JsonUnmarshaller[Window] = data =>
-    for ((name, properties, actions) <- dtFields(data)) yield Window(name, properties, actions)
+  def windowUnmarshaller(floorName: String, roomName: String): JsonUnmarshaller[Window] = data =>
+    for ((name, properties, actions) <- dtFields(data)) yield Window(name, properties, actions,
+      s"/api/home/floors/$floorName/rooms/$roomName/windows/$name")
 
-  implicit def roomReads: JsonUnmarshaller[Room] = data =>
+  def roomUnmarshaller(floorName: String): JsonUnmarshaller[Room] = data =>
     for ((name, properties, actions) <- dtFields(data);
-         doors <- arrayOf[Door]("doors").apply(data);
-         windows <- arrayOf[Window]("windows").apply(data))
-      yield Room(name, properties, actions, doors.toSet, windows.toSet)
+         doors <- arrayOf[Door]("doors")(doorUnmarshaller(floorName, name))(data);
+         windows <- arrayOf[Window]("windows")(windowUnmarshaller(floorName, name))(data))
+      yield Room(name, properties, actions, doors.toSet, windows.toSet, s"/api/home/floors/$floorName/rooms/$name")
 
-  implicit def floorReads: JsonUnmarshaller[Floor] = data =>
+  def floorUnmarshaller: JsonUnmarshaller[Floor] = data =>
     for ((name, properties, actions) <- dtFields(data);
-         rooms <- arrayOf[Room]("rooms").apply(data);
+         rooms <- arrayOf[Room]("rooms")(roomUnmarshaller(name))(data);
          level <- int("level")(data))
-      yield Floor(name, properties, actions, rooms.toSet, level)
+      yield Floor(name, properties, actions, rooms.toSet, level, s"/api/home/floors/$name")
 
-  implicit def userReads: JsonUnmarshaller[User] = data =>
+  def userUnmarshaller: JsonUnmarshaller[User] = data =>
     for ((name, properties, actions) <- dtFields(data))
-      yield User(name, properties, actions)
+      yield User(name, properties, actions, s"/api/home/users/$name")
 
   def homeParser: JsonUnmarshaller[Home] = data =>
     for ((name, properties, actions) <- dtFields(data);
-         floors <- arrayOf[Floor]("floors").apply(data);
-         users <- arrayOf[User]("users").apply(data))
-      yield Home(name, properties, actions, floors.toSet, users.toSet)
+         floors <- arrayOf[Floor]("floors")(floorUnmarshaller)(data);
+         users <- arrayOf[User]("users")(userUnmarshaller)(data))
+      yield Home(name, properties, actions, floors.toSet, users.toSet, "/api/home")
 }
 
-
-case class Property(name: String, value: String, semantic: String)
+case class Property(name: String, value: AnyRef, semantic: String)
 
 case class Action(name: String, semantic: String)
 
-trait DigitalTwin {
+trait Remote {
+  def url: String
+}
+
+trait DigitalTwin extends Remote {
   def name: String
 
   def properties: Set[Property]
@@ -109,23 +145,26 @@ trait DigitalTwin {
 
 trait Gateway extends DigitalTwin
 
-case class Door(name: String, properties: Set[Property], actions: Set[Action]) extends Gateway
+case class Door(name: String, properties: Set[Property], actions: Set[Action], url: String) extends Gateway
 
-case class Window(name: String, properties: Set[Property], actions: Set[Action]) extends Gateway
+case class Window(name: String, properties: Set[Property], actions: Set[Action], url: String) extends Gateway
 
-case class Room(name: String, properties: Set[Property], actions: Set[Action], doors: Set[Door], windows: Set[Window]) extends DigitalTwin
+case class Room(name: String, properties: Set[Property], actions: Set[Action], doors: Set[Door], windows: Set[Window], url: String) extends DigitalTwin
 
-case class Floor(name: String, properties: Set[Property], actions: Set[Action], rooms: Set[Room], level: Int) extends DigitalTwin
+case class Floor(name: String, properties: Set[Property], actions: Set[Action], rooms: Set[Room], level: Int, url: String) extends DigitalTwin
 
-case class User(name: String, properties: Set[Property], actions: Set[Action]) extends DigitalTwin
+case class User(name: String, properties: Set[Property], actions: Set[Action], url: String) extends DigitalTwin
 
-case class Home(name: String, properties: Set[Property], actions: Set[Action], floors: Set[Floor], users: Set[User]) extends DigitalTwin {
+case class Home(name: String, properties: Set[Property], actions: Set[Action], floors: Set[Floor], users: Set[User], url: String) extends DigitalTwin {
   def zippedRooms: Set[(Floor, Room)] = floors.flatMap(f => f.rooms.map(r => (f, r)))
-  def zippedDoors: Set[(Floor, Room, Door)] =  zippedRooms.flatMap {
+
+  def zippedDoors: Set[(Floor, Room, Door)] = zippedRooms.flatMap {
     case (floor, room) => room.doors.map(d => (floor, room, d))
   }
-  def zippedWindows: Set[(Floor, Room, Window)] =  zippedRooms.flatMap {
+
+  def zippedWindows: Set[(Floor, Room, Window)] = zippedRooms.flatMap {
     case (floor, room) => room.windows.map(w => (floor, room, w))
   }
 }
 
+case class BeaconData(user: String, last_seen: Long, rssi: Int)

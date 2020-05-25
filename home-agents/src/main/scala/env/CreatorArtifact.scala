@@ -1,13 +1,13 @@
 package env
 
 import cartago.{Artifact, ArtifactConfig, OPERATION}
+import config.Server
 import model.{DigitalTwin, Unmarshallers}
 import play.api.libs.json.{JsValue, Json}
 import sttp.client.quick._
 
-
 class CreatorArtifact extends Artifact {
-  private val apiUri = uri"http://127.0.0.1:8090/api/home"
+  private val apiUri = uri"${Server.uri}/api/home"
   private var json: JsValue = _
 
   @OPERATION def init(): Unit = {
@@ -22,6 +22,7 @@ class CreatorArtifact extends Artifact {
         def execUpdate(name: String, dt: DigitalTwin): Unit = execLinkedOp(lookupArtifact(name), "update", dt)
 
         execUpdate("home", home)
+        execUpdate("ble_artifact", home)
         home.floors.foreach(floor => execUpdate(floor.name, floor))
         home.users.foreach(user => execUpdate(user.name, user))
         home.zippedRooms.foreach({ case (floor, room) => execUpdate(s"${floor.name}_${room.name}", room) })
@@ -36,6 +37,7 @@ class CreatorArtifact extends Artifact {
     this.json = Json.parse(response.body)
     Unmarshallers.homeParser(json) match {
       case Some(home) =>
+        makeArtifact("ble_artifact", "env.BleReceiversArtifact", new ArtifactConfig(home))
         makeArtifact("pages", "env.YellowPagesArtifact", new ArtifactConfig(home))
         makeArtifact("home", "env.HomeArtifact", new ArtifactConfig(home))
         home.floors.foreach(floor => makeArtifact(floor.name, "env.FloorArtifact", new ArtifactConfig(floor)))
