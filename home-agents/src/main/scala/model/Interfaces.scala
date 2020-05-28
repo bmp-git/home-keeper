@@ -79,7 +79,8 @@ object Unmarshallers {
   def bleReceiverPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
     for (name <- str("name")(data);
          "ble_receiver" <- str("semantic")(data);
-         value <- beaconDataSeqUnmarshaller(data))
+         valueData <- json("value")(data);
+         value <- beaconDataSeqUnmarshaller(valueData))
       yield Property(name, value, "ble_receiver")
 
   def timePropertyUnmarshaller: JsonUnmarshaller[Property] = data =>

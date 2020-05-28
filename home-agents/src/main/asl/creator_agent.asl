@@ -10,7 +10,16 @@
 +!initialize : true <-
     makeArtifact("creator", "env.CreatorArtifact", [], H);
     create;
-    .send(helloworld, tell, world_created);
+    lookupArtifact("pages", YPID);
+    focus(YPID);
+    ?usersNames(Users);
+    for( .member(User, Users)) {
+       .create_agent(User, "user_agent.asl");
+       .wait(500)
+       .send(User, tell, user(User));
+    };
+    .wait(500);
+    .broadcast(tell, world_created);
     !start.
 
 +!start : true <-

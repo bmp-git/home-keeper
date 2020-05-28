@@ -17,7 +17,7 @@ import model.ble.{BeaconData, RawBeaconData}
 import model.mhz433.{OpenCloseData, Raw433MhzData}
 import sources.{HttpSource, MqttSource}
 import spray.json.DefaultJsonProtocol._
-import spray.json.JsonFormat
+import spray.json.{JsObject, JsString, JsValue, JsonFormat}
 import utils.Lazy
 import utils.RichTrySource._
 
@@ -29,10 +29,53 @@ object ConfigDsl {
 
   val RESOURCE_FOLDER = "resources"
 
+  sealed trait UserPosition
+  case object Unknown extends UserPosition
+  case object AtHome extends UserPosition
+  case object Away extends UserPosition
+  case class InRoom(floorName: String, roomName: String) extends UserPosition
+
+  /**
+   * {
+   *    "type" : "unknown"
+   *    "floor" : "floor" ?
+   *    "room" : "room" ?
+   * }
+   */
+  def userPositionFormat: JsonFormat[UserPosition] = {
+    new JsonFormat[UserPosition] {
+      override def read(json: JsValue): UserPosition = json match {
+        case JsObject(fields) => fields("type") match {
+          case JsString("unknown") => Unknown
+          case JsString("at_home") => AtHome
+          case JsString("away") => Away
+          case JsString("in_room") => (fields("floor"), fields("room")) match {
+            case (JsString(floorName), JsString(roomName)) => InRoom(floorName, roomName)
+          }
+        }
+      }
+
+      override def write(obj: UserPosition): JsValue = obj match {
+        case Unknown => JsObject("type" -> JsString("unknown"))
+        case AtHome => JsObject("type" -> JsString("at_home"))
+        case Away => JsObject("type" -> JsString("away"))
+        case InRoom(floorName, roomName) => JsObject("type" -> JsString("in_room"), "floor" -> JsString(floorName), "room" -> JsString(roomName))
+      }
+    }
+  }
+
+  def userPositionSchema: json.Schema[UserPosition] = {
+    json.Schema.`object`.apply(Set[json.Schema.`object`.Field[_]](
+      json.Schema.`object`.Field("type", json.Json.schema[String], required = true),
+      json.Schema.`object`.Field("floor", json.Json.schema[String], required = false),
+      json.Schema.`object`.Field("room", json.Json.schema[String], required = false)
+    ))
+  }
+
   /** TOPOLOGY DSL **/
   def user(name: String): UserFactory = UserFactory(name)
     .withAttribute(file_attr("avatar", s"$RESOURCE_FOLDER/${name}_avatar.jpg", MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
-    .withAttribute(var_attr("position", "Away", "user_position")(implicitly[JsonFormat[String]], json.Json.schema[String]))
+    .withAttribute(var_attr[UserPosition]("position", Unknown, "user_position")(userPositionFormat, userPositionSchema))
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
