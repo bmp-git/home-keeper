@@ -1,7 +1,9 @@
+import akka.http.scaladsl.model.DateTime
 import akka.stream.scaladsl.Flow
 import config.factory.property.{JsonPropertyFactory, MixedReplaceVideoPropertyFactory}
 import imgproc.Flows.{broadcast2TransformAndMerge, frameToBufferedImageImageFlow, frameToIplImageFlow, iplImageToFrameImageFlow}
 import model.Home
+import model.ble.BeaconData
 import org.bytedeco.opencv.opencv_core.IplImage
 import sources.FrameSource
 import webserver.RouteGenerator
@@ -27,15 +29,15 @@ object Main extends App {
   val luigi = user("luigi")
 
 
-  val localStream = FrameSource.video("http://192.168.1.237/video.cgi").via(motion_detection)
+  /*val localStream = FrameSource.video("http://192.168.1.237/video.cgi").via(motion_detection)
   val localVideo = MixedReplaceVideoPropertyFactory("video", () => localStream)
 
   val remoteStream = FrameSource.video("http://185.39.101.26/mjpg/video.mjpg").via(motion_detection)
-  val remoteVideo = MixedReplaceVideoPropertyFactory("video", () => remoteStream)
+  val remoteVideo = MixedReplaceVideoPropertyFactory("video", () => remoteStream)*/
 
-  val external = room().withProperties(remoteVideo)
+  val external = room()/*.withProperties(remoteVideo)*/
   val cucina = room()
-  val cameraDaLetto = room().withProperties(localVideo)
+  val cameraDaLetto = room()/*.withProperties(localVideo)*/
   val corridoio = room()
   val bagnoRosa = room()
   val bagnoVerde = room().withProperties(JsonPropertyFactory.dynamic[Int]("FailedProp", () => Failure(new Exception("failed")), "nothing"))
@@ -46,10 +48,18 @@ object Main extends App {
   val disimpegno = room()
   val bagnoMarrone = room()
 
+  import model.ble.Formats._
+  val fixedBeacon1 = JsonPropertyFactory.static("ble_receiver",
+    Seq(BeaconData("mario", DateTime.now, -23),
+      BeaconData("luigi", DateTime.now, -43)), "ble_receiver")
+  val fixedBeacon2 = JsonPropertyFactory.static("ble_receiver",
+    Seq(BeaconData("mario", DateTime.now, -13),
+      BeaconData("luigi", DateTime.now, -123)), "ble_receiver")
+
   val myHome = home("home") (
-    floor("firstfloor", 0).withProperties(time_now(), tag("Tag", 10)) (
-      cucina,
-      cameraDaLetto,
+    floor("firstfloor", 0).withProperties(time_now(), tag("Tag", 10)).withAction(trig("loll")) (
+      cucina.withProperties(fixedBeacon1),
+      cameraDaLetto.withProperties(fixedBeacon2),
       corridoio,
       bagnoRosa,
       bagnoVerde,

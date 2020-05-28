@@ -10,7 +10,7 @@ object Formats {
   implicit object BeaconDataJsonFormat extends RootJsonFormat[BeaconData] {
     def write(data: BeaconData): JsObject = JsObject(
       "rssi" -> JsNumber(data.rssi),
-      "user" -> JsString(data.user.name),
+      "user" -> JsString(data.userName),
       "last_seen" -> JsNumber(data.lastSeen.clicks),
     )
 

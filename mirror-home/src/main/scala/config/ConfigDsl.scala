@@ -77,8 +77,8 @@ object ConfigDsl {
     json_from_mqtt[RawBeaconData](s"scanner/$receiverMac/ble").ignoreFailures.mapValue(receivedRaw => {
       beacons.value.find(_.mac == receivedRaw.addr) match {
         case Some(beacon) if beacon.validate(receivedRaw.advData) =>
-          val beaconData = BeaconData(beacon.attachedTo, DateTime.now, receivedRaw.rssi)
-          container = container.addOrUpdate(beaconData.user.name -> beaconData)
+          val beaconData = BeaconData(beacon.attachedTo.name, DateTime.now, receivedRaw.rssi)
+          container = container.addOrUpdate(beaconData.userName -> beaconData)
         case _ => //nothing
       }
       container.toValueSeq
