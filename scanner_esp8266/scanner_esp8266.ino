@@ -1,12 +1,15 @@
 #include <ESP8266WiFi.h>
+#include <RCSwitch.h>
 #include <map>
 #include <array>
 #include "sdk_structs.h"
 #include "ieee80211_structs.h"
 
 #define MAX_CHANNEL 14
-#define WINDOW_TIME_MS 200
-#define SEND_TIME_MS 5000
+#define WINDOW_WIFI_TIME_MS 200
+#define SEND_WIFI_TIME_MS 5000
+
+RCSwitch rf433 = RCSwitch();
 
 typedef std::array<uint8_t, 6> mac_addr_t;
 std::map<mac_addr_t, int8_t> mac_map;
@@ -44,17 +47,19 @@ void setup() {
   WiFi.disconnect();
   wifi_set_promiscuous_rx_cb(wifi_sniffer_packet_handler);
   wifi_promiscuous_enable(1);
+  rf433.enableReceive(2);
 }
 
 void loop() { 
    delay(1);
    counter++;
-   if (counter % WINDOW_TIME_MS == 0) { 
+   if (counter % WINDOW_WIFI_TIME_MS == 0) { 
      channel++;
      channel = channel > MAX_CHANNEL ? 1 : channel; 
      wifi_set_channel(channel);
    }
-   if (counter % SEND_TIME_MS == 0) { 
+   
+   if (counter % SEND_WIFI_TIME_MS == 0) { 
      free_to_write = 0;
      Serial.print("{\"type\":\"wifi\",\"data\":[");
      int first = 1;
@@ -69,5 +74,12 @@ void loop() {
      mac_map.clear();
      free_to_write = 1;
    }
+
+   if (rf433.available()) {
+      Serial.print("{\"type\":\"433\",\"data\":");
+      Serial.printf("{\"code\":\"%06x\",\"pulselength\":%u,\"proto\":%u}", rf433.getReceivedValue(), rf433.getReceivedDelay(), rf433.getReceivedProtocol());
+      Serial.println("}");
+      rf433.resetAvailable();
+   }   
 
 } 
