@@ -11,14 +11,18 @@ import config.factory.action.{ActionFactory, FileWriterActionFactory, JsonAction
 import config.factory.ble.BleBeaconFactory
 import config.factory.property.{FileReaderPropertyFactory, JsonPropertyFactory, PropertyFactory}
 import config.factory.topology._
-import model.Units.MacAddress
+import model.Units.{MacAddress, Rssi}
 import model._
+import model.ble.Formats._
 import model.ble.{BeaconData, RawBeaconData}
 import model.mhz433.{OpenCloseData, Raw433MhzData}
+import model.wifi.Formats._
+import model.wifi.{TimedWifiCaptureData, WifiCaptureData}
 import sources.{HttpSource, MqttSource}
 import spray.json.DefaultJsonProtocol._
 import spray.json.{JsObject, JsString, JsValue, JsonFormat}
 import utils.Lazy
+import utils.RichMap._
 import utils.RichTrySource._
 
 import scala.concurrent.duration._
@@ -113,8 +117,6 @@ object ConfigDsl {
   /** PREDEFINED STREAM BASED PROPERTIES **/
   def ble_receiver(name: String, receiverMac: MacAddress)
                   (implicit beaconsFactory: Seq[BleBeaconFactory], brokerConfig: BrokerConfig): JsonPropertyFactory[Seq[BeaconData]] = {
-    import model.ble.Formats._
-    import utils.RichMap._
     var container = Map[String, BeaconData]() //context
     val beacons = new Lazy(beaconsFactory.map(_.build())) //in order to call build while building
     json_from_mqtt[RawBeaconData](s"scanner/$receiverMac/ble").ignoreFailures.mapValue(receivedRaw => {
@@ -126,6 +128,16 @@ object ConfigDsl {
       }
       container.toValueSeq
     }) asJsonProperty(name, "ble_receiver", Seq[BeaconData]())
+  }
+
+  def wifi_receiver(name: String, receiverMac: MacAddress)
+                   (implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Seq[TimedWifiCaptureData]] = {
+    json_from_mqtt[Seq[WifiCaptureData]](s"scanner/$receiverMac/wifi").ignoreFailures.scanValue(Seq[TimedWifiCaptureData]()) {
+      case (data, captures) =>
+        captures.foldLeft(data) {
+          case (data, capture) => data.filter(_.mac != capture.mac) :+ capture.timed
+        }
+    } asJsonProperty(name, "wifi_receiver", Seq[TimedWifiCaptureData]())
   }
 
   def open_closed(name: String, openCode: Int, closedCode: Int)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[OpenCloseData] = {

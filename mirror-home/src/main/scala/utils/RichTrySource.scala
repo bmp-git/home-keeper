@@ -34,7 +34,7 @@ object RichTrySource {
     def scanValue[B](zero: B)(f: (B, T) => B): Source[Try[B], M] = {
       var r = zero
       source.mapValue(v => {
-        r = f(r, v);
+        r = f(r, v)
         r
       })
     }
