@@ -135,11 +135,11 @@ object ConfigDsl {
     } asJsonProperty(name, "wifi_receiver", Seq[TimedWifiCaptureData]())
   }
 
-  def open_closed(name: String, openCode: String, closedCode: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[OpenCloseData] = {
+  def open_closed_433_mhz(name: String, open_code: String, closed_code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[OpenCloseData] = {
     import model.mhz433.Formats._
     json_from_mqtt[Raw433MhzData]("scanner/+/433").ignoreFailures.collectValue[OpenCloseData]({
-      case data if data.code == openCode => model.mhz433.Open(DateTime.now)
-      case data if data.code == closedCode => model.mhz433.Close(DateTime.now)
+      case data if data.code == open_code => model.mhz433.Open(DateTime.now)
+      case data if data.code == closed_code => model.mhz433.Close(DateTime.now)
     }).asJsonProperty(name, "is_open", model.mhz433.Unknown)
   }
 

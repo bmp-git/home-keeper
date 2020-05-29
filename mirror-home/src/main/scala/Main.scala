@@ -82,7 +82,7 @@ object Main extends App {
     .withUsers(mario, luigi)
 
 
-  door(sala -> external)
+  door(sala -> external).withProperties(open_closed_433_mhz("magneto", open_code = "022623", closed_code = "022629"))
   door(sala -> corridoio)
   door(sala -> cucina)
   door(ripostiglio -> corridoio)
