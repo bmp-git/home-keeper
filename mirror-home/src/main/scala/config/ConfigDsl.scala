@@ -11,7 +11,7 @@ import config.factory.action.{ActionFactory, FileWriterActionFactory, JsonAction
 import config.factory.ble.BleBeaconFactory
 import config.factory.property.{FileReaderPropertyFactory, JsonPropertyFactory, PropertyFactory}
 import config.factory.topology._
-import model.Units.{MacAddress, Rssi}
+import model.Units.MacAddress
 import model._
 import model.ble.Formats._
 import model.ble.{BeaconData, RawBeaconData}
@@ -22,7 +22,6 @@ import sources.{HttpSource, MqttSource}
 import spray.json.DefaultJsonProtocol._
 import spray.json.{JsObject, JsString, JsValue, JsonFormat}
 import utils.Lazy
-import utils.RichMap._
 import utils.RichTrySource._
 
 import scala.concurrent.duration._
@@ -115,28 +114,24 @@ object ConfigDsl {
   def tag[T: JsonFormat](name: String, value: T): JsonPropertyFactory[T] = JsonPropertyFactory.static(name, value, "tag")
 
   /** PREDEFINED STREAM BASED PROPERTIES **/
-  def ble_receiver(name: String, receiverMac: MacAddress)
+  def ble_receiver(name: String, mac: MacAddress)
                   (implicit beaconsFactory: Seq[BleBeaconFactory], brokerConfig: BrokerConfig): JsonPropertyFactory[Seq[BeaconData]] = {
-    var container = Map[String, BeaconData]() //context
     val beacons = new Lazy(beaconsFactory.map(_.build())) //in order to call build while building
-    json_from_mqtt[RawBeaconData](s"scanner/$receiverMac/ble").ignoreFailures.mapValue(receivedRaw => {
-      beacons.value.find(_.mac == receivedRaw.addr) match {
-        case Some(beacon) if beacon.validate(receivedRaw.advData) =>
-          val beaconData = BeaconData(beacon.attachedTo.name, DateTime.now, receivedRaw.rssi)
-          container = container.addOrUpdate(beaconData.userName -> beaconData)
-        case _ => //nothing
+    json_from_mqtt[RawBeaconData](s"scanner/$mac/ble").ignoreFailures.scanValue(Seq[BeaconData]()) {
+      case (data, raw) => beacons.value.find(_.mac == raw.addr) match {
+        case Some(beacon) if beacon.validate(raw.advData) =>
+          val beaconData = BeaconData(beacon.attachedTo.name, DateTime.now, raw.rssi)
+          data.filter(_.userName != beaconData.userName) :+ beaconData
+        case _ => data //ignore since a beacon with this mac is not registered or the validation fails
       }
-      container.toValueSeq
-    }) asJsonProperty(name, "ble_receiver", Seq[BeaconData]())
+    } asJsonProperty(name, "ble_receiver", Seq[BeaconData]())
   }
 
-  def wifi_receiver(name: String, receiverMac: MacAddress)
+  def wifi_receiver(name: String, mac: MacAddress)
                    (implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Seq[TimedWifiCaptureData]] = {
-    json_from_mqtt[Seq[WifiCaptureData]](s"scanner/$receiverMac/wifi").ignoreFailures.scanValue(Seq[TimedWifiCaptureData]()) {
+    json_from_mqtt[Seq[WifiCaptureData]](s"scanner/$mac/wifi").ignoreFailures.scanValue(Seq[TimedWifiCaptureData]()) {
       case (data, captures) =>
-        captures.foldLeft(data) {
-          case (data, capture) => data.filter(_.mac != capture.mac) :+ capture.timed
-        }
+        captures.foldLeft(data) { case (data, capture) => data.filter(_.mac != capture.mac) :+ capture.timed }
     } asJsonProperty(name, "wifi_receiver", Seq[TimedWifiCaptureData]())
   }
 

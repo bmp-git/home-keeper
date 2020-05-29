@@ -1,30 +1,27 @@
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.DateTime
-import akka.stream.scaladsl.Flow
-import config.factory.property.{JsonPropertyFactory, MixedReplaceVideoPropertyFactory}
-import imgproc.Flows.{broadcast2TransformAndMerge, frameToBufferedImageImageFlow, frameToIplImageFlow, iplImageToFrameImageFlow}
-import model.Home
+import akka.stream.ActorMaterializer
+import config.ConfigDsl._
+import config.factory.ble.BleBeaconFactory
+import config.factory.property.JsonPropertyFactory
 import model.ble.BeaconData
-import org.bytedeco.opencv.opencv_core.IplImage
-import sources.FrameSource
+import model.{BrokerConfig, Home}
 import webserver.RouteGenerator
+import webserver.json.JsonModel._
 
+import scala.concurrent.ExecutionContextExecutor
 import scala.io.StdIn
 import scala.util.Failure
 
 object Main extends App {
 
-  import akka.actor.ActorSystem
-  import akka.http.scaladsl.Http
-  import akka.stream.ActorMaterializer
-  import config.ConfigDsl._
-  import imgproc.VideoAnalysis._
-  import webserver.json.JsonModel._
 
-  implicit val system = ActorSystem()
-  implicit val materializer = ActorMaterializer()
-  implicit val executionContext = system.dispatcher
+  implicit val system: ActorSystem = ActorSystem()
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
+  implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-
+  implicit val broker: BrokerConfig = BrokerConfig("127.0.0.1:1883")
   val mario = user("mario")
   val luigi = user("luigi")
 
@@ -35,13 +32,17 @@ object Main extends App {
   val remoteStream = FrameSource.video("http://185.39.101.26/mjpg/video.mjpg").via(motion_detection)
   val remoteVideo = MixedReplaceVideoPropertyFactory("video", () => remoteStream)*/
 
+  implicit val beacons: Seq[BleBeaconFactory] = Seq(
+    ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", mario),
+    ble_beacon("abcdef123456", "not_existing_beacon", luigi))
+
   val external = room()/*.withProperties(remoteVideo)*/
   val cucina = room()
   val cameraDaLetto = room()/*.withProperties(localVideo)*/
   val corridoio = room()
   val bagnoRosa = room()
   val bagnoVerde = room().withProperties(JsonPropertyFactory.dynamic[Int]("FailedProp", () => Failure(new Exception("failed")), "nothing"))
-  val cameraMia = room()
+  val cameraMia = room().withProperties(wifi_receiver("wifi_receiver", mac = "b4e62db21c79"), ble_receiver("ble_receiver", mac ="b4e62db21c79"))
   val ripostiglio = room()
   val sala = room()
 
