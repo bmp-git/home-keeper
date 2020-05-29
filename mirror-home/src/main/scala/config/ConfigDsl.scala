@@ -135,7 +135,7 @@ object ConfigDsl {
     } asJsonProperty(name, "wifi_receiver", Seq[TimedWifiCaptureData]())
   }
 
-  def open_closed(name: String, openCode: Int, closedCode: Int)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[OpenCloseData] = {
+  def open_closed(name: String, openCode: String, closedCode: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[OpenCloseData] = {
     import model.mhz433.Formats._
     json_from_mqtt[Raw433MhzData]("scanner/+/433").ignoreFailures.collectValue[OpenCloseData]({
       case data if data.code == openCode => model.mhz433.Open(DateTime.now)
@@ -245,7 +245,7 @@ object Test extends App {
   val c2 = ble_receiver("ble", "23dadddc2a2d")
   val c3 = ble_receiver("ble", "34dadddc2a2d")
 
-  val p3 = open_closed("magneto", openCode = 123, closedCode = 321)
+  val p3 = open_closed("magneto", openCode = "123", closedCode = "321")
 
   val external = room().withProperties(c1)
   val hallway = room().withProperties(c2)
@@ -281,7 +281,7 @@ object Test extends App {
 
     consumo_garage,
     energia_garage,
-    open_closed("OPENCLOSE", 1, 2)
+    open_closed("OPENCLOSE", "1", "2")
   )
 
 
