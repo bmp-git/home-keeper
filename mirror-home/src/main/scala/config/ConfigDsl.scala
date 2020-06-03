@@ -77,6 +77,10 @@ object ConfigDsl {
     ))
   }
 
+  case class Coordinates(latitude: Double, longitude: Double)
+  implicit def coordinatesFormat: JsonFormat[Coordinates] = jsonFormat2(Coordinates.apply)
+  def location(location: Coordinates): JsonPropertyFactory[Coordinates] = JsonPropertyFactory.static("location", location, "location")
+
   /** TOPOLOGY DSL **/
   def user(firstname: String, surname: String): UserFactory = {
     val user = UserFactory(firstname, surname)

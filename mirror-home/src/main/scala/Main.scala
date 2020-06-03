@@ -87,8 +87,8 @@ object Main extends App {
       .withAction(turn("turnAction"))
   )
     .withAction(turn("siren"))
+    .withProperties(location(Coordinates(44.006235, 12.116960)))
     .withUsers(edobrb, panchh, lory696)
-
 
   door(sala -> external).withProperties(open_closed_433_mhz("magneto", open_code = "022623", closed_code = "022629"))
   door(sala -> corridoio)
