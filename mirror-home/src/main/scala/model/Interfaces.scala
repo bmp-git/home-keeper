@@ -105,7 +105,13 @@ trait DigitalTwin {
   def actions: Set[Action]
 }
 
-trait User extends DigitalTwin
+trait User extends DigitalTwin {
+  def firstname: String
+
+  def surname: String
+
+  override def name: String = s"$firstname$surname".toLowerCase
+}
 
 trait Gateway extends DigitalTwin {
   def rooms: (Room, Room)

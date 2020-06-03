@@ -2,6 +2,7 @@ from locationsharinglib import Service
 from flask import Flask
 import json
 import time
+import sys
 
 def millis():
     return int(round(time.time() * 1000))
@@ -12,11 +13,11 @@ def getPersons():
 
 app = Flask(__name__)
 
-http_server_port = 8086
+http_server_port = int(sys.argv[1])
+google_email = sys.argv[2]
+cookies_file = sys.argv[3]
 time_window_ms = 500
 
-cookies_file = './.google_maps_location_sharing.cookies.bmpprogetti_gmail_com'
-google_email = 'bmpprogetti@gmail.com'
 service = Service(cookies_file=cookies_file, authenticating_account=google_email)
 persons = getPersons()
 last_update_time = millis()

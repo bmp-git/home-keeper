@@ -4,7 +4,6 @@ import akka.Done
 import akka.actor.{ActorSystem, Cancellable}
 import akka.http.scaladsl.model.MediaType.Compressible
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import config.factory.action.{ActionFactory, FileWriterActionFactory, JsonActionFactory}
@@ -20,7 +19,7 @@ import model.wifi.Formats._
 import model.wifi.{TimedWifiCaptureData, WifiCaptureData}
 import sources.{HttpSource, MqttSource}
 import spray.json.DefaultJsonProtocol._
-import spray.json.{JsObject, JsString, JsValue, JsonFormat}
+import spray.json.{JsObject, JsString, JsValue, JsonFormat, RootJsonFormat}
 import utils.Lazy
 import utils.RichTrySource._
 
@@ -32,17 +31,20 @@ object ConfigDsl {
 
   val RESOURCE_FOLDER = "resources"
 
-  sealed trait UserPosition
+  sealed trait UserPosition //TODO: move
   case object Unknown extends UserPosition
+
   case object AtHome extends UserPosition
+
   case object Away extends UserPosition
+
   case class InRoom(floorName: String, roomName: String) extends UserPosition
 
   /**
    * {
-   *    "type" : "unknown"
-   *    "floor" : "floor" ?
-   *    "room" : "room" ?
+   * "type" : "unknown"
+   * "floor" : "floor" ?
+   * "room" : "room" ?
    * }
    */
   def userPositionFormat: JsonFormat[UserPosition] = {
@@ -76,9 +78,11 @@ object ConfigDsl {
   }
 
   /** TOPOLOGY DSL **/
-  def user(name: String): UserFactory = UserFactory(name)
-    .withAttribute(file_attr("avatar", s"$RESOURCE_FOLDER/${name}_avatar.jpg", MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
-    .withAttribute(var_attr[UserPosition]("position", Unknown, "user_position")(userPositionFormat, userPositionSchema))
+  def user(firstname: String, surname: String): UserFactory = {
+    val user = UserFactory(firstname, surname)
+    user.withAttribute(file_attr("avatar", s"$RESOURCE_FOLDER/${user.name}_avatar.jpg", MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
+      .withAttribute(var_attr[UserPosition]("position", Unknown, "user_position")(userPositionFormat, userPositionSchema))
+  }
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
@@ -148,7 +152,26 @@ object ConfigDsl {
       case `caseTrue` => Success(true)
       case `caseFalse` => Success(false)
       case v => Failure(new Exception(s"boolean match error for value $v"))
-    } asJsonProperty (name, semantic)
+    } asJsonProperty(name, semantic)
+
+  case class SmartphoneData(id: String, //TODO: move
+                            picture_url: String,
+                            full_name: String,
+                            nickname: String,
+                            latitude: Double,
+                            longitude: Double,
+                            timestamp: Long,
+                            accuracy: Int,
+                            address: String,
+                            country_code: String,
+                            charging: Boolean,
+                            battery_level: Int)
+
+  implicit val userLocalizationDataFormat: RootJsonFormat[SmartphoneData] = jsonFormat12(SmartphoneData.apply)
+
+  def smartphone(owner: UserFactory, name: String = "smartphone")(implicit config: LocalizationService): JsonPropertyFactory[SmartphoneData] =
+    HttpSource.objects[SmartphoneData](HttpRequest(uri = config.uri(owner.name)), 1.second)
+      .asJsonProperty(name, "smartphone_data")
 
   /** GENERIC PROPERTY UTILS **/
   implicit val system: ActorSystem = ActorSystem()
@@ -185,7 +208,7 @@ object ConfigDsl {
     FileReaderPropertyFactory(name, path, contentType, semantic)
 
   /** ACTIONS **/
-  def json_action[T: JsonFormat : json.Schema](name: String, run: T => Unit, semantic: String) = JsonActionFactory(name, run, semantic)
+  def json_action[T: JsonFormat : json.Schema](name: String, run: T => Unit, semantic: String): JsonActionFactory[T] = JsonActionFactory(name, run, semantic)
 
   def file_writer(name: String, path: String, contentType: ContentType): ActionFactory =
     FileWriterActionFactory(name, path, contentType)
@@ -218,6 +241,8 @@ object ConfigDsl {
     var value: T = initialValue
     (json_property(name, () => value, semantic), json_action[T](name, value = _, "update_" + semantic))
   }
+
+
 }
 
 

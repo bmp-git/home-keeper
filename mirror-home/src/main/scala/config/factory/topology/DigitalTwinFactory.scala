@@ -31,5 +31,5 @@ trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
     this
   }
 
-  def name: String
+  def name: String //TODO: remove?
 }

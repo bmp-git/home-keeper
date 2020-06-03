@@ -6,7 +6,7 @@ import config.ConfigDsl._
 import config.factory.ble.BleBeaconFactory
 import config.factory.property.JsonPropertyFactory
 import model.ble.BeaconData
-import model.{BrokerConfig, Home}
+import model.{BrokerConfig, Home, LocalizationService}
 import webserver.RouteGenerator
 import webserver.json.JsonModel._
 
@@ -22,10 +22,18 @@ object Main extends App {
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
   implicit val broker: BrokerConfig = BrokerConfig("127.0.0.1:1883")
-  val mario = user("mario")
-  val luigi = user("luigi")
+  implicit val localizationService: LocalizationService = LocalizationService(
+    port = 8086,
+    gmail = "bmpprogetti@gmail.com",
+    cookieFile = ".google_maps_cookie")
 
+  val edobrb = user("Edoardo", "Barbieri")
+  val panchh = user("Emanuele", "Pancisi")
+  val lory696 = user("Lorenzo", "Mondani")
 
+  edobrb.withProperties(smartphone(owner = edobrb))
+  panchh.withProperties(smartphone(owner = panchh))
+  lory696.withProperties(smartphone(owner = lory696))
   /*val localStream = FrameSource.video("http://192.168.1.237/video.cgi").via(motion_detection)
   val localVideo = MixedReplaceVideoPropertyFactory("video", () => localStream)
 
@@ -33,8 +41,8 @@ object Main extends App {
   val remoteVideo = MixedReplaceVideoPropertyFactory("video", () => remoteStream)*/
 
   implicit val beacons: Seq[BleBeaconFactory] = Seq(
-    ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", mario),
-    ble_beacon("abcdef123456", "not_existing_beacon", luigi))
+    ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", edobrb),
+    ble_beacon("abcdef123456", "not_existing_beacon", panchh))
 
   val external = room()/*.withProperties(remoteVideo)*/
   val cucina = room()
@@ -79,7 +87,7 @@ object Main extends App {
       .withAction(turn("turnAction"))
   )
     .withAction(turn("siren"))
-    .withUsers(mario, luigi)
+    .withUsers(edobrb, panchh, lory696)
 
 
   door(sala -> external).withProperties(open_closed_433_mhz("magneto", open_code = "022623", closed_code = "022629"))
