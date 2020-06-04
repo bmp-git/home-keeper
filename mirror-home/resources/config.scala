@@ -1,4 +1,4 @@
-implicit val broker: BrokerConfig = BrokerConfig("127.0.0.1:1883")
+implicit val broker: BrokerConfig = BrokerConfig("10.0.0.2:1883")
 implicit val localizationService: LocalizationService = LocalizationService(
   port = 8086,
   gmail = "bmpprogetti@gmail.com",
@@ -27,7 +27,7 @@ val cameraDaLetto = room()/*.withProperties(localVideo)*/
 val corridoio = room()
 val bagnoRosa = room()
 val bagnoVerde = room()
-val cameraMia = room().withProperties(wifi_receiver("wifi_receiver", mac = "b4e62db21c79"), ble_receiver("ble_receiver", mac ="b4e62db21c79"))
+val cameraMia = room().withProperties(wifi_receiver("wifi_receiver", mac = "fcf5c40e2540"), ble_receiver("ble_receiver", mac ="fcf5c40e2540"))
 val ripostiglio = room()
 val sala = room()
 

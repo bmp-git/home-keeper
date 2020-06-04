@@ -16,10 +16,14 @@ home_radius(200).  //meters
      focus(BAID);
      lookupArtifact("house", HAID);
      focus(HAID);
+     lookupArtifact("users_locator", USLO);
+     focus(USLO);
      ?user(Name);
      .concat(Name, "_smartphone", Smartphone);
      lookupArtifact(Smartphone, SAID);
      focus(SAID);
+     ?location(Place);
+     updateUserPosition(Name, Place);
      +status(working);
      !work.
 
@@ -57,17 +61,31 @@ home_radius(200).  //meters
     ?home_location(HomeLat, HomeLon);
     ?time(Time);
     ?smartphone(UserLat, UserLon, GpsTime, Accuracy);
-    Time - GpsTime < 600000;
+    Time - GpsTime < 60000;
     !calculate_gps_distance(HomeLat, HomeLon, UserLat, UserLon, GpsTime, Accuracy).
 
 +!calculate_gps_distance(HomeLat, HomeLon, UserLat, UserLon, GpsTime, Accuracy) :  true <-
     ?home_radius(Radius);
     coordinates.distance(HomeLat, HomeLon, UserLat, UserLon, Distance);
-    Radius >= Distance + Accuracy;
+    !check_distance_and_accuracy(Radius, Distance, Accuracy).
+
++!check_distance_and_accuracy(Radius, Distance, Accuracy): Radius >= Distance + Accuracy <-
     !update_location(at_home).
 
--!calculate_gps_distance(HomeLat, HomeLon, UserLat, UserLon, GpsTime, Accuracy) : true <-
-     !update_location(away).
++!check_distance_and_accuracy(Radius, Distance, Accuracy): Distance >= Radius + Accuracy <-
+    !update_location(away).
+
++!check_distance_and_accuracy(Radius, Distance, Accuracy): Accuracy >= Distance + Radius <-
+    !update_location(unknown).
+
++!check_distance_and_accuracy(Radius, Distance, Accuracy): Distance < Radius <-
+    !update_location(at_home).
+
++!check_distance_and_accuracy(Radius, Distance, Accuracy): Distance >= Radius <-
+    !update_location(away).
+
+-!check_distance_and_accuracy(Radius, Distance, Accuracy) : true <-
+     .println("Error: unexpected location: ", Radius, Distance, Accuracy).
 
 -!check_gps_data : true <-
     .println("No valid data found");

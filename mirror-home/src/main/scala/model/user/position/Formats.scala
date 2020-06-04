@@ -1,4 +1,4 @@
-package model.userposition
+package model.user.position
 
 import spray.json.{JsObject, JsString, JsValue, JsonFormat}
 

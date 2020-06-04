@@ -14,7 +14,7 @@ class CreatorArtifact extends Artifact {
 
   }
 
-  @OPERATION def update(): Unit = {
+  @OPERATION def updateWorld(): Unit = {
     val response = quickRequest.get(apiUri).send()
     this.json = Json.parse(response.body)
     Unmarshallers.homeParser(json) match {
@@ -22,11 +22,12 @@ class CreatorArtifact extends Artifact {
         def execUpdate(name: String, dt: DigitalTwin): Unit = execLinkedOp(lookupArtifact(name), "update", dt)
 
         execUpdate("home", home)
+        execUpdate("users_locator", home)
         execUpdate("ble_artifact", home)
         execUpdate("house", home)
         home.floors.foreach(floor => execUpdate(floor.name, floor))
         home.users.foreach(user => {
-          execUpdate(user.name, user)
+          //execUpdate(user.name, user)
           execUpdate(s"${user.name}_smartphone", user)
         })
         home.zippedRooms.foreach({ case (floor, room) => execUpdate(s"${floor.name}_${room.name}", room) })
@@ -43,6 +44,7 @@ class CreatorArtifact extends Artifact {
       case Some(home) =>
         makeArtifact("pages", "env.YellowPagesArtifact", new ArtifactConfig(home))
         makeArtifact("home", "env.HomeArtifact", new ArtifactConfig(home))
+        makeArtifact("users_locator", "env.UsersLocatorArtifact", new ArtifactConfig(home))
         makeArtifact("ble_artifact", "env.BleReceiversArtifact", new ArtifactConfig(home))
         makeArtifact("house", "env.HouseArtifact", new ArtifactConfig(home))
 

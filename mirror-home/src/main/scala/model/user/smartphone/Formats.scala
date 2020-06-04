@@ -1,4 +1,4 @@
-package model.smartphone
+package model.user.smartphone
 
 import spray.json.DefaultJsonProtocol.jsonFormat12
 import spray.json.RootJsonFormat

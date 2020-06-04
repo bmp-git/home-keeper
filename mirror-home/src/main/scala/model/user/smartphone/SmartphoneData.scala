@@ -1,4 +1,4 @@
-package model.smartphone
+package model.user.smartphone
 
 case class SmartphoneData(id: String,
                           picture_url: String,

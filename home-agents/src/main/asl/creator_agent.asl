@@ -25,5 +25,5 @@
 +!start : true <-
      println("Updating...");
      .wait(1000);
-     update;
+     updateWorld;
      !start.

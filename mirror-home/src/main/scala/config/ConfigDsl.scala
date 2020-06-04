@@ -17,10 +17,10 @@ import model.ble.{BeaconData, RawBeaconData}
 import model.coordinates.Coordinates
 import model.coordinates.Formats._
 import model.mhz433.{OpenCloseData, Raw433MhzData}
-import model.smartphone.Formats._
-import model.smartphone.SmartphoneData
-import model.userposition.Formats._
-import model.userposition.UserPosition
+import model.user.smartphone.Formats._
+import model.user.smartphone.SmartphoneData
+import model.user.position.Formats._
+import model.user.position.{Unknown, UserPosition}
 import model.wifi.Formats._
 import model.wifi.{TimedWifiCaptureData, WifiCaptureData}
 import sources.{HttpSource, MqttSource}
@@ -41,7 +41,7 @@ object ConfigDsl {
   def user(firstname: String, surname: String): UserFactory = {
     val user = UserFactory(firstname, surname)
     user.withAttribute(file_attr("avatar", s"$RESOURCE_FOLDER/${user.name}_avatar.jpg", MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
-      .withAttribute(var_attr[UserPosition]("position", model.userposition.Unknown, "user_position"))
+      .withAttribute(var_attr[UserPosition]("position", Unknown, "user_position"))
   }
 
   def home(name: String): HomeFactory = HomeFactory(name)

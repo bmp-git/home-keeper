@@ -64,6 +64,7 @@ object Unmarshallers {
       timePropertyUnmarshaller,
       locationPropertyUnmarshaller,
       smartphonePropertyUnmarshaller,
+      userPositionPropertyUnmarshaller,
       unknownPropertyUnmarshaller))
 
   def beaconDataUnmarshaller: JsonUnmarshaller[BeaconData] = data =>
@@ -92,6 +93,16 @@ object Unmarshallers {
         accuracy <- int("accuracy")(data)) yield SmartphoneData(latitude, longitude, timestamp, accuracy)
   }
 
+  def userPositionUnmarshaller: JsonUnmarshaller[UserPosition] = {
+    first(Seq[JsonUnmarshaller[UserPosition]](
+      data => for("unknown" <- str("type")(data)) yield Unknown,
+      data => for("at_home" <- str("type")(data)) yield AtHome,
+      data => for("away" <- str("type")(data)) yield Away,
+      data => for("in_room" <- str("type")(data);
+                  room <- str("room")(data);
+                  floor <- str("floor")(data)) yield InRoom(room, floor)))
+  }
+
   def bleReceiverPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
     for (name <- str("name")(data);
          "ble_receiver" <- str("semantic")(data);
@@ -115,6 +126,13 @@ object Unmarshallers {
          "smartphone_data" <- str("semantic")(data);
          valueData <- json("value")(data);
          value <- smartphoneUnmarshaller(valueData)) yield Property(name, value, "smartphone")
+
+  def userPositionPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
+    for (name <- str("name")(data);
+         "user_position" <- str("semantic")(data);
+         valueData <- json("value")(data);
+         value <- userPositionUnmarshaller(valueData)) yield Property(name, value, "user_position")
+
 
   def unknownPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
     for (name <- str("name")(data);
@@ -202,3 +220,14 @@ case class SmartphoneData(latitude: Double,
                           longitude: Double,
                           timestamp: Long,
                           accuracy: Int)
+
+
+sealed trait UserPosition
+
+case object Unknown extends UserPosition
+
+case object AtHome extends UserPosition
+
+case object Away extends UserPosition
+
+case class InRoom(floorName: String, roomName: String) extends UserPosition

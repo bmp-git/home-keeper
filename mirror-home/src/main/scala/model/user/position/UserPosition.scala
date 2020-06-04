@@ -1,4 +1,4 @@
-package model.userposition
+package model.user.position
 
 sealed trait UserPosition
 

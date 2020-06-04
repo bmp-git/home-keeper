@@ -20,6 +20,7 @@ abstract class DigitalTwinArtifact extends Artifact {
     })
   }
 
+  // TODO fix, define property if not already defined
   @LINK def update(dt: DigitalTwin): Unit = {
     dt.properties.foreach(p => {
       updateObsProperty(p.name, p.value, p.semantic)

@@ -22,9 +22,12 @@ class SmartphoneArtifact extends Artifact {
 
   @LINK def update(user: User): Unit = {
     compute(user) match {
-      case lat :: long :: time :: accuracy :: Nil if !hasObsProperty("smartphone") => defineObsProperty("smartphone", lat, long, time, accuracy)
-      case lat :: long :: time :: accuracy :: Nil if hasObsProperty("smartphone") => updateObsProperty("smartphone", lat, long, time, accuracy)
-      case Nil if hasObsProperty("smartphone") => removeObsProperty("smartphone")
+      case lat :: long :: time :: accuracy :: Nil if !hasObsProperty("smartphone") =>
+        defineObsProperty("smartphone", lat, long, time, accuracy)
+      case lat :: long :: time :: accuracy :: Nil if hasObsProperty("smartphone") =>
+        updateObsProperty("smartphone", lat, long, time, accuracy)
+      case Nil if hasObsProperty("smartphone") =>
+        removeObsProperty("smartphone")
       case _ =>
     }
   }
