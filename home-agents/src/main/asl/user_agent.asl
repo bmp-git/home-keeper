@@ -1,6 +1,7 @@
 /* Initial beliefs and rules */
 
 location(unknown). //location(unknown), location(at_home), location(away), location(room(firstfloor, bedroom))
+home_radius(200).  //meters
 
 /* Initial goals */
 
@@ -11,8 +12,14 @@ location(unknown). //location(unknown), location(at_home), location(away), locat
 +!start : true <-
      println("Hello, world!");
      .wait({ +world_created[source(creator)] });
-     lookupArtifact("ble_artifact", F);
-     focus(F);
+     lookupArtifact("ble_artifact", BAID);
+     focus(BAID);
+     lookupArtifact("house", HAID);
+     focus(HAID);
+     ?user(Name);
+     .concat(Name, "_smartphone", Smartphone);
+     lookupArtifact(Smartphone, SAID);
+     focus(SAID);
      +status(working);
      !work.
 
@@ -42,8 +49,29 @@ location(unknown). //location(unknown), location(at_home), location(away), locat
 
 -!check_nearest_receiver_in_time(Infos) : true <-
     .println("No data found in 1 minute, checking other systems");
+    !check_gps_data;
     !update_location(unknown).
 
++!check_gps_data : true <-
+    .println("Checking gps data in 10 minutes");
+    ?home_location(HomeLat, HomeLon);
+    ?time(Time);
+    ?smartphone(UserLat, UserLon, GpsTime, Accuracy);
+    Time - GpsTime < 600000;
+    !calculate_gps_distance(HomeLat, HomeLon, UserLat, UserLon, GpsTime, Accuracy).
+
++!calculate_gps_distance(HomeLat, HomeLon, UserLat, UserLon, GpsTime, Accuracy) :  true <-
+    ?home_radius(Radius);
+    coordinates.distance(HomeLat, HomeLon, UserLat, UserLon, Distance);
+    Radius >= Distance + Accuracy;
+    !update_location(at_home).
+
+-!calculate_gps_distance(HomeLat, HomeLon, UserLat, UserLon, GpsTime, Accuracy) : true <-
+     !update_location(away).
+
+-!check_gps_data : true <-
+    .println("No valid data found");
+    !update_location(unknown).
 
 +!update_location(Room) : location(Room) <-
     !work.

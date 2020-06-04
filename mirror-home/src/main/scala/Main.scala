@@ -6,6 +6,7 @@ import config.ConfigDsl._
 import config.factory.ble.BleBeaconFactory
 import config.factory.property.JsonPropertyFactory
 import model.ble.BeaconData
+import model.coordinates.Coordinates
 import model.{BrokerConfig, Home, LocalizationService}
 import webserver.RouteGenerator
 import webserver.json.JsonModel._
@@ -82,10 +83,11 @@ object Main extends App {
       bagnoMarrone
     ),
     floor("basement", -1)().withAction(trig("trigAction", println("trigAction")),
-        turn("turnAction", b => println("turnAction: " + b))))
+      turn("turnAction", b => println("turnAction: " + b)))
+  )
     .withAction(turn("siren", b => println("siren: " + b)))
+    .withProperties(location(Coordinates(44.006235, 12.116960)))
     .withUsers(edobrb, panchh, lory696)
-
 
   door(sala -> external).withProperties(open_closed_433_mhz("magneto", open_code = "022623", closed_code = "022629"))
   door(sala -> corridoio)

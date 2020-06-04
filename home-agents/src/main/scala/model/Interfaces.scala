@@ -28,6 +28,8 @@ object Unmarshallers {
 
   def int(name: String): JsonUnmarshaller[Int] = value[Int](name)
 
+  def double(name: String): JsonUnmarshaller[Double] = value[Double](name)
+
   def bool(name: String): JsonUnmarshaller[Boolean] = value[Boolean](name)
 
   def first[I, O](parsers: Seq[I => Option[O]]): Unmarshaller[I, O] = input =>
@@ -60,6 +62,8 @@ object Unmarshallers {
     first(Seq(
       bleReceiverPropertyUnmarshaller,
       timePropertyUnmarshaller,
+      locationPropertyUnmarshaller,
+      smartphonePropertyUnmarshaller,
       unknownPropertyUnmarshaller))
 
   def beaconDataUnmarshaller: JsonUnmarshaller[BeaconData] = data =>
@@ -76,6 +80,18 @@ object Unmarshallers {
     case _ => None
   }
 
+  def coordinatesUnmarshaller: JsonUnmarshaller[Coordinates] = data => {
+    for(latitude <- double("latitude")(data);
+        longitude <- double("longitude")(data)) yield Coordinates(latitude, longitude)
+  }
+
+  def smartphoneUnmarshaller: JsonUnmarshaller[SmartphoneData] = data => {
+    for(latitude <- double("latitude")(data);
+        longitude <- double("longitude")(data);
+        timestamp <- long("timestamp")(data);
+        accuracy <- int("accuracy")(data)) yield SmartphoneData(latitude, longitude, timestamp, accuracy)
+  }
+
   def bleReceiverPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
     for (name <- str("name")(data);
          "ble_receiver" <- str("semantic")(data);
@@ -87,6 +103,18 @@ object Unmarshallers {
     for (name <- str("name")(data);
          "time" <- str("semantic")(data);
          value <- str("value")(data)) yield Property(name, value, "time")
+
+  def locationPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
+    for (name <- str("name")(data);
+         "location" <- str("semantic")(data);
+         valueData <- json("value")(data);
+         value <- coordinatesUnmarshaller(valueData)) yield Property(name, value, "location")
+
+  def smartphonePropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
+    for (name <- str("name")(data);
+         "smartphone_data" <- str("semantic")(data);
+         valueData <- json("value")(data);
+         value <- smartphoneUnmarshaller(valueData)) yield Property(name, value, "smartphone")
 
   def unknownPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
     for (name <- str("name")(data);
@@ -169,3 +197,8 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
 }
 
 case class BeaconData(user: String, last_seen: Long, rssi: Int)
+case class Coordinates(latitude: Double, longitude: Double)
+case class SmartphoneData(latitude: Double,
+                          longitude: Double,
+                          timestamp: Long,
+                          accuracy: Int)

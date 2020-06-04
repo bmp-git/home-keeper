@@ -14,6 +14,8 @@ import model.Units.MacAddress
 import model._
 import model.ble.Formats._
 import model.ble.{BeaconData, RawBeaconData}
+import model.coordinates.Coordinates
+import model.coordinates.Formats._
 import model.mhz433.{OpenCloseData, Raw433MhzData}
 import model.smartphone.Formats._
 import model.smartphone.SmartphoneData
@@ -74,6 +76,8 @@ object ConfigDsl {
   def time_now(): JsonPropertyFactory[Long] = JsonPropertyFactory.safeDynamic("time", () => System.currentTimeMillis, "time")
 
   def tag[T: JsonFormat](name: String, value: T): JsonPropertyFactory[T] = JsonPropertyFactory.static(name, value, "tag")
+
+  def location(location: Coordinates): JsonPropertyFactory[Coordinates] = JsonPropertyFactory.static("location", location, "location")
 
   /** PREDEFINED STREAM BASED PROPERTIES **/
   def ble_receiver(name: String, mac: MacAddress)
