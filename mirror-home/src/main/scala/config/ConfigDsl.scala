@@ -34,8 +34,8 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 object ConfigDsl {
-
   val RESOURCE_FOLDER = "resources"
+  implicit val system: ActorSystem = ActorSystem()
 
   /** TOPOLOGY DSL **/
   def user(firstname: String, surname: String): UserFactory = {
@@ -122,9 +122,7 @@ object ConfigDsl {
       .asJsonProperty(name, "smartphone_data")
 
   /** GENERIC PROPERTY UTILS **/
-  implicit val system: ActorSystem = ActorSystem()
-
-  implicit class JsonPropertyFactoryImplicit[T: JsonFormat](source: Source[Try[T], _]) {
+  implicit class JsonPropertyFactoryImplicit[T: JsonFormat](source: Source[Try[T], _]) { //TODO: move
     def asJsonProperty(name: String, semantic: String): JsonPropertyFactory[T] =
       JsonPropertyFactory.fromStream(name, () => source, semantic, None)
 
