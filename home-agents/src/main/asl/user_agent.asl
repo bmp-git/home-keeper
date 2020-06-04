@@ -14,10 +14,8 @@ home_radius(200).  //meters
      .wait({ +world_created[source(creator)] });
      lookupArtifact("ble_artifact", BAID);
      focus(BAID);
-     lookupArtifact("house", HAID);
+     lookupArtifact("home", HAID);
      focus(HAID);
-     lookupArtifact("users_locator", USLO);
-     focus(USLO);
      ?user(Name);
      .concat(Name, "_smartphone", Smartphone);
      lookupArtifact(Smartphone, SAID);
@@ -60,8 +58,8 @@ home_radius(200).  //meters
     .println("Checking gps data in 10 minutes");
     ?home_location(HomeLat, HomeLon);
     ?time(Time);
-    ?smartphone(UserLat, UserLon, GpsTime, Accuracy);
-    Time - GpsTime < 60000;
+    ?smartphone_data(UserLat, UserLon, GpsTime, Accuracy);
+    Time - GpsTime < 600000;
     !calculate_gps_distance(HomeLat, HomeLon, UserLat, UserLon, GpsTime, Accuracy).
 
 +!calculate_gps_distance(HomeLat, HomeLon, UserLat, UserLon, GpsTime, Accuracy) :  true <-

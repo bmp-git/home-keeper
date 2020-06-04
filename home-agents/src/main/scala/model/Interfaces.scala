@@ -125,7 +125,7 @@ object Unmarshallers {
     for (name <- str("name")(data);
          "smartphone_data" <- str("semantic")(data);
          valueData <- json("value")(data);
-         value <- smartphoneUnmarshaller(valueData)) yield Property(name, value, "smartphone")
+         value <- smartphoneUnmarshaller(valueData)) yield Property(name, value, "smartphone_data")
 
   def userPositionPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
     for (name <- str("name")(data);

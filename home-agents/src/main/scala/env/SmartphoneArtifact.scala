@@ -8,26 +8,26 @@ class SmartphoneArtifact extends Artifact {
 
   def compute(user: User): Seq[Term] = {
     user.properties.collectFirst {
-      case Property(_, SmartphoneData(latitude, longitude, time, accuracy), "smartphone") =>
+      case Property(_, SmartphoneData(latitude, longitude, time, accuracy), "smartphone_data") =>
         Seq(new NumberTermImpl(latitude), new NumberTermImpl(longitude), new NumberTermImpl(time), new NumberTermImpl(accuracy))
     } getOrElse Nil
   }
 
   @OPERATION def init(user: User): Unit = {
     compute(user) match {
-      case lat :: long :: time :: accuracy :: Nil => defineObsProperty("smartphone", lat, long, time, accuracy)
+      case lat :: long :: time :: accuracy :: Nil => defineObsProperty("smartphone_data", lat, long, time, accuracy)
       case Nil =>
     }
   }
 
   @LINK def update(user: User): Unit = {
     compute(user) match {
-      case lat :: long :: time :: accuracy :: Nil if !hasObsProperty("smartphone") =>
-        defineObsProperty("smartphone", lat, long, time, accuracy)
-      case lat :: long :: time :: accuracy :: Nil if hasObsProperty("smartphone") =>
-        updateObsProperty("smartphone", lat, long, time, accuracy)
-      case Nil if hasObsProperty("smartphone") =>
-        removeObsProperty("smartphone")
+      case lat :: long :: time :: accuracy :: Nil if !hasObsProperty("smartphone_data") =>
+        defineObsProperty("smartphone_data", lat, long, time, accuracy)
+      case lat :: long :: time :: accuracy :: Nil if hasObsProperty("smartphone_data") =>
+        updateObsProperty("smartphone_data", lat, long, time, accuracy)
+      case Nil if hasObsProperty("smartphone_data") =>
+        removeObsProperty("smartphone_data")
       case _ =>
     }
   }
