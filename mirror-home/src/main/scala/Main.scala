@@ -66,7 +66,7 @@ object Main extends App {
       BeaconData("luigi", DateTime.now, -123)), "ble_receiver")
 
   val myHome = home("home") (
-    floor("firstfloor", 0).withProperties(time_now(), tag("Tag", 10)).withAction(trig("loll")) (
+    floor("firstfloor", 0).withProperties(time_now(), tag("Tag", 10)).withAction(trig("loll", println("lol")))(
       cucina.withProperties(fixedBeacon1),
       cameraDaLetto.withProperties(fixedBeacon2),
       corridoio,
@@ -81,12 +81,9 @@ object Main extends App {
       disimpegno,
       bagnoMarrone
     ),
-    floor("basement", -1)(
-    )
-      .withAction(trig("trigAction"))
-      .withAction(turn("turnAction"))
-  )
-    .withAction(turn("siren"))
+    floor("basement", -1)().withAction(trig("trigAction", println("trigAction")),
+        turn("turnAction", b => println("turnAction: " + b))))
+    .withAction(turn("siren", b => println("siren: " + b)))
     .withUsers(edobrb, panchh, lory696)
 
 

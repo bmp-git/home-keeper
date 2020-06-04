@@ -15,11 +15,15 @@ import model._
 import model.ble.Formats._
 import model.ble.{BeaconData, RawBeaconData}
 import model.mhz433.{OpenCloseData, Raw433MhzData}
+import model.smartphone.Formats._
+import model.smartphone.SmartphoneData
+import model.userposition.Formats._
+import model.userposition.UserPosition
 import model.wifi.Formats._
 import model.wifi.{TimedWifiCaptureData, WifiCaptureData}
 import sources.{HttpSource, MqttSource}
 import spray.json.DefaultJsonProtocol._
-import spray.json.{JsObject, JsString, JsValue, JsonFormat, RootJsonFormat}
+import spray.json.JsonFormat
 import utils.Lazy
 import utils.RichTrySource._
 
@@ -31,57 +35,11 @@ object ConfigDsl {
 
   val RESOURCE_FOLDER = "resources"
 
-  sealed trait UserPosition //TODO: move
-  case object Unknown extends UserPosition
-
-  case object AtHome extends UserPosition
-
-  case object Away extends UserPosition
-
-  case class InRoom(floorName: String, roomName: String) extends UserPosition
-
-  /**
-   * {
-   * "type" : "unknown"
-   * "floor" : "floor" ?
-   * "room" : "room" ?
-   * }
-   */
-  def userPositionFormat: JsonFormat[UserPosition] = {
-    new JsonFormat[UserPosition] {
-      override def read(json: JsValue): UserPosition = json match {
-        case JsObject(fields) => fields("type") match {
-          case JsString("unknown") => Unknown
-          case JsString("at_home") => AtHome
-          case JsString("away") => Away
-          case JsString("in_room") => (fields("floor"), fields("room")) match {
-            case (JsString(floorName), JsString(roomName)) => InRoom(floorName, roomName)
-          }
-        }
-      }
-
-      override def write(obj: UserPosition): JsValue = obj match {
-        case Unknown => JsObject("type" -> JsString("unknown"))
-        case AtHome => JsObject("type" -> JsString("at_home"))
-        case Away => JsObject("type" -> JsString("away"))
-        case InRoom(floorName, roomName) => JsObject("type" -> JsString("in_room"), "floor" -> JsString(floorName), "room" -> JsString(roomName))
-      }
-    }
-  }
-
-  def userPositionSchema: json.Schema[UserPosition] = {
-    json.Schema.`object`.apply(Set[json.Schema.`object`.Field[_]](
-      json.Schema.`object`.Field("type", json.Json.schema[String], required = true),
-      json.Schema.`object`.Field("floor", json.Json.schema[String], required = false),
-      json.Schema.`object`.Field("room", json.Json.schema[String], required = false)
-    ))
-  }
-
   /** TOPOLOGY DSL **/
   def user(firstname: String, surname: String): UserFactory = {
     val user = UserFactory(firstname, surname)
     user.withAttribute(file_attr("avatar", s"$RESOURCE_FOLDER/${user.name}_avatar.jpg", MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
-      .withAttribute(var_attr[UserPosition]("position", Unknown, "user_position")(userPositionFormat, userPositionSchema))
+      .withAttribute(var_attr[UserPosition]("position", model.userposition.Unknown, "user_position"))
   }
 
   def home(name: String): HomeFactory = HomeFactory(name)
@@ -154,23 +112,9 @@ object ConfigDsl {
       case v => Failure(new Exception(s"boolean match error for value $v"))
     } asJsonProperty(name, semantic)
 
-  case class SmartphoneData(id: String, //TODO: move
-                            picture_url: String,
-                            full_name: String,
-                            nickname: String,
-                            latitude: Double,
-                            longitude: Double,
-                            timestamp: Long,
-                            accuracy: Int,
-                            address: String,
-                            country_code: String,
-                            charging: Boolean,
-                            battery_level: Int)
-
-  implicit val userLocalizationDataFormat: RootJsonFormat[SmartphoneData] = jsonFormat12(SmartphoneData.apply)
 
   def smartphone(owner: UserFactory, name: String = "smartphone")(implicit config: LocalizationService): JsonPropertyFactory[SmartphoneData] =
-    HttpSource.objects[SmartphoneData](HttpRequest(uri = config.uri(owner.name)), 1.second)
+    json_from_http[SmartphoneData](HttpRequest(uri = config.uri(owner.name)), 1.second)
       .asJsonProperty(name, "smartphone_data")
 
   /** GENERIC PROPERTY UTILS **/
@@ -213,10 +157,10 @@ object ConfigDsl {
   def file_writer(name: String, path: String, contentType: ContentType): ActionFactory =
     FileWriterActionFactory(name, path, contentType)
 
-  def turn(name: String): JsonActionFactory[Boolean] =
-    JsonActionFactory[Boolean](name, b => println(s"$name action triggered with $b"), "turn")(implicitly[JsonFormat[Boolean]], json.Json.schema[Boolean])
+  def turn(name: String, action: Boolean => Unit): JsonActionFactory[Boolean] =
+    JsonActionFactory[Boolean](name, action, "turn")(implicitly[JsonFormat[Boolean]], json.Json.schema[Boolean])
 
-  def trig(actionName: String): ActionFactory = new ActionFactory {
+  def trig(actionName: String, action: => Unit): ActionFactory = new ActionFactory {
     override def name: String = actionName
 
     override protected def oneTimeBuild(): Action = new Action {
@@ -225,7 +169,7 @@ object ConfigDsl {
       override def contentType: ContentType = ContentTypes.NoContentType
 
       override def sink(implicit executor: ExecutionContext): Sink[ByteString, Future[Try[Done]]] = {
-        println(name + " triggered")
+        action
         Sink.ignore.mapMaterializedValue(_.map(Success.apply))
       }
 
@@ -241,8 +185,6 @@ object ConfigDsl {
     var value: T = initialValue
     (json_property(name, () => value, semantic), json_action[T](name, value = _, "update_" + semantic))
   }
-
-
 }
 
 
