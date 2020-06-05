@@ -1,5 +1,6 @@
 package model
 
+
 import play.api.libs.json._
 
 object Unmarshallers {
@@ -65,6 +66,8 @@ object Unmarshallers {
       locationPropertyUnmarshaller,
       smartphonePropertyUnmarshaller,
       userPositionPropertyUnmarshaller,
+      isOpenPropertyUnmarshaller,
+      motionDetectionPropertyUnmarshaller,
       unknownPropertyUnmarshaller))
 
   def beaconDataUnmarshaller: JsonUnmarshaller[BeaconData] = data =>
@@ -95,12 +98,27 @@ object Unmarshallers {
 
   def userPositionUnmarshaller: JsonUnmarshaller[UserPosition] = {
     first(Seq[JsonUnmarshaller[UserPosition]](
-      data => for("unknown" <- str("type")(data)) yield Unknown,
-      data => for("at_home" <- str("type")(data)) yield AtHome,
-      data => for("away" <- str("type")(data)) yield Away,
-      data => for("in_room" <- str("type")(data);
-                  room <- str("room")(data);
-                  floor <- str("floor")(data)) yield InRoom(room, floor)))
+      data => for ("unknown" <- str("type")(data)) yield Unknown,
+      data => for ("at_home" <- str("type")(data)) yield AtHome,
+      data => for ("away" <- str("type")(data)) yield Away,
+      data => for ("in_room" <- str("type")(data);
+                   room <- str("room")(data);
+                   floor <- str("floor")(data)) yield InRoom(room, floor)))
+  }
+
+  def openCloseDataUnmarshaller: JsonUnmarshaller[Option[OpenCloseData]] = {
+    first(Seq[JsonUnmarshaller[Option[OpenCloseData]]](
+      data => for (true <- bool("open")(data); time <- long("last_change")(data)) yield Some(Open(time)),
+      data => for (false <- bool("open")(data); time <- long("last_change")(data)) yield Some(Close(time)),
+      _ => Some(None)
+    ))
+  }
+
+  def motionDetectionUnmarshaller: JsonUnmarshaller[Option[MotionDetection]] = {
+    first(Seq[JsonUnmarshaller[Option[MotionDetection]]](
+      data => for (time <- long("last_seen")(data)) yield Some(MotionDetection(time)),
+      _ => Some(None)
+    ))
   }
 
   def bleReceiverPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
@@ -133,6 +151,17 @@ object Unmarshallers {
          valueData <- json("value")(data);
          value <- userPositionUnmarshaller(valueData)) yield Property(name, value, "user_position")
 
+  def isOpenPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
+    for (name <- str("name")(data);
+         "is_open" <- str("semantic")(data);
+         valueData <- json("value")(data);
+         value <- openCloseDataUnmarshaller(valueData)) yield Property(name, value, "is_open")
+
+  def motionDetectionPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
+    for (name <- str("name")(data);
+         "motion_detection" <- str("semantic")(data);
+         valueData <- json("value")(data);
+         value <- motionDetectionUnmarshaller(valueData)) yield Property(name, value, "motion_detection")
 
   def unknownPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
     for (name <- str("name")(data);
@@ -190,7 +219,13 @@ trait DigitalTwin extends Remote {
   def actions: Set[Action]
 }
 
-trait Gateway extends DigitalTwin
+trait Gateway extends DigitalTwin {
+  def rooms(home: Home): (Room, Room) = {
+    home.zippedRooms.filter(_._2.doors.exists(_.name == this.name)).map(_._2).toList match {
+      case r1 :: r2 :: Nil => (r1, r2)
+    }
+  }
+}
 
 case class Door(name: String, properties: Set[Property], actions: Set[Action], url: String) extends Gateway
 
@@ -202,6 +237,23 @@ case class Floor(name: String, properties: Set[Property], actions: Set[Action], 
 
 case class User(name: String, properties: Set[Property], actions: Set[Action], url: String) extends DigitalTwin
 
+trait Event
+
+trait GatewayOpened extends Event {
+  def gateway: Gateway
+
+  def rooms: (Room, Room)
+}
+
+case class DoorOpenEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayOpened //
+case class WindowOpenEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayOpened //
+case class MotionDetectionEvent(floor: Floor, room: Room) extends Event //
+case class MotionDetectionNearEvent(gateway: Gateway) extends Event //
+case class GetBackHomeEvent(user: User) extends Event //
+case class UnknownWifiMacEvent(floor: Floor, room: Room) extends Event //
+
+trait State
+
 case class Home(name: String, properties: Set[Property], actions: Set[Action], floors: Set[Floor], users: Set[User], url: String) extends DigitalTwin {
   def zippedRooms: Set[(Floor, Room)] = floors.flatMap(f => f.rooms.map(r => (f, r)))
 
@@ -212,10 +264,92 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
   def zippedWindows: Set[(Floor, Room, Window)] = zippedRooms.flatMap {
     case (floor, room) => room.windows.map(w => (floor, room, w))
   }
+
+  def state: State = ???
+
+  /*this - old*/
+  implicit class RichSeq[T](seq: Seq[T]) {
+    def join(other: Seq[T], on: ((T, T)) => Boolean): Seq[(T, T)] = {
+      seq.flatMap(t1 => other.map(t2 => (t1, t2))).filter(on)
+    }
+
+    def distinctBy[K](f: T => K): Seq[T] = seq.groupBy(f).map(_._2.head).toSeq
+  }
+
+
+  def -(old: Home): Seq[Event] = {
+    def isOpenFilter(seq: Seq[(Floor, Room, Gateway)]): Seq[(Floor, Room, Gateway, Option[OpenCloseData])] = {
+      seq.flatMap {
+        case (floor, room, door) => door.properties.find(_.semantic == "is_open").map(p => (floor, room, door, p.value.asInstanceOf[Option[OpenCloseData]]))
+      }
+    }
+
+    def gatewayOpened(news: Seq[(Floor, Room, Gateway)], olds: Seq[(Floor, Room, Gateway)], g: Gateway => GatewayOpened): Seq[Event] = {
+      val newGateways = isOpenFilter(news)
+      val oldGateways = isOpenFilter(olds)
+      newGateways.join(oldGateways, {
+        case ((newFloor, newRoom, newGateway, Some(Open(_))), (oldFloor, oldRoom, oldGateway, Some(Close(_)) | None)) =>
+          oldFloor.name == newFloor.name && oldRoom.name == newRoom.name && oldGateway.name == newGateway.name
+        case _ => false
+      }).map {
+        case ((_, _, gateway, _), (_, _, _, _)) => g(gateway)
+      }.distinctBy(_.gateway.name)
+    }
+
+    def motionDetectionFilter(seq: Seq[(Floor, Room)]): Seq[(Floor, Room, Option[MotionDetection])] = {
+      seq.flatMap {
+        case (floor, room) => room.properties.find(_.semantic == "motion_detection").map(p => (floor, room, p.value.asInstanceOf[Option[MotionDetection]]))
+      }
+    }
+
+    def motionDetection(news: Seq[(Floor, Room)], olds: Seq[(Floor, Room)]): Seq[Event] = {
+      val newRooms = motionDetectionFilter(news)
+      val oldRooms = motionDetectionFilter(olds)
+      newRooms.join(oldRooms, {
+        case ((newFloor, newRoom, Some(MotionDetection(newTime))), (oldFloor, oldRoom, Some(MotionDetection(oldTime)))) if newTime > oldTime =>
+          oldFloor.name == newFloor.name && oldRoom.name == newRoom.name
+        case ((newFloor, newRoom, Some(MotionDetection(_))), (oldFloor, oldRoom, None)) =>
+          oldFloor.name == newFloor.name && oldRoom.name == newRoom.name
+        case _ => false
+      }).map {
+        case ((floor, room, _), (_, _, _)) => MotionDetectionEvent(floor, room)
+      }
+    }
+
+
+    gatewayOpened(this.zippedDoors.toSeq, old.zippedDoors.toSeq, d => DoorOpenEvent(d, d.rooms(this))) ++
+      gatewayOpened(this.zippedWindows.toSeq, old.zippedWindows.toSeq, w => WindowOpenEvent(w, w.rooms(this))) ++
+      motionDetection(this.zippedRooms.toSeq, old.zippedRooms.toSeq)
+  }
+}
+
+object Test extends App {
+  println("Started!")
+
+  import sttp.client.quick._
+
+  var h: Option[Home] = None
+
+  while (true) {
+    Thread.sleep(500)
+    val response = quickRequest.get(uri"http://localhost:8090/api/home").send()
+    val json = Json.parse(response.body)
+    (h, Unmarshallers.homeParser(json)) match {
+      case (None, Some(home)) => h = Some(home)
+      case (Some(oldHome), Some(newHome)) =>
+        val events = newHome - oldHome
+        println(events.toSet)
+        h = Some(newHome)
+      case _ => println("!")
+    }
+  }
+
 }
 
 case class BeaconData(user: String, last_seen: Long, rssi: Int)
+
 case class Coordinates(latitude: Double, longitude: Double)
+
 case class SmartphoneData(latitude: Double,
                           longitude: Double,
                           timestamp: Long,
@@ -231,3 +365,12 @@ case object AtHome extends UserPosition
 case object Away extends UserPosition
 
 case class InRoom(floorName: String, roomName: String) extends UserPosition
+
+
+sealed trait OpenCloseData
+
+case class Open(lastChange: Long) extends OpenCloseData
+
+case class Close(lastChange: Long) extends OpenCloseData
+
+case class MotionDetection(lastSeen: Long)
