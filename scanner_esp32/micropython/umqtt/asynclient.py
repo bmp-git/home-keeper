@@ -129,7 +129,19 @@ class MQTTClient:
         await self.writer.wait_closed()
 
     async def ping(self):
-        await self._write(b"\xc0\0")
+        if not self.connected:
+            return False
+        try:
+            async with self.lock:
+                await self._write(b"\xc0\0")
+                resp = await self._read(2)
+                assert resp == b"\xd0\x00"
+                print("[Mqtt] Ping response received! The broker is up.")
+            return True
+        except:
+            print("[Mqtt] Error pinging broker! Disconnecting.")
+            self.connected = False
+            return False
 
     async def publish(self, topic, msg, retain=False):
         res = await self._send_packet(self._create_publish_packet(topic, msg, retain))

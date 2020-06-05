@@ -9,6 +9,7 @@ mqtt_client = MQTTClient(client_id=MQTT_CLIENT_ID, server=MQTT_SERVER_ADDRESS, p
 
 async def mqtt_daemon_start(loop):
     loop.create_task(mqtt_reconnector())
+    loop.create_task(mqtt_pinger())
 
 async def mqtt_reconnector():
     global mqtt_client
@@ -17,6 +18,15 @@ async def mqtt_reconnector():
         if not mqtt_client.isConnected():
             await mqtt_client.connect(clean_session=True)         
         await asyncio.sleep(5)
+
+async def mqtt_pinger():
+    global mqtt_client
+    while True:
+        if mqtt_client.isConnected():
+            await mqtt_client.ping()
+        
+        await asyncio.sleep(MQTT_KEEPALIVE // 2)
+
 
 def mqtt_publish(topic, message):
     await mqtt_client.publish(topic=topic, msg=message, retain=False)
