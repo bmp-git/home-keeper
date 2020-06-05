@@ -1,6 +1,7 @@
 package model
 
 
+import jason.asSyntax.{Literal, Term}
 import play.api.libs.json._
 
 object Unmarshallers {
@@ -237,22 +238,49 @@ case class Floor(name: String, properties: Set[Property], actions: Set[Action], 
 
 case class User(name: String, properties: Set[Property], actions: Set[Action], url: String) extends DigitalTwin
 
-trait Event
+trait Event {
+  def toTerm: Term
+}
 
-trait GatewayOpened extends Event {
+trait GatewayEvent extends Event {
   def gateway: Gateway
 
   def rooms: (Room, Room)
+
+  def external: String = if (rooms._1.name == "external" || rooms._2.name == "external") "external" else "internal"
+
+  def eventName: String
+
+  def template: String = s"event($eventName, ${gateway.name}, $external, [${rooms._1.name},${rooms._2.name}])"
+
+  override def toTerm: Term = Literal.parseLiteral(template)
 }
 
-case class DoorOpenEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayOpened //
-case class WindowOpenEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayOpened //
-case class MotionDetectionEvent(floor: Floor, room: Room) extends Event //
-case class MotionDetectionNearEvent(gateway: Gateway) extends Event //
-case class GetBackHomeEvent(user: User) extends Event //
-case class UnknownWifiMacEvent(floor: Floor, room: Room) extends Event //
+case class DoorOpenEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayEvent {
+  //event(door_open, Name, internal, Rooms)
+  override def eventName: String = "door_open"
+} //
+case class WindowOpenEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayEvent {
+  //event(window_open, Name, external, Rooms)
+  override def eventName: String = "window_open"
+} //
+case class MotionDetectionNearEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayEvent {
+  //event(motion_detection_near, bedroomWindow)
+  override def eventName: String = "motion_detection_near"
+} //
+case class MotionDetectionEvent(floor: Floor, room: Room) extends Event {
+  //event(motion_detection, firstfloor, bedroom)
+  override def toTerm: Term = Literal.parseLiteral(s"event(motion_detection, ${floor.name}, ${room.name})")
+} //
+case class GetBackHomeEvent(user: User) extends Event {
+  //event(get_back_home, lorenzomondani)
+  override def toTerm: Term = Literal.parseLiteral(s"event(get_back_home, ${user.name})")
+} //
+case class UnknownWifiMacEvent(floor: Floor, room: Room) extends Event {
+  //event(unknown_wifi_mac, firstfloor, kitchen)
+  override def toTerm: Term = Literal.parseLiteral(s"event(unknown_wifi_mac, ${floor.name}, ${room.name})")
+} //TODO: implement
 
-trait State
 
 case class Home(name: String, properties: Set[Property], actions: Set[Action], floors: Set[Floor], users: Set[User], url: String) extends DigitalTwin {
   def zippedRooms: Set[(Floor, Room)] = floors.flatMap(f => f.rooms.map(r => (f, r)))
@@ -265,8 +293,6 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
     case (floor, room) => room.windows.map(w => (floor, room, w))
   }
 
-  def state: State = ???
-
   /*this - old*/
   implicit class RichSeq[T](seq: Seq[T]) {
     def join(other: Seq[T], on: ((T, T)) => Boolean): Seq[(T, T)] = {
@@ -276,24 +302,38 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
     def distinctBy[K](f: T => K): Seq[T] = seq.groupBy(f).map(_._2.head).toSeq
   }
 
-
   def -(old: Home): Seq[Event] = {
-    def isOpenFilter(seq: Seq[(Floor, Room, Gateway)]): Seq[(Floor, Room, Gateway, Option[OpenCloseData])] = {
+    def gatewayFilter[T](seq: Seq[(Floor, Room, Gateway)], semantic: String): Seq[(Floor, Room, Gateway, T)] = {
       seq.flatMap {
-        case (floor, room, door) => door.properties.find(_.semantic == "is_open").map(p => (floor, room, door, p.value.asInstanceOf[Option[OpenCloseData]]))
+        case (floor, room, door) => door.properties.find(_.semantic == semantic).map(p => (floor, room, door, p.value.asInstanceOf[T]))
       }
     }
 
-    def gatewayOpened(news: Seq[(Floor, Room, Gateway)], olds: Seq[(Floor, Room, Gateway)], g: Gateway => GatewayOpened): Seq[Event] = {
-      val newGateways = isOpenFilter(news)
-      val oldGateways = isOpenFilter(olds)
+    def gatewayWithProperty[PT, ET <: Event](news: Seq[(Floor, Room, Gateway)], olds: Seq[(Floor, Room, Gateway)], semantic: String, g: Gateway => ET, changeFilter: (PT, PT) => Boolean): Seq[Event] = {
+      val newGateways = gatewayFilter[PT](news, semantic)
+      val oldGateways = gatewayFilter[PT](olds, semantic)
       newGateways.join(oldGateways, {
-        case ((newFloor, newRoom, newGateway, Some(Open(_))), (oldFloor, oldRoom, oldGateway, Some(Close(_)) | None)) =>
+        case ((newFloor, newRoom, newGateway, newProperty), (oldFloor, oldRoom, oldGateway, oldProperty)) if changeFilter(newProperty, oldProperty) =>
           oldFloor.name == newFloor.name && oldRoom.name == newRoom.name && oldGateway.name == newGateway.name
         case _ => false
-      }).map {
+      }).distinctBy(_._1._3.name).map {
         case ((_, _, gateway, _), (_, _, _, _)) => g(gateway)
-      }.distinctBy(_.gateway.name)
+      }
+    }
+
+    def gatewayOpened(news: Seq[(Floor, Room, Gateway)], olds: Seq[(Floor, Room, Gateway)], g: Gateway => GatewayEvent): Seq[Event] = {
+      gatewayWithProperty[Option[OpenCloseData], GatewayEvent](news, olds, "is_open", g, {
+        case (Some(Open(_)), Some(Close(_)) | None) => true
+        case _ => false
+      })
+    }
+
+    def gatewayMotionDetected(news: Seq[(Floor, Room, Gateway)], olds: Seq[(Floor, Room, Gateway)]): Seq[Event] = {
+      gatewayWithProperty[Option[MotionDetection], MotionDetectionNearEvent](news, olds, "motion_detection", g => MotionDetectionNearEvent(g, g.rooms(this)), {
+        case (Some(MotionDetection(newTime)),  Some(MotionDetection(oldTime))) if newTime > oldTime => true
+        case (Some(MotionDetection(_)), None) => true
+        case _ => false
+      })
     }
 
     def motionDetectionFilter(seq: Seq[(Floor, Room)]): Seq[(Floor, Room, Option[MotionDetection])] = {
@@ -316,10 +356,29 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
       }
     }
 
+    def userPositionFilter(users: Seq[User]): Seq[(User, UserPosition)] = {
+      users.flatMap(user => user.properties.find(p => p.semantic == "user_position").map(p => (user, p.value.asInstanceOf[UserPosition])))
+    }
+
+    def backHomeUser(news: Seq[User], olds: Seq[User]): Seq[Event] = {
+      val newUsers = userPositionFilter(news)
+      val oldUsers = userPositionFilter(olds)
+
+      newUsers.join(oldUsers, {
+        case ((newUser, AtHome | _:InRoom), (oldUser, Unknown | Away)) => newUser.name == oldUser.name
+        case _ => false
+      }).map {
+        case ((user, _), (_,_)) => GetBackHomeEvent(user)
+      }
+    }
+
 
     gatewayOpened(this.zippedDoors.toSeq, old.zippedDoors.toSeq, d => DoorOpenEvent(d, d.rooms(this))) ++
       gatewayOpened(this.zippedWindows.toSeq, old.zippedWindows.toSeq, w => WindowOpenEvent(w, w.rooms(this))) ++
-      motionDetection(this.zippedRooms.toSeq, old.zippedRooms.toSeq)
+      motionDetection(this.zippedRooms.toSeq, old.zippedRooms.toSeq) ++
+      gatewayMotionDetected(this.zippedDoors.toSeq, old.zippedDoors.toSeq) ++
+      gatewayMotionDetected(this.zippedWindows.toSeq, old.zippedWindows.toSeq) ++
+      backHomeUser(this.users.toSeq, old.users.toSeq)
   }
 }
 

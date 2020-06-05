@@ -1,10 +1,13 @@
 package env
 
 import cartago.{Artifact, LINK, OPERATION}
-import jason.asSyntax.{NumberTermImpl, Term}
+import jason.asSyntax.{ListTermImpl, Literal, NumberTermImpl, StringTerm, StringTermImpl, Term}
 import model.{Coordinates, Home, Property}
+import org.joda.time.DateTime
 
 class HomeArtifact extends Artifact {
+
+  var oldHome: Home = _
 
   def compute(home: Home): Seq[Term] = {
     home.properties.collectFirst {
@@ -12,12 +15,21 @@ class HomeArtifact extends Artifact {
     } getOrElse Nil
   }
 
+  def isNight(time: Long): Boolean = {
+    val hour = new DateTime(time).toLocalTime.getHourOfDay
+    (hour > 0 && hour < 8) || hour > 21
+  }
+
   @OPERATION def init(home: Home): Unit = {
+    this.oldHome = home
     compute(home) match {
       case lat :: long :: Nil => defineObsProperty("home_location", lat, long)
       case Nil =>
     }
-    defineObsProperty("time", new NumberTermImpl(System.currentTimeMillis()))
+    val time = System.currentTimeMillis()
+    defineObsProperty("time", new NumberTermImpl(time)) //TODO: time from apis
+    defineObsProperty("time_slot", if (isNight(time)) new StringTermImpl("night") else new StringTermImpl("day"))
+    defineObsProperty("events", new ListTermImpl())
   }
 
   @LINK def update(home: Home): Unit = {
@@ -28,6 +40,14 @@ class HomeArtifact extends Artifact {
       case _ =>
     }
 
-    updateObsProperty("time", new NumberTermImpl(System.currentTimeMillis()))
+    val time = System.currentTimeMillis()
+    updateObsProperty("time", new NumberTermImpl(time))
+    updateObsProperty("time_slot", if (isNight(time)) new StringTermImpl("night") else new StringTermImpl("day"))
+
+    val result = "a([" + (home - oldHome).map(_.toTerm).mkString(",") + "])"
+    val termList = Literal.parseLiteral(result).getTerm(0)
+    updateObsProperty("events", termList)
+
+    this.oldHome = home
   }
 }
