@@ -11,7 +11,6 @@ object Formats {
     def write(data: OpenCloseData): JsObject = data match {
       case Close(lastChange) => JsObject("open" -> JsBoolean(false), "last_change" -> JsNumber(lastChange.clicks))
       case Open(lastChange) => JsObject("open" -> JsBoolean(true), "last_change" -> JsNumber(lastChange.clicks))
-      case Unknown => JsObject()
     }
 
     def read(value: JsValue): OpenCloseData = ??? // nothing?

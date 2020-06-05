@@ -16,11 +16,14 @@ import model.ble.Formats._
 import model.ble.{BeaconData, RawBeaconData}
 import model.coordinates.Coordinates
 import model.coordinates.Formats._
+import model.mhz433.Formats._
 import model.mhz433.{OpenCloseData, Raw433MhzData}
-import model.user.smartphone.Formats._
-import model.user.smartphone.SmartphoneData
+import model.motiondetection.Formats._
+import model.motiondetection.MotionDetection
 import model.user.position.Formats._
 import model.user.position.{Unknown, UserPosition}
+import model.user.smartphone.Formats._
+import model.user.smartphone.SmartphoneData
 import model.wifi.Formats._
 import model.wifi.{TimedWifiCaptureData, WifiCaptureData}
 import sources.{HttpSource, MqttSource}
@@ -101,12 +104,18 @@ object ConfigDsl {
     } asJsonProperty(name, "wifi_receiver", Seq[TimedWifiCaptureData]())
   }
 
-  def open_closed_433_mhz(name: String, open_code: String, closed_code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[OpenCloseData] = {
+  def open_closed_433_mhz(name: String, open_code: String, closed_code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Option[OpenCloseData]] =
+    json_from_mqtt[Raw433MhzData]("scanner/+/433").ignoreFailures.collectValue[Option[OpenCloseData]]({
+      case data if data.code == open_code => Some(model.mhz433.Open(DateTime.now))
+      case data if data.code == closed_code => Some(model.mhz433.Close(DateTime.now))
+    }) asJsonProperty(name, "is_open", None)
+
+
+  def pir_433_mhz(name: String, code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Option[MotionDetection]] = {
     import model.mhz433.Formats._
-    json_from_mqtt[Raw433MhzData]("scanner/+/433").ignoreFailures.collectValue[OpenCloseData]({
-      case data if data.code == open_code => model.mhz433.Open(DateTime.now)
-      case data if data.code == closed_code => model.mhz433.Close(DateTime.now)
-    }).asJsonProperty(name, "is_open", model.mhz433.Unknown)
+    json_from_mqtt[Raw433MhzData]("scanner/+/433").ignoreFailures.collectValue[Option[MotionDetection]]({
+      case data if data.code == code => Some(MotionDetection(DateTime.now))
+    }) asJsonProperty(name, "motion_detection", None)
   }
 
   def mqtt_bool(name: String, topic: String, caseTrue: String, caseFalse: String, semantic: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Boolean] =

@@ -23,7 +23,7 @@ object DebugMain extends App {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  implicit val broker: BrokerConfig = BrokerConfig("127.0.0.1:1883")
+  implicit val broker: BrokerConfig = BrokerConfig("192.168.1.10:1883")
   implicit val localizationService: LocalizationService = LocalizationService(
     port = 8086,
     gmail = "bmpprogetti@gmail.com",
@@ -74,7 +74,7 @@ object DebugMain extends App {
     floor("firstfloor", 0).withProperties(time_now(), tag("Tag", 10)).withAction(trig("loll", println("lol")))(
       cucina.withProperties(fixedBeacon1),
       cameraDaLetto.withProperties(fixedBeacon2),
-      corridoio,
+      corridoio.withProperties(pir_433_mhz("pir", "scatta")),
       bagnoRosa,
       bagnoVerde,
       cameraMia,

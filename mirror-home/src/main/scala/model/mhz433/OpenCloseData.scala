@@ -4,8 +4,6 @@ import akka.http.scaladsl.model.DateTime
 
 sealed trait OpenCloseData
 
-case object Unknown extends OpenCloseData
-
 case class Open(lastChange: DateTime) extends OpenCloseData
 
 case class Close(lastChange: DateTime) extends OpenCloseData

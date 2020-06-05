@@ -1,14 +1,14 @@
 package model.user.smartphone
 
 case class SmartphoneData(id: String,
-                          picture_url: String,
-                          full_name: String,
+                          pictureUrl: String,
+                          fullName: String,
                           nickname: String,
                           latitude: Double,
                           longitude: Double,
                           timestamp: Long,
                           accuracy: Int,
                           address: String,
-                          country_code: String,
+                          countryCode: String,
                           charging: Boolean,
-                          battery_level: Int)
+                          batteryLevel: Int)
