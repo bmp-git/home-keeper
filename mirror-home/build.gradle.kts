@@ -9,7 +9,11 @@ plugins {
 }
 
 application {
-    mainClassName = "webserver.WebServer"
+    mainClassName = "Main"
+}
+
+val run by tasks.getting(JavaExec::class) {
+    standardInput = System.`in`
 }
 
 repositories {

@@ -2,7 +2,7 @@ package env
 
 import cartago.{Artifact, LINK, OPERATION}
 import config.Server
-import jason.asSyntax.Literal
+import jason.asSyntax.{Literal, NumberTermImpl}
 import model.{AtHome, Away, Home, InRoom, Unknown, User}
 import play.api.libs.json.Json
 import sttp.client.quick.quickRequest
@@ -31,20 +31,20 @@ class UsersLocatorArtifact extends Artifact {
     parsed.getTerm(0)
   }
 
+  def getInsideUsersCount(home: Home): Int = home.users.map(userLocation).count(l => l == "at_home" || l.contains("room("))
+
   @OPERATION def init(home: Home): Unit = {
     defineObsProperty("locations", compute(home))
+    defineObsProperty("users_at_home", new NumberTermImpl(getInsideUsersCount(home)))
   }
 
   @LINK def update(home: Home): Unit = {
     updateObsProperty("locations", compute(home))
+    updateObsProperty("users_at_home", new NumberTermImpl(getInsideUsersCount(home)))
   }
 
-  @OPERATION def updateUserHomePosition(user: String, room: String): Unit = {
-    val rLiteral = Literal.parseLiteral(room)
-    val floorName = rLiteral.getTerm(0).toString
-    val roomName = rLiteral.getTerm(1).toString
+  @OPERATION def updateUserHomePosition(user: String, floorName: String, roomName: String): Unit = {
     val js = Json.obj("type" -> "in_room", "floor" -> floorName, "room" -> roomName)
-
     postUserPosition(user, js.toString)
   }
 

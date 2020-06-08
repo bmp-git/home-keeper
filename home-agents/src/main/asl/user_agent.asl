@@ -92,17 +92,17 @@ home_radius(200).  //meters
 +!update_location(Room) : location(Room) <-
     !work.
 
--!update_location(Room) : true <-
++!update_location(Room) : location(Any) & Any \== Room <-
     -+location(Room).
 
-+location(Place) : status(working) & Place == room(_, _) <-
-    .println("I'm in ", Place);
++location(room(Floor, Room)) : status(working) <-
+    .println("1 I'm in ", room(Floor, Room));
     ?user(Name);
-    updateUserHomePosition(Name, Place);
+    updateUserHomePosition(Name, Floor, Room);
     !work.
 
 +location(Place) : status(working) & Place \== room(_, _) <-
-    .println("I'm in ", Place);
+    .println("2 I'm in ", Place);
     ?user(Name);
     updateUserPosition(Name, Place);
     !work.

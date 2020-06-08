@@ -6,6 +6,7 @@ mas homeAgents {
 	//environment: c4jason.CartagoEnvironment
 
 	agent creator: creator_agent.asl
+	agent alarm: alarm_agent.asl
 
 	asl-path: "src/main/asl"
 }

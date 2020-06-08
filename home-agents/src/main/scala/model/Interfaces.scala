@@ -185,7 +185,7 @@ object Unmarshallers {
     for ((name, properties, actions) <- dtFields(data);
          doors <- arrayOf[Door]("doors")(doorUnmarshaller(floorName, name))(data);
          windows <- arrayOf[Window]("windows")(windowUnmarshaller(floorName, name))(data))
-      yield Room(name, properties, actions, doors.toSet, windows.toSet, s"/api/home/floors/$floorName/rooms/$name")
+      yield Room(name, floorName, properties, actions, doors.toSet, windows.toSet, s"/api/home/floors/$floorName/rooms/$name")
 
   def floorUnmarshaller: JsonUnmarshaller[Floor] = data =>
     for ((name, properties, actions) <- dtFields(data);
@@ -232,7 +232,7 @@ case class Door(name: String, properties: Set[Property], actions: Set[Action], u
 
 case class Window(name: String, properties: Set[Property], actions: Set[Action], url: String) extends Gateway
 
-case class Room(name: String, properties: Set[Property], actions: Set[Action], doors: Set[Door], windows: Set[Window], url: String) extends DigitalTwin
+case class Room(name: String, floorName: String, properties: Set[Property], actions: Set[Action], doors: Set[Door], windows: Set[Window], url: String) extends DigitalTwin
 
 case class Floor(name: String, properties: Set[Property], actions: Set[Action], rooms: Set[Room], level: Int, url: String) extends DigitalTwin
 
@@ -251,7 +251,7 @@ trait GatewayEvent extends Event {
 
   def eventName: String
 
-  def template: String = s"event($eventName, ${gateway.name}, $external, [${rooms._1.name},${rooms._2.name}])"
+  def template: String = s"event($eventName, ${'"'}${gateway.name}${'"'}, $external, [room(${rooms._1.floorName}, ${rooms._1.name}), room(${rooms._2.floorName}, ${rooms._2.name})])"
 
   override def toTerm: Term = Literal.parseLiteral(template)
 }
@@ -269,16 +269,16 @@ case class MotionDetectionNearEvent(gateway: Gateway, rooms: (Room, Room)) exten
   override def eventName: String = "motion_detection_near"
 } //
 case class MotionDetectionEvent(floor: Floor, room: Room) extends Event {
-  //event(motion_detection, firstfloor, bedroom)
-  override def toTerm: Term = Literal.parseLiteral(s"event(motion_detection, ${floor.name}, ${room.name})")
+  //event(motion_detection, room(firstfloor, bedroom))
+  override def toTerm: Term = Literal.parseLiteral(s"event(motion_detection, room(${floor.name}, ${room.name}))")
 } //
 case class GetBackHomeEvent(user: User) extends Event {
   //event(get_back_home, lorenzomondani)
   override def toTerm: Term = Literal.parseLiteral(s"event(get_back_home, ${user.name})")
 } //
 case class UnknownWifiMacEvent(floor: Floor, room: Room) extends Event {
-  //event(unknown_wifi_mac, firstfloor, kitchen)
-  override def toTerm: Term = Literal.parseLiteral(s"event(unknown_wifi_mac, ${floor.name}, ${room.name})")
+  //event(unknown_wifi_mac, room(firstfloor, kitchen))
+  override def toTerm: Term = Literal.parseLiteral(s"event(unknown_wifi_mac, room(${floor.name}, ${room.name}))")
 } //TODO: implement
 
 
@@ -321,16 +321,20 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
       }
     }
 
+    def debounceTimems = 1000
+
     def gatewayOpened(news: Seq[(Floor, Room, Gateway)], olds: Seq[(Floor, Room, Gateway)], g: Gateway => GatewayEvent): Seq[Event] = {
       gatewayWithProperty[Option[OpenCloseData], GatewayEvent](news, olds, "is_open", g, {
         case (Some(Open(_)), Some(Close(_)) | None) => true
+        case (Some(Open(nt)), Some(Open(ot))) if nt > ot + debounceTimems=> true
+        case (Some(Close(nt)), Some(Close(ot))) if nt > ot + debounceTimems => true
         case _ => false
       })
     }
 
     def gatewayMotionDetected(news: Seq[(Floor, Room, Gateway)], olds: Seq[(Floor, Room, Gateway)]): Seq[Event] = {
       gatewayWithProperty[Option[MotionDetection], MotionDetectionNearEvent](news, olds, "motion_detection", g => MotionDetectionNearEvent(g, g.rooms(this)), {
-        case (Some(MotionDetection(newTime)),  Some(MotionDetection(oldTime))) if newTime > oldTime => true
+        case (Some(MotionDetection(newTime)),  Some(MotionDetection(oldTime))) if newTime > oldTime + debounceTimems => true
         case (Some(MotionDetection(_)), None) => true
         case _ => false
       })
@@ -346,7 +350,7 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
       val newRooms = motionDetectionFilter(news)
       val oldRooms = motionDetectionFilter(olds)
       newRooms.join(oldRooms, {
-        case ((newFloor, newRoom, Some(MotionDetection(newTime))), (oldFloor, oldRoom, Some(MotionDetection(oldTime)))) if newTime > oldTime =>
+        case ((newFloor, newRoom, Some(MotionDetection(newTime))), (oldFloor, oldRoom, Some(MotionDetection(oldTime)))) if newTime > oldTime + debounceTimems =>
           oldFloor.name == newFloor.name && oldRoom.name == newRoom.name
         case ((newFloor, newRoom, Some(MotionDetection(_))), (oldFloor, oldRoom, None)) =>
           oldFloor.name == newFloor.name && oldRoom.name == newRoom.name
@@ -397,7 +401,8 @@ object Test extends App {
       case (None, Some(home)) => h = Some(home)
       case (Some(oldHome), Some(newHome)) =>
         val events = newHome - oldHome
-        println(events.toSet)
+        events.toSet.foreach(println)
+        println("------------------------------------------------------")
         h = Some(newHome)
       case _ => println("!")
     }

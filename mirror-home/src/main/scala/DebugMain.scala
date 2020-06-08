@@ -23,7 +23,7 @@ object DebugMain extends App {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  implicit val broker: BrokerConfig = BrokerConfig("192.168.1.10:1883")
+  implicit val broker: BrokerConfig = BrokerConfig("10.0.0.2:1883")
   implicit val localizationService: LocalizationService = LocalizationService(
     port = 8086,
     gmail = "bmpprogetti@gmail.com",
@@ -54,7 +54,7 @@ object DebugMain extends App {
   val corridoio = room()
   val bagnoRosa = room()
   val bagnoVerde = room().withProperties(JsonPropertyFactory.dynamic[Int]("FailedProp", () => Failure(new Exception("failed")), "nothing"))
-  val cameraMia = room().withProperties(wifi_receiver("wifi_receiver", mac = "b4e62db21c79"), ble_receiver("ble_receiver", mac = "b4e62db21c79"))
+  val cameraMia = room().withProperties(wifi_receiver("wifi_receiver", mac = "fcf5c40e2540"), ble_receiver("ble_receiver", mac = "fcf5c40e2540"))
   val ripostiglio = room()
   val sala = room()
 
@@ -74,7 +74,7 @@ object DebugMain extends App {
     floor("firstfloor", 0).withProperties(time_now(), tag("Tag", 10)).withAction(trig("loll", println("lol")))(
       cucina.withProperties(fixedBeacon1),
       cameraDaLetto.withProperties(fixedBeacon2),
-      corridoio.withProperties(pir_433_mhz("pir", "scatta")),
+      corridoio.withProperties(pir_433_mhz("pir", "022623")),
       bagnoRosa,
       bagnoVerde,
       cameraMia,
@@ -102,7 +102,7 @@ object DebugMain extends App {
   door(cameraDaLetto -> corridoio)
   door(cameraMia -> corridoio)
   door(ripostiglio -> external)
-  door(cameraMia -> external)
+  door(cameraMia -> external).withProperties(pir_433_mhz("pir", "022623"))
   door(cucina -> external)
   door(cameraDaLetto -> external)
 
