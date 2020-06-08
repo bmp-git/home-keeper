@@ -1,7 +1,7 @@
 package env
 
 import cartago.{Artifact, LINK, OPERATION}
-import jason.asSyntax.{ListTermImpl, Literal, NumberTermImpl, StringTerm, StringTermImpl, Term}
+import jason.asSyntax.{Atom, ListTermImpl, Literal, NumberTermImpl, Term}
 import model.{Coordinates, Home, Property}
 import org.joda.time.DateTime
 
@@ -28,7 +28,7 @@ class HomeArtifact extends Artifact {
     }
     val time = System.currentTimeMillis()
     defineObsProperty("time", new NumberTermImpl(time)) //TODO: time from apis
-    defineObsProperty("time_slot", if (isNight(time)) new StringTermImpl("night") else new StringTermImpl("day"))
+    defineObsProperty("time_slot", if (isNight(time)) new Atom("night") else new Atom("day"))
     defineObsProperty("events", new ListTermImpl())
   }
 
@@ -42,7 +42,7 @@ class HomeArtifact extends Artifact {
 
     val time = System.currentTimeMillis()
     updateObsProperty("time", new NumberTermImpl(time))
-    updateObsProperty("time_slot", if (isNight(time)) new StringTermImpl("night") else new StringTermImpl("day"))
+    updateObsProperty("time_slot", if (isNight(time)) new Atom("night") else new Atom("day"))
 
     val result = "a([" + (home - oldHome).map(_.toTerm).mkString(",") + "])"
     val termList = Literal.parseLiteral(result).getTerm(0)
