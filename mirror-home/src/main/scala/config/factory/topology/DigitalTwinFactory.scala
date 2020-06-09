@@ -19,6 +19,8 @@ trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
     pContainer = pContainer.add(properties)
     this
   }
+  def withProperties(properties: (PropertyFactory,PropertyFactory)): this.type =
+    this.withProperties(properties._1, properties._2)
 
   def withAction(actions: ActionFactory*): this.type = {
     aContainer = aContainer.add(actions)

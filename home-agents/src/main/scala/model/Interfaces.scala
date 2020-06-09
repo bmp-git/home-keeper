@@ -1,6 +1,7 @@
 package model
 
 
+import env.BeaconDataSeq
 import jason.asSyntax.{Literal, Term}
 import play.api.libs.json._
 
@@ -77,11 +78,11 @@ object Unmarshallers {
          last_seen <- long("last_seen")(data))
       yield BeaconData(name, last_seen, rssi)
   
-  def beaconDataSeqUnmarshaller: JsonUnmarshaller[Seq[BeaconData]] = {
+  def beaconDataSeqUnmarshaller: JsonUnmarshaller[BeaconDataSeq] = {
     case JsArray(value) =>
-      Some(value.map(beaconDataUnmarshaller).collect {
+      Some(BeaconDataSeq(value.map(beaconDataUnmarshaller).collect {
         case Some(v) => v
-      })
+      }))
     case _ => None
   }
 
@@ -220,10 +221,11 @@ trait DigitalTwin extends Remote {
   def actions: Set[Action]
 }
 
-trait Gateway extends DigitalTwin {
+sealed trait Gateway extends DigitalTwin {
   def rooms(home: Home): (Room, Room) = {
     home.zippedRooms.filter(r => (r._2.doors ++ r._2.windows).exists(_.name == this.name)).map(_._2).toList match {
       case r1 :: r2 :: Nil => (r1, r2)
+      case _ => throw new Exception("Impossible")
     }
   }
 }
@@ -251,21 +253,22 @@ trait GatewayEvent extends Event {
 
   def eventName: String
 
-  def template: String = s"event($eventName, ${'"'}${gateway.name}${'"'}, $external, [room(${rooms._1.floorName}, ${rooms._1.name}), room(${rooms._2.floorName}, ${rooms._2.name})])"
+  def gatewayType:String = gateway match {
+    case Door(_, _, _, _) => "door"
+    case Window(_, _, _, _) => "window"
+  }
+
+  def template: String = s"event($eventName, $gatewayType, ${'"'}${gateway.name}${'"'}, $external, [room(${rooms._1.floorName}, ${rooms._1.name}), room(${rooms._2.floorName}, ${rooms._2.name})])"
 
   override def toTerm: Term = Literal.parseLiteral(template)
 }
 
-case class DoorOpenEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayEvent {
-  //event(door_open, Name, internal, Rooms)
-  override def eventName: String = "door_open"
+case class GatewayOpenEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayEvent {
+  //event(gateway_open, door, Name, internal, Rooms)
+  override def eventName: String = "open"
 } //
-case class WindowOpenEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayEvent {
-  //event(window_open, Name, external, Rooms)
-  override def eventName: String = "window_open"
-} //
-case class MotionDetectionNearEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayEvent {
-  //event(motion_detection_near, bedroomWindow)
+case class GatewayMotionDetectionNearEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayEvent {
+  //event(motion_detection_near, door, Name, internal, Rooms)
   override def eventName: String = "motion_detection_near"
 } //
 case class MotionDetectionEvent(floor: Floor, room: Room) extends Event {
@@ -333,7 +336,7 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
     }
 
     def gatewayMotionDetected(news: Seq[(Floor, Room, Gateway)], olds: Seq[(Floor, Room, Gateway)]): Seq[Event] = {
-      gatewayWithProperty[Option[MotionDetection], MotionDetectionNearEvent](news, olds, "motion_detection", g => MotionDetectionNearEvent(g, g.rooms(this)), {
+      gatewayWithProperty[Option[MotionDetection], GatewayMotionDetectionNearEvent](news, olds, "motion_detection", g => GatewayMotionDetectionNearEvent(g, g.rooms(this)), {
         case (Some(MotionDetection(newTime)),  Some(MotionDetection(oldTime))) if newTime > oldTime + debounceTimems => true
         case (Some(MotionDetection(_)), None) => true
         case _ => false
@@ -370,6 +373,7 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
 
       newUsers.join(oldUsers, {
         case ((newUser, AtHome | _:InRoom), (oldUser, Unknown | Away)) => newUser.name == oldUser.name
+        case ((newUser,  _:InRoom), (oldUser,  AtHome)) => newUser.name == oldUser.name
         case _ => false
       }).map {
         case ((user, _), (_,_)) => GetBackHomeEvent(user)
@@ -377,8 +381,8 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
     }
 
 
-    gatewayOpened(this.zippedDoors.toSeq, old.zippedDoors.toSeq, d => DoorOpenEvent(d, d.rooms(this))) ++
-      gatewayOpened(this.zippedWindows.toSeq, old.zippedWindows.toSeq, w => WindowOpenEvent(w, w.rooms(this))) ++
+    gatewayOpened(this.zippedDoors.toSeq, old.zippedDoors.toSeq, d => GatewayOpenEvent(d, d.rooms(this))) ++
+      gatewayOpened(this.zippedWindows.toSeq, old.zippedWindows.toSeq, w => GatewayOpenEvent(w, w.rooms(this))) ++
       motionDetection(this.zippedRooms.toSeq, old.zippedRooms.toSeq) ++
       gatewayMotionDetected(this.zippedDoors.toSeq, old.zippedDoors.toSeq) ++
       gatewayMotionDetected(this.zippedWindows.toSeq, old.zippedWindows.toSeq) ++

@@ -23,7 +23,7 @@ object DebugMain extends App {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  implicit val broker: BrokerConfig = BrokerConfig("10.0.0.2:1883")
+  implicit val broker: BrokerConfig = BrokerConfig("192.168.1.10:1883")
   implicit val localizationService: LocalizationService = LocalizationService(
     port = 8086,
     gmail = "bmpprogetti@gmail.com",
@@ -52,7 +52,7 @@ object DebugMain extends App {
   val cameraDaLetto = room()
   /*.withProperties(localVideo)*/
   val corridoio = room()
-  val bagnoRosa = room()
+  val bagnoRosa = room().withProperties(video_motion_detection("video", "http://192.168.1.237/video.cgi"))
   val bagnoVerde = room().withProperties(JsonPropertyFactory.dynamic[Int]("FailedProp", () => Failure(new Exception("failed")), "nothing"))
   val cameraMia = room().withProperties(wifi_receiver("wifi_receiver", mac = "fcf5c40e2540"), ble_receiver("ble_receiver", mac = "fcf5c40e2540"))
   val ripostiglio = room()
