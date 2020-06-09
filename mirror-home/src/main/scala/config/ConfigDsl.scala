@@ -29,7 +29,7 @@ import model.wifi.{TimedWifiCaptureData, WifiCaptureData}
 import sources.{HttpSource, MqttSource}
 import spray.json.DefaultJsonProtocol._
 import spray.json.JsonFormat
-import utils.Lazy
+import utils.{Lazy, NamedIdDispatcher}
 import utils.RichTrySource._
 
 import scala.concurrent.duration._
@@ -39,6 +39,8 @@ import scala.util.{Failure, Success, Try}
 object ConfigDsl {
   val RESOURCE_FOLDER = "resources"
   implicit val system: ActorSystem = ActorSystem()
+
+  val namedIdDispatcher: NamedIdDispatcher = NamedIdDispatcher(1)
 
   /** TOPOLOGY DSL **/
   def user(firstname: String, surname: String): UserFactory = {
@@ -57,14 +59,18 @@ object ConfigDsl {
   def room(name: String): RoomFactory = RoomFactory(name)
 
   def door(rooms: (RoomFactory, RoomFactory)): DoorFactory = rooms match {
-    case (roomA, roomB) => door(roomA.name + "<->" + roomB.name, rooms)
+    case (roomA, roomB) =>
+      val name = roomA.name + "_" + roomB.name
+      door( name + namedIdDispatcher.next(name), rooms)
   }
 
   def door(name: String, rooms: (RoomFactory, RoomFactory)): DoorFactory =
     DoorFactory(name, rooms)
 
   def window(rooms: (RoomFactory, RoomFactory)): WindowFactory = rooms match {
-    case (roomA, roomB) => window(roomA.name + "<->" + roomB.name, rooms)
+    case (roomA, roomB) =>
+      val name = roomA.name + "-" + roomB.name
+      window(name + namedIdDispatcher.next(name), rooms)
   }
 
   def window(name: String, rooms: (RoomFactory, RoomFactory)): WindowFactory =

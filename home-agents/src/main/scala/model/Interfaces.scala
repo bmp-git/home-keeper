@@ -222,7 +222,7 @@ trait DigitalTwin extends Remote {
 
 trait Gateway extends DigitalTwin {
   def rooms(home: Home): (Room, Room) = {
-    home.zippedRooms.filter(_._2.doors.exists(_.name == this.name)).map(_._2).toList match {
+    home.zippedRooms.filter(r => (r._2.doors ++ r._2.windows).exists(_.name == this.name)).map(_._2).toList match {
       case r1 :: r2 :: Nil => (r1, r2)
     }
   }

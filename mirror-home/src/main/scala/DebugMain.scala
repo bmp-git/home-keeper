@@ -80,7 +80,7 @@ object DebugMain extends App {
       cameraMia,
       ripostiglio,
       sala,
-      external
+      external.withProperties(pir_433_mhz("pir", "022623"))
     ),
     floor("secondfloor", 1)(
       disimpegno,
@@ -93,8 +93,8 @@ object DebugMain extends App {
     .withProperties(location(Coordinates(44.006235, 12.116960)))
     .withUsers(edobrb, panchh, lory696)
 
-  door(sala -> external).withProperties(open_closed_433_mhz("magneto", open_code = "022623", closed_code = "022629"))
-  door(sala -> corridoio)
+  door(sala -> external)
+  door(sala -> corridoio).withProperties(open_closed_433_mhz("magneto1", open_code = "022623", closed_code = "022629"))
   door(sala -> cucina)
   door(ripostiglio -> corridoio)
   door(bagnoVerde -> corridoio)
@@ -106,6 +106,7 @@ object DebugMain extends App {
   door(cucina -> external)
   door(cameraDaLetto -> external)
 
+  window(sala -> external)
   window(sala -> external)
   window(bagnoVerde -> external)
   window(bagnoRosa -> external)

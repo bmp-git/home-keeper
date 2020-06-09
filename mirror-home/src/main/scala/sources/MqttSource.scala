@@ -7,16 +7,19 @@ import akka.{Done, NotUsed}
 import model.BrokerConfig
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence
 import spray.json._
+import utils.{IdDispatcher}
 
 import scala.concurrent.Future
-import scala.util.Try
+import scala.util.{Random, Try}
 
 object MqttSource {
+  val idDispatcher: IdDispatcher = IdDispatcher(0)
+
   def messages(brokerConfig: BrokerConfig, topics: String*) //TODO: what if crash?
               (implicit actorSystem: ActorSystem): Source[MqttMessage, Future[Done]] = {
     var connectionSettings = MqttConnectionSettings(
       s"tcp://${brokerConfig.address}",
-      s"mirror-home-property-" + System.currentTimeMillis(), //TODO:random?
+      s"mirror-home-property-" + idDispatcher.next, //TODO:random?
       new MemoryPersistence //TODO: need an explanation
     ).withAutomaticReconnect(true)
     connectionSettings = brokerConfig.auth match {
