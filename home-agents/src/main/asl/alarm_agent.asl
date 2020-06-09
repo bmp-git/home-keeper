@@ -28,34 +28,47 @@ slot_time_multiplier(1).
     .println("").
 
 /* No one at home rules. */
-/* Perimeter door opening */
+/* Perimeter door opening. */
 +!handle_event(event(door_open, _, external, _)): users_at_home(0) <-
     .println("[NO ONE AT HOME]: an external door opened!");
     !inc_risk(600).
 
-/* Perimeter window opening */
+/* Perimeter window opening. */
 +!handle_event(event(window_open, _, external, _)): users_at_home(0) <-
     .println("[NO ONE AT HOME]: an external window opened!");
     !inc_risk(800).
 
-/* Internal door opening */
+/* Internal door opening. */
 +!handle_event(event(door_open, _, internal, _)): users_at_home(0) <-
     .println("[NO ONE AT HOME]: an internal door opened!");
     !inc_risk(100).
 
-/* External motion detection */
+/* Internal window opening. ??? */
+
+/* External motion detection. */
 +!handle_event(event(motion_detection, room(_, external))): users_at_home(0) <-
     .println("[NO ONE AT HOME]: an external movement is detected!");
     !inc_risk(250).
 
-/* External Gateway motion detection near by */
-+!handle_event(event(motion_detection_near, _, external, _)): users_at_home(0) <-
-    .println("[NO ONE AT HOME]: an external gateway nearby movement is detected!");
+/* Internal motion detection. */
++!handle_event(event(motion_detection, room(_, RoomName))): RoomName \== external & users_at_home(0) <-
+    .println("[NO ONE AT HOME]: an internal movement is detected!");
     !inc_risk(150).
+
+/* External gateway motion detection nearby. */
++!handle_event(event(motion_detection_near, _, external, _)): users_at_home(0) <-
+    .println("[NO ONE AT HOME]: an external movement nearby gateway is detected!");
+    !inc_risk(150).
+
+/* Internal gateway motion detection nearby. */
++!handle_event(event(motion_detection_near, _, internal, _)): users_at_home(0) <-
+    .println("[NO ONE AT HOME]: an external movement nearby gateway is detected!");
+    !inc_risk(50).
+
 
 
 /* Someone in a room rules. */
-/* Perimeter door opening in a empty room */
+/* Perimeter door opening in a empty room. */
 /*locations = [user_location(UserName, location(Room))]*/
 +!handle_event(event(door_open, _, external, [R1, R2])): users_at_home(Num) & Num > 0 <-
     ?locations(Locations);
@@ -63,30 +76,30 @@ slot_time_multiplier(1).
     .println("[SOMEONE IN A ROOM]: an external door connected to an empty room opened!");
     !inc_risk(300).
 
-/* Perimeter door opening in room with a user inside it */
+/* Perimeter door opening in room with a user inside it. */
 +!handle_event(event(door_open, _, external, [R1, R2])): users_at_home(Num) & Num > 0 <-
     ?locations(Locations);
     .member(user_location(_, location(R1)), Locations) | .member(user_location(_, location(R2)), Locations);
     .println("[SOMEONE IN A ROOM]: an external door connected to a room with an user inside opened!");
     !inc_risk(50).
 
-/* Perimeter window opening in a empty room */
+/* Perimeter window opening in a empty room. */
 +!handle_event(event(window_open, _, external, [R1, R2])): users_at_home(Num) & Num > 0 <-
     ?locations(Locations);
     not .member(user_location(_, location(R1)), Locations) & not .member(user_location(_, location(R2)), Locations);
     .println("[SOMEONE IN A ROOM]: an external window connected to a empty rooms opened!");
     !inc_risk(500).
 
-/* Perimeter window opening in room with a user inside it */
+/* Perimeter window opening in room with a user inside it. */
 +!handle_event(event(window_open, _, external, [R1, R2])): users_at_home(Num) & Num > 0 <-
     ?locations(Locations);
     .member(user_location(_, location(R1)), Locations) | .member(user_location(_, location(R2)), Locations);
     .println("[SOMEONE IN A ROOM]: an external window connected to a room with an user inside opened!");
     !inc_risk(100).
 
-/* Internal door opening with a user in a connected room is not a problem */
+/* Internal door opening with a user in a connected room is not a problem. */
 
-/* Internal door opening with users not in a connected room is strange */
+/* Internal door opening with users not in a connected room is strange. */
 +!handle_event(event(door_open, _, internal, [R1, R2])): users_at_home(Num) & Num > 0 <-
     ?locations(Locations);
     not .member(user_location(_, location(R1)), Locations) & not .member(user_location(_, location(R2)), Locations);
