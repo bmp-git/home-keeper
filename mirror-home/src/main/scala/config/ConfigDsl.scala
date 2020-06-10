@@ -23,6 +23,8 @@ import model.mhz433.Formats._
 import model.mhz433.{OpenCloseData, Raw433MhzData}
 import model.motiondetection.Formats._
 import model.motiondetection.MotionDetection
+import model.receiver.ReceiverStatus
+import model.receiver.Formats._
 import model.user.position.Formats._
 import model.user.position.{Unknown, UserPosition}
 import model.user.smartphone.Formats._
@@ -31,7 +33,7 @@ import model.wifi.Formats._
 import model.wifi.{TimedWifiCaptureData, WifiCaptureData}
 import sources.{FrameSource, HttpSource, MqttSource, RealTimeSourceMulticaster}
 import spray.json.DefaultJsonProtocol._
-import spray.json.JsonFormat
+import spray.json.{JsNumber, JsObject, JsValue, JsonFormat, RootJsonFormat}
 import utils.RichTrySource._
 import utils.{Lazy, NamedIdDispatcher}
 
@@ -105,12 +107,39 @@ object ConfigDsl {
     } asJsonProperty(name, "ble_receiver", Seq[BeaconData]())
   }
 
+  private def macWifiList: Seq[String] = utils.File.readLines(s"$RESOURCE_FOLDER/mac_whitelist.txt").getOrElse(Seq[String]())
+
   def wifi_receiver(name: String, mac: MacAddress)
                    (implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Seq[TimedWifiCaptureData]] = {
-    json_from_mqtt[Seq[WifiCaptureData]](s"scanner/$mac/wifi").ignoreFailures.scanValue(Seq[TimedWifiCaptureData]()) {
-      case (data, captures) =>
-        captures.foldLeft(data) { case (data, capture) => data.filter(_.mac != capture.mac) :+ capture.timed }
-    } asJsonProperty(name, "wifi_receiver", Seq[TimedWifiCaptureData]())
+    json_from_mqtt[Seq[WifiCaptureData]](s"scanner/$mac/wifi").ignoreFailures.scanValue(Map[String, (Long, TimedWifiCaptureData)]())({
+      case (map, captures) => captures.foldLeft(map) {
+        case (map, capture) if map.contains(capture.mac) => map + (capture.mac -> (map(capture.mac)._1 + 1, capture.timed))
+        case (map, capture) => map + (capture.mac -> (1, capture.timed))
+      }
+    }).mapValue(map => {
+      val newMacList = macWifiList ++ map.collect {
+        case (mac, (times_viewed, _)) if !macWifiList.contains(mac) && times_viewed > 360 => mac
+      }.toSeq
+      if (newMacList != macWifiList) {
+        utils.File.writeLines(s"$RESOURCE_FOLDER/mac_whitelist.txt", newMacList)
+      }
+      map
+    }).mapValue(_.map {
+      case (_, (_, data)) => data
+    }.toSeq).mapValue(_.filter(d => !macWifiList.contains(d.mac)))
+      .asJsonProperty(name, "wifi_receiver", Seq[TimedWifiCaptureData]())
+  }
+
+  def receiver_status(name: String, mac: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[ReceiverStatus] =
+    MqttSource.payloads(brokerConfig, s"scanner/$mac/status").map(_.toLowerCase).collect[ReceiverStatus]({
+      case "online" => ReceiverStatus(true)
+      case "offline" => ReceiverStatus(false)
+    }).map(Success.apply).asJsonProperty(name, "receiver_status", ReceiverStatus(false))
+
+  def receiver(name: String, mac: String)(implicit brokerConfig: BrokerConfig, beaconsFactory: Seq[BleBeaconFactory]): Seq[PropertyFactory] = {
+    Seq(receiver_status(s"receiver_${name}_status", mac),
+      wifi_receiver(s"wifi_receiver_$name", mac),
+      ble_receiver(s"ble_receiver_$name", mac))
   }
 
   def open_closed_433_mhz(name: String, open_code: String, closed_code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Option[OpenCloseData]] =
@@ -227,6 +256,9 @@ object ConfigDsl {
     var value: T = initialValue
     (json_property(name, () => value, semantic), json_action[T](name, value = _, "update_" + semantic))
   }
+
+
+  //def external:RoomFactory = ???
 }
 
 

@@ -38,14 +38,27 @@ object MqttSource {
               (implicit actorSystem: ActorSystem): Source[String, Future[Done]] =
     messages(brokerConfig, topics: _*)(actorSystem).via(payloadExtractor)
 
+  def topicsAndPayloads(brokerConfig: BrokerConfig, topics: String*)
+                       (implicit actorSystem: ActorSystem): Source[(String, String), Future[Done]] =
+    messages(brokerConfig, topics: _*)(actorSystem).via(topicAndPayloadExtractor)
+
   def objects[T: JsonFormat](brokerConfig: BrokerConfig, topics: String*)
                             (implicit actorSystem: ActorSystem): Source[Try[T], Future[Done]] =
     payloads(brokerConfig, topics: _*).via(objectExtractor[T])
 
+  def topicsAndObjects[T: JsonFormat](brokerConfig: BrokerConfig, topics: String*)
+                                    (implicit actorSystem: ActorSystem): Source[Try[(String, T)], Future[Done]] =
+    messages(brokerConfig, topics: _*).via(topicAndObjectExtractor[T])
 
   private def payloadExtractor: Flow[MqttMessage, String, NotUsed] =
     Flow[MqttMessage].map(_.payload.utf8String)
 
+  private def topicAndPayloadExtractor: Flow[MqttMessage, (String, String), NotUsed] =
+    Flow[MqttMessage].map(m => (m.topic, m.payload.utf8String))
+
   private def objectExtractor[T: JsonFormat]: Flow[String, Try[T], NotUsed] =
     Flow[String].map(payload => Try(payload.parseJson.convertTo[T]))
+
+  private def topicAndObjectExtractor[T: JsonFormat]: Flow[MqttMessage, Try[(String, T)], NotUsed] =
+    Flow[MqttMessage].map(message => Try(message.payload.utf8String.parseJson.convertTo[T]).map(o => (message.topic, o)))
 }

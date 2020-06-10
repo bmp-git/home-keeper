@@ -1,12 +1,10 @@
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.DateTime
 import akka.stream.ActorMaterializer
 import config.ConfigDsl
 import config.ConfigDsl._
 import config.factory.ble.BleBeaconFactory
 import config.factory.property.JsonPropertyFactory
-import model.ble.BeaconData
 import model.coordinates.Coordinates
 import model.{BrokerConfig, Home, LocalizationService}
 import webserver.RouteGenerator
@@ -54,26 +52,18 @@ object DebugMain extends App {
   val corridoio = room()
   val bagnoRosa = room().withProperties(video_motion_detection("video", "http://192.168.1.237/video.cgi"))
   val bagnoVerde = room().withProperties(JsonPropertyFactory.dynamic[Int]("FailedProp", () => Failure(new Exception("failed")), "nothing"))
-  val cameraMia = room().withProperties(wifi_receiver("wifi_receiver", mac = "fcf5c40e2540"), ble_receiver("ble_receiver", mac = "fcf5c40e2540"))
+  val cameraMia = room().withProperties(receiver("1", "fcf5c40e2540"): _*)
   val ripostiglio = room()
   val sala = room()
 
   val disimpegno = room()
   val bagnoMarrone = room()
 
-  import model.ble.Formats._
-
-  val fixedBeacon1 = JsonPropertyFactory.static("ble_receiver",
-    Seq(BeaconData("mario", DateTime.now, -23),
-      BeaconData("luigi", DateTime.now, -43)), "ble_receiver")
-  val fixedBeacon2 = JsonPropertyFactory.static("ble_receiver",
-    Seq(BeaconData("mario", DateTime.now, -13),
-      BeaconData("luigi", DateTime.now, -123)), "ble_receiver")
 
   val myHome = home("home")(
     floor("firstfloor", 0).withProperties(time_now(), tag("Tag", 10)).withAction(trig("loll", println("lol")))(
-      cucina.withProperties(fixedBeacon1),
-      cameraDaLetto.withProperties(fixedBeacon2),
+      cucina,
+      cameraDaLetto,
       corridoio.withProperties(pir_433_mhz("pir", "022623")),
       bagnoRosa,
       bagnoVerde,
