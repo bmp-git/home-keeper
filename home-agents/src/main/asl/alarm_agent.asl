@@ -18,7 +18,8 @@ slot_time_multiplier(1).
      lookupArtifact("home", HAID);
      focus(HAID);
      lookupArtifact("users_locator", USLO);
-     focus(USLO).
+     focus(USLO);
+     +alarmed(false).
 
 
 +events(Events): true <-
@@ -197,17 +198,30 @@ slot_time_multiplier(1).
     -+risk(Old - (Value / M)).
 
 +risk(Value): true <-
+    .println("Current risk: ", Value);
     !check_risk.
 
-+!check_risk: true <-
++!check_risk: alarmed(false) <-
     ?risk(Risk);
     ?risk_threshold(Thr);
-    Risk > Thr;
-    .println("ALARM! Current risk: ", Risk).
+    Risk >= Thr;
+    -+alarmed(true).
 
--!check_risk: true <-
++!check_risk: alarmed(true) <-
     ?risk(Risk);
-    .println("Current risk: ", Risk).
+    ?risk_threshold(Thr);
+    Risk < Thr;
+    -+alarmed(false).
+
++alarmed(true): true <-
+    .println("TURNING ALARM ON!");
+    turnOnAlarm.
+
++alarmed(false): true <-
+    .println("TURNING ALARM OFF!");
+    turnOffAlarm.
+
+-!check_risk: true <- true.
 
 +!risk_decay: risk(R) & R - 1 >= 0 <-
     !dec_risk(1);
