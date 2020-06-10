@@ -1,10 +1,11 @@
 from umqtt.asynclient import MQTTClient
 import uasyncio as asyncio
-from config import MQTT_CLIENT_ID, MQTT_SERVER_ADDRESS, MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_KEEPALIVE
+from config import MQTT_CLIENT_ID, MQTT_SERVER_ADDRESS, MQTT_PORT, MQTT_USER, MQTT_PASSWORD, MQTT_KEEPALIVE, STATUS_PUBLISH_TOPIC, MQTT_ONLINE_STATUS_PAYLOAD, MQTT_OFFLINE_STATUS_PAYLOAD
 import wifi
 import gc
 
 mqtt_client = MQTTClient(client_id=MQTT_CLIENT_ID, server=MQTT_SERVER_ADDRESS, port=MQTT_PORT, user=MQTT_USER, password=MQTT_PASSWORD, keepalive=MQTT_KEEPALIVE)
+mqtt_client.set_last_will(STATUS_PUBLISH_TOPIC, MQTT_OFFLINE_STATUS_PAYLOAD, retain=True, qos=0)
 
 
 async def mqtt_daemon_start(loop):
@@ -16,7 +17,8 @@ async def mqtt_reconnector():
     while True:
         await wifi.await_wifi_connected()
         if not mqtt_client.isConnected():
-            await mqtt_client.connect(clean_session=True)         
+            await mqtt_client.connect(clean_session=True)
+            await mqtt_client.publish(STATUS_PUBLISH_TOPIC, MQTT_ONLINE_STATUS_PAYLOAD, retain=True)
         await asyncio.sleep(5)
 
 async def mqtt_pinger():
