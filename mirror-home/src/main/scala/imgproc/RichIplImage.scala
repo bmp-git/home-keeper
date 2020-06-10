@@ -69,11 +69,6 @@ object RichIplImage {
     def threshold(v: Int, max: Int = 255): IplImage =
       applyUnaryOp((src, dst) => cvThreshold(src, dst, v, max, CV_THRESH_BINARY))
 
-    def inPlaceThreshold(v: Int, max: Int = 255): IplImage = {
-      cvThreshold(image, image, v, max, CV_THRESH_BINARY)
-      image
-    }
-
     def or(other: IplImage): IplImage =
       applyBinaryOp(other, cvOr)
 
@@ -90,7 +85,7 @@ object RichIplImage {
       cvRectangle(dst, cvPoint(topLeft._1.toInt, topLeft._2.toInt), cvPoint(bottomRight._1.toInt, bottomRight._2.toInt),
         cvScalar(rgba._3, rgba._2, rgba._1, 0), thickness, 8, 0))
 
-    def rectangles(dst:IplImage): IplImage = {
+    def rectangles(dst:IplImage): (IplImage,Boolean) = {
       val storage: CvMemStorage = cvCreateMemStorage()
       var contour = new CvSeq(null)
 
@@ -121,10 +116,10 @@ object RichIplImage {
 
       //val dst = cvCreateImage(cvSize(image.width, image.height), IPL_DEPTH_8U, 3)
       r match {
-        case Some(value) => dst.drawRectangle((value._1, value._2),
+        case Some(value) => (dst.drawRectangle((value._1, value._2),
           (value._3, value._4),
-          (255, 0, 0), 2)
-        case None => dst
+          (255, 0, 0), 2), true)
+        case None => (dst, false)
       }
     }
   }

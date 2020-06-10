@@ -15,15 +15,15 @@ import sources.RealTimeSourceMulticaster
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
-case class MixedReplaceVideoPropertyFactory(override val name:String, streamBuilder: () => Source[BufferedImage, _])
+case class MixedReplaceVideoPropertyFactory(override val name:String, multicaster:RealTimeSourceMulticaster[Option[(BufferedImage, Boolean)]])
                                       (implicit system:ActorSystem)
   extends PropertyFactory {
   override protected def oneTimeBuild(): Property = new Property {
-    private val multicaster = RealTimeSourceMulticaster[ByteString](
+    /*private val multicaster = RealTimeSourceMulticaster[ByteString](
       () => streamBuilder().via(mimeFrameEncoderFlow("boundary")),
       errorDefault = ByteString(),
       maxElementBuffered = 0,
-      retryWhenCompleted = true)
+      retryWhenCompleted = true)*/
 
     override def name: String = "video"
 
@@ -31,7 +31,9 @@ case class MixedReplaceVideoPropertyFactory(override val name:String, streamBuil
 
     def source(implicit executor: ExecutionContext): Try[Source[ByteString, Any]] = {
       multicaster.cast match {
-        case Some(value) => Success(value)
+        case Some(value) => Success(value.collect {
+          case Some(value) => value._1
+        }.via(mimeFrameEncoderFlow("boundary")))
         case None => Failure(new Exception("This stream is not active."))
       }
     }

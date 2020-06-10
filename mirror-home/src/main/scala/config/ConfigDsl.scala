@@ -1,15 +1,18 @@
 package config
 
-import akka.Done
+import java.awt.image.BufferedImage
+
 import akka.actor.{ActorSystem, Cancellable}
 import akka.http.scaladsl.model.MediaType.Compressible
 import akka.http.scaladsl.model._
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
+import akka.{Done, NotUsed}
 import config.factory.action.{ActionFactory, FileWriterActionFactory, JsonActionFactory}
 import config.factory.ble.BleBeaconFactory
-import config.factory.property.{FileReaderPropertyFactory, JsonPropertyFactory, PropertyFactory}
+import config.factory.property.{FileReaderPropertyFactory, JsonPropertyFactory, MixedReplaceVideoPropertyFactory, PropertyFactory}
 import config.factory.topology._
+import imgproc.VideoAnalysis
 import model.Units.MacAddress
 import model._
 import model.ble.Formats._
@@ -26,11 +29,11 @@ import model.user.smartphone.Formats._
 import model.user.smartphone.SmartphoneData
 import model.wifi.Formats._
 import model.wifi.{TimedWifiCaptureData, WifiCaptureData}
-import sources.{HttpSource, MqttSource}
+import sources.{FrameSource, HttpSource, MqttSource, RealTimeSourceMulticaster}
 import spray.json.DefaultJsonProtocol._
 import spray.json.JsonFormat
-import utils.{Lazy, NamedIdDispatcher}
 import utils.RichTrySource._
+import utils.{Lazy, NamedIdDispatcher}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
@@ -131,10 +134,32 @@ object ConfigDsl {
       case v => Failure(new Exception(s"boolean match error for value $v"))
     } asJsonProperty(name, semantic)
 
-
   def smartphone(owner: UserFactory, name: String = "smartphone")(implicit config: LocalizationService): JsonPropertyFactory[SmartphoneData] =
     json_from_http[SmartphoneData](HttpRequest(uri = config.uri(owner.name)), 1.second)
       .asJsonProperty(name, "smartphone_data")
+
+  def video_motion_detection(name: String, sourceFeed: String): (MixedReplaceVideoPropertyFactory, JsonPropertyFactory[Option[MotionDetection]]) = {
+    val multicaster = RealTimeSourceMulticaster[Option[(BufferedImage, Boolean)]](
+      () => FrameSource.video(sourceFeed)(system.dispatcher).via(VideoAnalysis.motion_detection).map(Option.apply),
+      errorDefault = None,
+      maxElementBuffered = 0,
+      retryWhenCompleted = true)
+
+    val motionDetectionEvents: Source[Try[Option[MotionDetection]], NotUsed] = Source.fromIterator(() =>
+      new Iterator[Option[Source[Option[(BufferedImage, Boolean)], Any]]] {
+        override def hasNext: Boolean = true //
+        override def next(): Option[Source[Option[(BufferedImage, Boolean)], Any]] = multicaster.cast
+      }).flatMapConcat({
+      case Some(value) => value.collect { case Some(value) => value }
+      case None => Source.empty[(BufferedImage, Boolean)]
+    }).map(_._2).scan[Option[MotionDetection]](None)({
+      case (_, true) => Some(MotionDetection(DateTime.now))
+      case (oldValue, false) => oldValue
+    }).map(Success.apply)
+
+    (MixedReplaceVideoPropertyFactory(name, multicaster),
+      motionDetectionEvents asJsonProperty(name + "_motion_detection", "motion_detection", None))
+  }
 
   /** GENERIC PROPERTY UTILS **/
   implicit class JsonPropertyFactoryImplicit[T: JsonFormat](source: Source[Try[T], _]) { //TODO: move

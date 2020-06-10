@@ -11,7 +11,6 @@ import javax.imageio.stream.{ImageOutputStream, MemoryCacheImageOutputStream}
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam, ImageWriter}
 import org.bytedeco.javacv.{Frame, Java2DFrameConverter, OpenCVFrameConverter}
 import org.bytedeco.opencv.opencv_core.IplImage
-
 object Flows {
   private def imageToJpegByteString(image: BufferedImage, quality: Float): ByteString = {
     val os: ByteArrayOutputStream = new ByteArrayOutputStream()
@@ -37,10 +36,17 @@ object Flows {
 
   def frameToBufferedImageImageFlow: Flow[Frame, BufferedImage, _] = {
     val converter = new Java2DFrameConverter()
-    Flow[Frame].map(converter.convert)
+    Flow[Frame].map(converter.convert).map(deepCopy) //TODO: why deep copy is needed?
   }
 
-  def mimeFrameEncoderFlow(boundary:String): Flow[BufferedImage, ByteString, _] = {
+  def deepCopy(bi: BufferedImage): BufferedImage = {
+    val cm = bi.getColorModel
+    val isAlphaPremultiplied = cm.isAlphaPremultiplied
+    val raster = bi.copyData(null)
+    new BufferedImage(cm, raster, isAlphaPremultiplied, null)
+  }
+
+  def mimeFrameEncoderFlow(boundary: String): Flow[BufferedImage, ByteString, _] = {
     Flow[BufferedImage].filter(_ != null).map(image => {
       val data = imageToJpegByteString(image, 1)
       ByteString(s"--$boundary\r\n") ++
@@ -60,6 +66,6 @@ object Flows {
       FlowShape(bcast.in, zip.out)
     }).via(m)
 
-  def broadcast2TransformAndMerge[I, T1, T2, O](t1: Flow[I, T1, _], t2: Flow[I, T2, _], m: (T1, T2) => O): Flow[I, O, NotUsed] =
+  def broadcast2TransformAndMerge2[I, T1, T2, O](t1: Flow[I, T1, _], t2: Flow[I, T2, _], m: (T1, T2) => O): Flow[I, O, NotUsed] =
     broadcast2TransformAndMerge(t1, t2, Flow[(T1, T2)].map({ case (t1, t2) => m(t1, t2) }))
 }
