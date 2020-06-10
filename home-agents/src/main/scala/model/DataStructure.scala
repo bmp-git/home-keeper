@@ -15,6 +15,7 @@ case class SmartphoneData(latitude: Double,
                           timestamp: Long,
                           accuracy: Int)
 
+case class ReceiverStatus(online: Boolean)
 
 sealed trait UserPosition
 

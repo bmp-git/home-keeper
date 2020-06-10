@@ -145,9 +145,28 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
       val newWifiData = aggregateWifiData(news)
       val oldWifiData = aggregateWifiData(olds)
 
-      newWifiData.flatMap(nd => if (oldWifiData.exists(od => od._3.mac == nd._3.mac)) None else Some(nd)).map({
-        case (floor, room, _) => UnknownWifiMacEvent(floor, room)
+      newWifiData.flatMap(nd => if (oldWifiData.find(_._3.mac == nd._3.mac).fold(true)(_._3.lastSeen < nd._3.lastSeen)) Some(nd) else None).map({
+        case (floor, room, data) => UnknownWifiMacEvent(floor, room, data.mac)
       })
+    }
+
+    def statusDataFilter(seq: Seq[(Floor, Room)]): Seq[(Floor, Room, ReceiverStatus)] = {
+      seq.flatMap {
+        case (floor, room) => room.properties.find(_.semantic == "receiver_status").map(p => (floor, room, p.value.asInstanceOf[ReceiverStatus]))
+      }
+    }
+
+    def receiverOfflineEvents(news: Seq[(Floor, Room)], olds: Seq[(Floor, Room)]): Seq[ReceiverOfflineEvent] = {
+      val newRooms = statusDataFilter(news)
+      val oldRooms = statusDataFilter(olds)
+
+      newRooms.join(oldRooms, {
+        case ((newFloor, newRoom, ReceiverStatus(false)), (oldFloor, oldRoom, ReceiverStatus(true))) =>
+          oldFloor.name == newFloor.name && oldRoom.name == newRoom.name
+        case _ => false
+      }).map {
+        case ((floor, room, _), (_, _, _)) => ReceiverOfflineEvent(floor, room)
+      }
     }
 
 
@@ -157,6 +176,7 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
       gatewayMotionDetected(this.zippedDoors.toSeq, old.zippedDoors.toSeq) ++
       gatewayMotionDetected(this.zippedWindows.toSeq, old.zippedWindows.toSeq) ++
       newWifiMacData(this.zippedRooms.toSeq, old.zippedRooms.toSeq) ++
+      receiverOfflineEvents(this.zippedRooms.toSeq, old.zippedRooms.toSeq) ++
       backHomeUser(this.users.toSeq, old.users.toSeq)
   }
 }
@@ -175,7 +195,7 @@ object Test extends App {
     (h, Unmarshallers.homeUnmarshaller(json)) match {
       case (None, Some(home)) => h = Some(home)
       case (Some(oldHome), Some(newHome)) =>
-        val events = newHome - oldHome
+        val events: Seq[Event] = newHome - oldHome
         events.toSet.foreach(println)
         println("------------------------------------------------------")
         h = Some(newHome)

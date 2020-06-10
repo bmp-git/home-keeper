@@ -20,7 +20,7 @@ object File {
 
   def readLines(fileName: String): Try[Seq[String]] = {
     Try(scala.io.Source.fromFile(fileName)).flatMap(source => {
-      val result:Try[Seq[String]] = Try(source.getLines().toSeq)
+      val result:Try[Seq[String]] = Try(source.getLines().toList)
       source.close()
       result
     })

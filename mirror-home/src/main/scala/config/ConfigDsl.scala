@@ -118,7 +118,7 @@ object ConfigDsl {
       }
     }).mapValue(map => {
       val newMacList = macWifiList ++ map.collect {
-        case (mac, (times_viewed, _)) if !macWifiList.contains(mac) && times_viewed > 360 => mac
+        case (mac, (times_viewed, _)) if !macWifiList.contains(mac) && times_viewed > 5 => mac
       }.toSeq
       if (newMacList != macWifiList) {
         utils.File.writeLines(s"$RESOURCE_FOLDER/mac_whitelist.txt", newMacList)

@@ -41,7 +41,11 @@ case class GetBackHomeEvent(user: User) extends Event {
   //event(get_back_home, lorenzomondani)
   override def toTerm: Term = Literal.parseLiteral(s"event(get_back_home, ${user.name})")
 } //
-case class UnknownWifiMacEvent(floor: Floor, room: Room) extends Event {
+case class UnknownWifiMacEvent(floor: Floor, room: Room, mac: String) extends Event {
   //event(unknown_wifi_mac, room(firstfloor, kitchen))
-  override def toTerm: Term = Literal.parseLiteral(s"event(unknown_wifi_mac, room(${floor.name}, ${room.name}))")
+  override def toTerm: Term = Literal.parseLiteral(s"event(unknown_wifi_mac, ${'"'}$mac${'"'}, room(${floor.name}, ${room.name}))")
+}
+case class ReceiverOfflineEvent(floor: Floor, room: Room) extends Event {
+  //event(unknown_wifi_mac, room(firstfloor, kitchen))
+  override def toTerm: Term = Literal.parseLiteral(s"event(receiver_offline, room(${floor.name}, ${room.name}))")
 }

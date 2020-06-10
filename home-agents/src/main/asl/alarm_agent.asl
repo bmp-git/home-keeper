@@ -71,6 +71,11 @@ slot_time_multiplier(1).
     .println("[NO ONE AT HOME]: an external movement nearby window is detected!");
     !inc_risk(150).
 
+/* A9 - A new stranger mac address is detected. */
++!handle_event(event(unknown_wifi_mac, _, _)): users_at_home(0) <-
+    .println("[NO ONE AT HOME]: a new stranger mac address has been detected!");
+    !inc_risk(200).
+
 
 /* Someone in a room X rules. */
 /* B1 - External door opening in a empty room. */
@@ -172,6 +177,10 @@ slot_time_multiplier(1).
     .println("[SOMEONE AT HOME]: an external movement nearby window is detected!");
     !inc_risk(150).
 
+/* C9 - A new stranger mac address is detected. */
++!handle_event(event(unknown_wifi_mac, _, _)): users_at_home(Num) & Num > 0 <-
+    .println("[SOMEONE AT HOME]: a new stranger mac address has been detected!");
+    !inc_risk(100).
 
 
 /* Always on rules. */
@@ -181,6 +190,10 @@ slot_time_multiplier(1).
     ?risk(Risk);
     !dec_risk(Risk).
 
+/* D2 - A receiver went offline. */
++!handle_event(event(receiver_offline, _)): receivers_online(On, Tot) & Tot - On >= 1 <-
+    .println("[ALWAYS ON]: More than one receiver went offline!");
+    !inc_risk(1060).
 
 +!handle_event(Event): true <-
     .println("Handling event: ", Event).

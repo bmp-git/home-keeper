@@ -68,6 +68,7 @@ object Unmarshallers {
       isOpenPropertyUnmarshaller,
       motionDetectionPropertyUnmarshaller,
       wifiReceiverPropertyUnmarshaller,
+      scannerStatusPropertyUnmarshaller,
       unknownPropertyUnmarshaller))
 
   def beaconDataUnmarshaller: JsonUnmarshaller[BeaconData] = data =>
@@ -148,6 +149,16 @@ object Unmarshallers {
          valueData <- json("value")(data);
          value <- wifiTimedDataSeqUnmarshaller(valueData))
       yield Property(name, value, "wifi_receiver")
+
+  def scannerStatusPropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
+    for (name <- str("name")(data);
+         "receiver_status" <- str("semantic")(data);
+         valueData <- json("value")(data);
+         value <- onlineStatusUnmarshaller(valueData))
+      yield Property(name, value, "receiver_status")
+
+  def onlineStatusUnmarshaller: JsonUnmarshaller[ReceiverStatus] = data =>
+    for (online <- bool("online")(data)) yield ReceiverStatus(online)
 
   def timePropertyUnmarshaller: JsonUnmarshaller[Property] = data =>
     for (name <- str("name")(data);

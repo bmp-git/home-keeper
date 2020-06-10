@@ -21,7 +21,7 @@ object DebugMain extends App {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  implicit val broker: BrokerConfig = BrokerConfig("192.168.1.10:1883")
+  implicit val broker: BrokerConfig = BrokerConfig("10.0.0.2:1883")
   implicit val localizationService: LocalizationService = LocalizationService(
     port = 8086,
     gmail = "bmpprogetti@gmail.com",

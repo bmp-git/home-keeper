@@ -3,7 +3,7 @@ package env
 import cartago.{Artifact, LINK, OPERATION}
 import config.Server
 import jason.asSyntax.{Atom, ListTermImpl, Literal, NumberTermImpl, Term}
-import model.{Coordinates, Home, Property}
+import model.{Coordinates, Home, Property, ReceiverStatus}
 import org.joda.time.DateTime
 import play.api.libs.json.JsBoolean
 import sttp.client.quick.quickRequest
@@ -27,6 +27,16 @@ class HomeArtifact extends Artifact {
     (hour > 0 && hour < 8) || hour > 21
   }
 
+  def receivers(home: Home): Seq[ReceiverStatus] = home.zippedRooms.toSeq.flatMap(_._2.properties.find(_.semantic == "receiver_status").map(_.value.asInstanceOf[ReceiverStatus]))
+
+  def receiverOnlineCount(home: Home): Int = {
+    receivers(home).count(_.online)
+  }
+
+  def receiverCount(home: Home): Int = {
+    receivers(home).size
+  }
+
   @OPERATION def init(home: Home): Unit = {
     this.oldHome = home
     compute(home) match {
@@ -36,6 +46,7 @@ class HomeArtifact extends Artifact {
     val time = System.currentTimeMillis()
     defineObsProperty("time", new NumberTermImpl(time)) //TODO: time from apis
     defineObsProperty("time_slot", if (isNight(time)) new Atom("night") else new Atom("day"))
+    defineObsProperty("receivers_online", new NumberTermImpl(receiverOnlineCount(home)), new NumberTermImpl(receiverCount(home)))
     defineObsProperty("events", new ListTermImpl())
   }
 
@@ -53,6 +64,9 @@ class HomeArtifact extends Artifact {
 
     val result = "a([" + (home - oldHome).map(_.toTerm).mkString(",") + "])"
     val termList = Literal.parseLiteral(result).getTerm(0)
+
+    updateObsProperty("receivers_online", new NumberTermImpl(receiverOnlineCount(home)), new NumberTermImpl(receiverCount(home)))
+
     updateObsProperty("events", termList)
 
     this.oldHome = home
