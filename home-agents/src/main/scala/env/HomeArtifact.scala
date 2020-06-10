@@ -1,9 +1,16 @@
 package env
 
 import cartago.{Artifact, LINK, OPERATION}
+import config.Server
 import jason.asSyntax.{Atom, ListTermImpl, Literal, NumberTermImpl, Term}
 import model.{Coordinates, Home, Property}
 import org.joda.time.DateTime
+import play.api.libs.json.JsBoolean
+import sttp.client.quick.quickRequest
+import sttp.model.Uri
+import sttp.client.quick._
+
+import scala.util.Try
 
 class HomeArtifact extends Artifact {
 
@@ -49,5 +56,23 @@ class HomeArtifact extends Artifact {
     updateObsProperty("events", termList)
 
     this.oldHome = home
+  }
+
+  @OPERATION def turnOnAlarm(): Unit = {
+    turnAlarm(JsBoolean(true).toString)
+  }
+
+  @OPERATION def turnOffAlarm(): Unit = {
+    turnAlarm(JsBoolean(false).toString)
+  }
+
+  private def turnAlarm(body: String): Unit = {
+    val sirenName = "siren"
+    val sirenUrl = s"${Server.uri}/api/home/actions/$sirenName"
+    println(s"TURNING ALARM $body on $sirenUrl ...")
+    Uri.parse(sirenUrl) match {
+      case Left(_) =>  println(s"Failed to parse uri $sirenUrl")
+      case Right(value) => Try(quickRequest.body(body).post(value).send())
+    }
   }
 }

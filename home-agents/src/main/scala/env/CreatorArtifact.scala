@@ -17,7 +17,7 @@ class CreatorArtifact extends Artifact {
   @OPERATION def updateWorld(): Unit = {
     val response = quickRequest.get(apiUri).send()
     this.json = Json.parse(response.body)
-    Unmarshallers.homeParser(json) match {
+    Unmarshallers.homeUnmarshaller(json) match {
       case Some(home) =>
         def execUpdate(name: String, dt: DigitalTwin): Unit = execLinkedOp(lookupArtifact(name), "update", dt)
 
@@ -34,7 +34,7 @@ class CreatorArtifact extends Artifact {
   @OPERATION def create(): Unit = {
     val response = quickRequest.get(apiUri).send()
     this.json = Json.parse(response.body)
-    Unmarshallers.homeParser(json) match {
+    Unmarshallers.homeUnmarshaller(json) match {
       case Some(home) =>
         makeArtifact("pages", "env.YellowPagesArtifact", new ArtifactConfig(home))
         makeArtifact("users_locator", "env.UsersLocatorArtifact", new ArtifactConfig(home))

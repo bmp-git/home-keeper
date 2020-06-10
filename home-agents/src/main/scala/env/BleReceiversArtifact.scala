@@ -2,9 +2,7 @@ package env
 
 import cartago.{Artifact, LINK, OPERATION}
 import jason.asSyntax.Literal
-import model.{BeaconData, Home, Property}
-
-case class BeaconDataSeq(seq: Seq[BeaconData])
+import model.{BeaconDataSeq, Home, Property}
 
 class BleReceiversArtifact extends Artifact {
 
