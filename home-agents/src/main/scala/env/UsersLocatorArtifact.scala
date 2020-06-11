@@ -43,6 +43,15 @@ class UsersLocatorArtifact extends Artifact {
     updateObsProperty("users_at_home", new NumberTermImpl(getInsideUsersCount(home)))
   }
 
+  private def postUserPosition(user: String, body: String): Unit = {
+    val actionUrl = s"${Server.uri}/api/home/users/$user/actions/position"
+    println(s"UPDATE_POSITION on $actionUrl ...")
+    Uri.parse(s"$actionUrl") match {
+      case Left(_) =>  println(s"Failed to parse uri $actionUrl")
+      case Right(value) => quickRequest.body(body).post(value).send()
+    }
+  }
+
   @OPERATION def updateUserHomePosition(user: String, floorName: String, roomName: String): Unit = {
     val js = Json.obj("type" -> "in_room", "floor" -> floorName, "room" -> roomName)
     postUserPosition(user, js.toString)
@@ -51,14 +60,5 @@ class UsersLocatorArtifact extends Artifact {
   @OPERATION def updateUserPosition(user: String, place: String): Unit = {
     val js = Json.obj("type" -> place)
     postUserPosition(user, js.toString)
-  }
-
-  private def postUserPosition(user: String, body: String): Unit = {
-    val actionUrl = s"${Server.uri}/api/home/users/$user/actions/position"
-    println(s"UPDATE_POSITION on $actionUrl ...")
-    Uri.parse(s"$actionUrl") match {
-      case Left(_) =>  println(s"Failed to parse uri $actionUrl")
-      case Right(value) => Try(quickRequest.body(body).post(value).send())
-    }
   }
 }

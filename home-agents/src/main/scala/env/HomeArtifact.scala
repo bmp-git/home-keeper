@@ -86,7 +86,7 @@ class HomeArtifact extends Artifact {
     println(s"TURNING ALARM $body on $sirenUrl ...")
     Uri.parse(sirenUrl) match {
       case Left(_) =>  println(s"Failed to parse uri $sirenUrl")
-      case Right(value) => Try(quickRequest.body(body).post(value).send())
+      case Right(value) => quickRequest.body(body).post(value).send()
     }
   }
 }

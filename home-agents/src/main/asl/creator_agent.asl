@@ -7,9 +7,13 @@
 
 /* Plans */
 
-+!initialize : true <-
++!initialize: true <-
     makeArtifact("creator", "env.CreatorArtifact", [], H);
-    create;
+    !create_world.
+
++!create_world: true <-
+    createWorld;
+    .println("[INFO] Connected to mirror home service");
     lookupArtifact("pages", YPID);
     focus(YPID);
     ?usersNames(Users);
@@ -20,10 +24,21 @@
     };
     .wait(500);
     .broadcast(tell, world_created);
-    !start.
+    !update_world.
 
-+!start : true <-
-     println("Updating...");
+-!create_world: true <-
+    .println("[ERROR] Error connecting to mirror home service, retrying in 1 second");
+    .wait(1000);
+    !create_world.
+
++!update_world: true <-
      .wait(1000);
      updateWorld;
-     !start.
+     .println("[INFO] Mirror home status updated correctly");
+     !update_world.
+
+-!update_world: true <-
+     .println("[ERROR] Error updating mirror home status, retrying in 1 second");
+     .wait(1000);
+     !update_world.
+

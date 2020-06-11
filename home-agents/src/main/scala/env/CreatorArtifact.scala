@@ -27,11 +27,11 @@ class CreatorArtifact extends Artifact {
         home.users.foreach(user => {
           execUpdate(s"${user.name}_smartphone", user)
         })
-      case None => println("Unexpected home json")
+      case None => throw new Exception("[Error] Unexpected home json")
     }
   }
 
-  @OPERATION def create(): Unit = {
+  @OPERATION def createWorld(): Unit = {
     val response = quickRequest.get(apiUri).send()
     this.json = Json.parse(response.body)
     Unmarshallers.homeUnmarshaller(json) match {
@@ -44,7 +44,7 @@ class CreatorArtifact extends Artifact {
         home.users.foreach(user => {
           makeArtifact(s"${user.name}_smartphone", "env.SmartphoneArtifact", new ArtifactConfig(user))
         })
-      case None => println("Unexpected home json")
+      case None => throw new Exception("[Error] Unexpected home json")
     }
   }
 }

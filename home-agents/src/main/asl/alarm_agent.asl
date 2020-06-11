@@ -24,7 +24,6 @@ everyone_at_home_is_in_a_room :- locations(Locations) & not .member(user_locatio
 /* Initial goals */
 
 !initialize.
-!risk_decay.
 
 /* Plans */
 
@@ -34,7 +33,8 @@ everyone_at_home_is_in_a_room :- locations(Locations) & not .member(user_locatio
      focus(HAID);
      lookupArtifact("users_locator", USLO);
      focus(USLO);
-     +alarmed(false).
+     +alarmed(false);
+     !risk_decay.
 
 
 +events(Events): true <-
@@ -217,21 +217,29 @@ everyone_at_home_is_in_a_room :- locations(Locations) & not .member(user_locatio
     ?risk(Risk);
     ?risk_threshold(Thr);
     Risk >= Thr;
-    -+alarmed(true).
+    !turn_alarm_on.
 
 +!check_risk: alarmed(true) <-
     ?risk(Risk);
     ?risk_threshold(Thr);
     Risk < Thr;
+    !turn_alarm_off.
+
++!turn_alarm_on: true <-
+    .println("TURNING ALARM ON!");
+     turnOnAlarm;
+     -+alarmed(true).
+
+-!turn_alarm_on: true <-
+    .println("[ERROR] TURNING ALARM ON!").
+
++!turn_alarm_off: true <-
+    .println("TURNING ALARM OFF!");
+    turnOffAlarm;
     -+alarmed(false).
 
-+alarmed(true): true <-
-    .println("TURNING ALARM ON!");
-    turnOnAlarm.
-
-+alarmed(false): true <-
-    .println("TURNING ALARM OFF!");
-    turnOffAlarm.
+-!turn_alarm_off: true <-
+    .println("[ERROR] TURNING ALARM OFF!").
 
 -!check_risk: true <- true.
 

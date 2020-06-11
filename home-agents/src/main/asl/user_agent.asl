@@ -89,20 +89,22 @@ home_radius(200).  //meters
     .println("No valid data found");
     !update_location(unknown).
 
-+!update_location(Room) : location(Room) <-
++!update_location(Room): location(Room) <-
     !work.
 
-+!update_location(Room) : location(Any) & Any \== Room <-
-    -+location(Room).
-
-+location(room(Floor, Room)) : status(working) <-
-    .println("1 I'm in ", room(Floor, Room));
++!update_location(room(Floor, Room)): true <-
     ?user(Name);
     updateUserHomePosition(Name, Floor, Room);
+    .println("[INFO] Successfully updated position to ", room(Floor, Room));
+    -+location(room(Floor, Room));
     !work.
 
-+location(Place) : status(working) & Place \== room(_, _) <-
-    .println("2 I'm in ", Place);
++!update_location(Place): true <-
     ?user(Name);
     updateUserPosition(Name, Place);
+    .println("[INFO] Successfully updated position to ", Place);
+    -+location(Place);
     !work.
+
+-!update_location(Place): true <-
+    .println("[ERROR] Updating position to ", Place).
