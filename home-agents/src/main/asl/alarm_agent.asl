@@ -4,7 +4,20 @@ risk(100).
 risk_threshold(1000).
 slot_time_multiplier(1).
 
-/*no_one_in_room(Room) :- ?locations(Locations) & not .member(user_location(_, location(Room)), Locations).*/
+/* Rules */
+is_internal_room(room(_, RoomName)) :- RoomName \== external.
+no_one_at_home :- users_at_home(0).
+
+no_one_in_room(Room) :- locations(Locations) & not .member(user_location(_, location(Room)), Locations).
+no_one_in_room(Room1, Room2) :- no_one_in_room(Room1) & no_one_in_room(Room2).
+
+someone_in_room(Room) :- locations(Locations) & .member(user_location(_, location(Room)), Locations).
+someone_in_room(Room1, Room2) :- someone_in_room(Room1) | someone_in_room(Room2).
+
+receivers_majority_offline :- receivers_online(On, Tot) & Tot - On >= 2.
+receivers_majority_offline :- receivers_online(0, 1).
+
+someone_at_home :- users_at_home(Num) & Num > 0.
 
 /* Initial goals */
 
@@ -32,47 +45,47 @@ slot_time_multiplier(1).
 
 /* No one at home rules. */
 /* A1 - External door opening. */
-+!handle_event(event(open, door, _, external, _)): users_at_home(0) <-
++!handle_event(event(open, door, _, external, _)): no_one_at_home <-
     .println("[NO ONE AT HOME]: an external door opened!");
     !inc_risk(600).
 
 /* A2 - External window opening. */
-+!handle_event(event(open, window, _, external, _)): users_at_home(0) <-
++!handle_event(event(open, window, _, external, _)): no_one_at_home <-
     .println("[NO ONE AT HOME]: an external window opened!");
     !inc_risk(800).
 
 /* A3 - Internal door opening. */
-+!handle_event(event(open, door, _, internal, _)): users_at_home(0) <-
++!handle_event(event(open, door, _, internal, _)): no_one_at_home <-
     .println("[NO ONE AT HOME]: an internal door opened!");
     !inc_risk(400).
 
 /* A4 - Internal window opening. */
-+!handle_event(event(open, window, _, internal, _)): users_at_home(0) <-
++!handle_event(event(open, window, _, internal, _)): no_one_at_home <-
     .println("[NO ONE AT HOME]: an internal window opened!");
     !inc_risk(0).
 
 /* A5 - External motion detection. */
-+!handle_event(event(motion_detection, room(_, external))): users_at_home(0) <-
++!handle_event(event(motion_detection, room(_, external))): no_one_at_home <-
     .println("[NO ONE AT HOME]: an external movement is detected!");
     !inc_risk(250).
 
 /* A6 - Internal motion detection. */
-+!handle_event(event(motion_detection, room(_, RoomName))): RoomName \== external & users_at_home(0) <-
++!handle_event(event(motion_detection, Room)): is_internal_room(Room) & no_one_at_home <-
     .println("[NO ONE AT HOME]: an internal movement is detected!");
     !inc_risk(150).
 
 /* A7 - External motion detection nearby door. */
-+!handle_event(event(motion_detection_near, door, _, external, _)): users_at_home(0) <-
++!handle_event(event(motion_detection_near, door, _, external, _)): no_one_at_home <-
     .println("[NO ONE AT HOME]: an external movement nearby door is detected!");
     !inc_risk(150).
 
 /* A8 - External motion detection nearby window. */
-+!handle_event(event(motion_detection_near, window, _, external, _)): users_at_home(0) <-
++!handle_event(event(motion_detection_near, window, _, external, _)): no_one_at_home <-
     .println("[NO ONE AT HOME]: an external movement nearby window is detected!");
     !inc_risk(150).
 
 /* A9 - A new stranger mac address is detected. */
-+!handle_event(event(unknown_wifi_mac, _, _)): users_at_home(0) <-
++!handle_event(event(unknown_wifi_mac, _, _)): no_one_at_home <-
     .println("[NO ONE AT HOME]: a new stranger mac address has been detected!");
     !inc_risk(200).
 
@@ -80,105 +93,89 @@ slot_time_multiplier(1).
 /* Someone in a room X rules. */
 /* B1 - External door opening in a empty room. */
 /*locations = [user_location(UserName, location(Room))]*/
-+!handle_event(event(open, door, _, external, [R1, R2])): users_at_home(Num) & Num > 0 <-
-    ?locations(Locations);
-    not .member(user_location(_, location(R1)), Locations) & not .member(user_location(_, location(R2)), Locations);
++!handle_event(event(open, door, _, external, [R1, R2])): someone_at_home & no_one_in_room(R1, R2) <-
     .println("[SOMEONE IN A ROOM]: an external door connected to an empty room opened!");
     !inc_risk(300).
 
 /* B2 - External door opening in room with a user inside it. */
-+!handle_event(event(open, door, _, external, [R1, R2])): users_at_home(Num) & Num > 0 <-
-    ?locations(Locations);
-    .member(user_location(_, location(R1)), Locations) | .member(user_location(_, location(R2)), Locations);
++!handle_event(event(open, door, _, external, [R1, R2])): someone_in_room(R1, R2) <-
     .println("[SOMEONE IN A ROOM]: an external door connected to a room with an user inside opened!");
     !inc_risk(50).
 
 /* B3 - External window opening in a empty room. */
-+!handle_event(event(open, window, _, external, [R1, R2])): users_at_home(Num) & Num > 0 <-
-    ?locations(Locations);
-    not .member(user_location(_, location(R1)), Locations) & not .member(user_location(_, location(R2)), Locations);
++!handle_event(event(open, window, _, external, [R1, R2])): someone_at_home & no_one_in_room(R1, R2) <-
     .println("[SOMEONE IN A ROOM]: an external window connected to a empty rooms opened!");
     !inc_risk(500).
 
 /* B4 - External window opening in room with a user inside it. */
-+!handle_event(event(open, window, _, external, [R1, R2])): users_at_home(Num) & Num > 0 <-
-    ?locations(Locations);
-    .member(user_location(_, location(R1)), Locations) | .member(user_location(_, location(R2)), Locations);
++!handle_event(event(open, window, _, external, [R1, R2])): someone_in_room(R1, R2) <-
     .println("[SOMEONE IN A ROOM]: an external window connected to a room with an user inside opened!");
     !inc_risk(50).
 
 /* B5 - Internal door opening with a user in a connected room is not a problem. */
-+!handle_event(event(open, door, _, internal, [R1, R2])): users_at_home(Num) & Num > 0 <-
-    ?locations(Locations);
-    .member(user_location(_, location(R1)), Locations) | .member(user_location(_, location(R2)), Locations);
++!handle_event(event(open, door, _, internal, [R1, R2])): someone_in_room(R1, R2) <-
     .println("[SOMEONE IN A ROOM]: an internal door connected to a room with someone opened, no problem.");
     !inc_risk(0).
 
 /* B6 - Internal door opening with users not in a connected room is strange. */
-+!handle_event(event(open, door, _, internal, [R1, R2])): users_at_home(Num) & Num > 0 <-
-    ?locations(Locations);
-    not .member(user_location(_, location(R1)), Locations) & not .member(user_location(_, location(R2)), Locations);
++!handle_event(event(open, door, _, internal, [R1, R2])): someone_at_home & no_one_in_room(R1, R2) <-
     .println("[SOMEONE IN A ROOM]: an internal door connected to empty rooms opened!");
     !inc_risk(50).
 
 /* B7 - Room X Internal motion detection (not a problem). */
-+!handle_event(event(motion_detection, room(FloorName, RoomName))): RoomName \== external & users_at_home(Num) & Num > 0 <-
-    ?locations(Locations);
-    .member(user_location(_, location(room(FloorName, RoomName))), Locations);
++!handle_event(event(motion_detection, Room)): is_internal_room(Room) & someone_in_room(Room) <-
     .println("[SOMEONE IN A ROOM]: an internal movement is detected in a room with someone!");
     !inc_risk(0).
 
 /* B8 - Room Y Internal motion detection (strange, someone without beacon?). */
-+!handle_event(event(motion_detection, room(FloorName, RoomName))): RoomName \== external & users_at_home(Num) & Num > 0 <-
-    ?locations(Locations);
-    not .member(user_location(_, location(room(FloorName, RoomName))), Locations);
++!handle_event(event(motion_detection, Room)): is_internal_room(Room) & someone_at_home & no_one_in_room(Room) <-
     .println("[SOMEONE IN A ROOM]: an internal movement is detected in a empty room!");
     !inc_risk(25).
 
 
 /* Someone at home rules. */
 /* C1 - External door opening. */
-+!handle_event(event(open, door, _, external, _)): users_at_home(Num) & Num > 0 <-
++!handle_event(event(open, door, _, external, _)): someone_at_home <-
     .println("[SOMEONE AT HOME]: an external door opened!");
     !inc_risk(400).
 
 /* C2 - External window opening. */
-+!handle_event(event(open, window, _, external, _)): users_at_home(Num) & Num > 0 <-
++!handle_event(event(open, window, _, external, _)): someone_at_home <-
     .println("[SOMEONE AT HOME]: an external window opened!");
     !inc_risk(600).
 
 /* C3 - Internal door opening. */
-+!handle_event(event(open, door, _, internal, _)): users_at_home(Num) & Num > 0 <-
++!handle_event(event(open, door, _, internal, _)): someone_at_home <-
     .println("[SOMEONE AT HOME]: an internal door opened!");
     !inc_risk(100).
 
 /* C4 - Internal window opening. */
-+!handle_event(event(open, window, _, internal, _)): users_at_home(Num) & Num > 0 <-
++!handle_event(event(open, window, _, internal, _)): someone_at_home <-
     .println("[SOMEONE AT HOME]: an internal window opened!");
     !inc_risk(0).
 
 /* C5 - External motion detection. */
-+!handle_event(event(motion_detection, room(_, external))): users_at_home(Num) & Num > 0 <-
++!handle_event(event(motion_detection, room(_, external))): someone_at_home <-
     .println("[SOMEONE AT HOME]: an external movement is detected!");
     !inc_risk(300).
 
 /* C6 - Internal motion detection. */
-+!handle_event(event(motion_detection, room(_, RoomName))): RoomName \== external & users_at_home(Num) & Num > 0 <-
++!handle_event(event(motion_detection, Room)): is_internal_room(Room) & someone_at_home <-
     .println("[SOMEONE AT HOME]: an internal movement is detected!");
     !inc_risk(25).
 
 /* C7 - External motion detection nearby door. */
-+!handle_event(event(motion_detection_near, door, _, external, _)): users_at_home(Num) & Num > 0 <-
++!handle_event(event(motion_detection_near, door, _, external, _)): someone_at_home <-
     .println("[SOMEONE AT HOME]: an external movement nearby door is detected!");
     !inc_risk(150).
 
 /* C8 - External motion detection nearby window. */
-+!handle_event(event(motion_detection_near, window, _, external, _)): users_at_home(Num) & Num > 0 <-
++!handle_event(event(motion_detection_near, window, _, external, _)): someone_at_home <-
     .println("[SOMEONE AT HOME]: an external movement nearby window is detected!");
     !inc_risk(150).
 
 /* C9 - A new stranger mac address is detected. */
-+!handle_event(event(unknown_wifi_mac, _, _)): users_at_home(Num) & Num > 0 <-
++!handle_event(event(unknown_wifi_mac, _, _)): someone_at_home <-
     .println("[SOMEONE AT HOME]: a new stranger mac address has been detected!");
     !inc_risk(100).
 
@@ -191,12 +188,12 @@ slot_time_multiplier(1).
     !dec_risk(Risk).
 
 /* D2 - A receiver went offline. */
-+!handle_event(event(receiver_offline, _)): receivers_online(On, Tot) & Tot - On >= 1 <-
++!handle_event(event(receiver_offline, _)): receivers_majority_offline <-
     .println("[ALWAYS ON]: More than one receiver went offline!");
     !inc_risk(1060).
 
 +!handle_event(Event): true <-
-    .println("Handling event: ", Event).
+    .println("[ERROR] Cannot handle event: ", Event).
 
 +!inc_risk(Value): true <-
     .println("Incrementing risk");
@@ -236,7 +233,9 @@ slot_time_multiplier(1).
 
 -!check_risk: true <- true.
 
-+!risk_decay: risk(R) & R - 1 >= 0 <-
++!risk_decay: true <-
+    ?risk(R);
+    R - 1 >= 0;
     !dec_risk(1);
     .wait(1000);
     !risk_decay.

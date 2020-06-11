@@ -32,10 +32,12 @@
       </transition>
       <transition name="custom-transition" enter-active-class="animate__animated animate__bounceIn" leave-active-class="animate__animated animate__bounceOut">
       <v-col v-show="showCards">
-        <EntitiesViewer
-          ref="entitiesViewer"
-          :selected-floor-index="selectedFloorIndex"
-        ></EntitiesViewer>
+        <div style="height:calc(100vh - 231px);overflow-x: hidden; overflow-y: auto;">
+          <EntitiesViewer
+                  ref="entitiesViewer"
+                  :selected-floor-index="selectedFloorIndex"
+          ></EntitiesViewer>
+        </div>
       </v-col>
       </transition>
     </v-row>
@@ -184,7 +186,7 @@ export default class Home extends Vue {
     entities.forEach((e: any) => {
       const svgEntity = $(`#obj_${this.selectedFloorIndex}`).find(`path[data-bindid=${$.escapeSelector(e.entity.name)}]`);
       if (svgEntity[0]) {
-        this.cleanSvgStyle(svgEntity);
+        Home.cleanSvgStyle(svgEntity);
         e.entity.properties.forEach((p: any) => {
           switch (p.semantic) {
             case "is_open":
@@ -199,7 +201,7 @@ export default class Home extends Vue {
     });
   }
 
-  private cleanSvgStyle(svgEntity: any) {
+  private static cleanSvgStyle(svgEntity: any) {
     svgEntity.removeClass([
       "is_open",
       "is_closed",
@@ -233,5 +235,14 @@ export default class Home extends Vue {
 
 .entity_card {
   width: 350px;
+}
+
+
+.hide-native-scrollbar {
+  scrollbar-width: none; /* Firefox 64 /
+  -ms-overflow-style: none; / Internet Explorer 11 */
+}
+::-webkit-scrollbar { /** WebKit */
+  display: none;
 }
 </style>
