@@ -118,7 +118,7 @@ object Unmarshallers {
       data => for ("away" <- str("type")(data)) yield Away,
       data => for ("in_room" <- str("type")(data);
                    room <- str("room")(data);
-                   floor <- str("floor")(data)) yield InRoom(room, floor)))
+                   floor <- str("floor")(data)) yield InRoom(floor, room)))
   }
 
   def openCloseDataUnmarshaller: JsonUnmarshaller[Option[OpenCloseData]] = {
