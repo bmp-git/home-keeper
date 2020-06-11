@@ -236,7 +236,8 @@ slot_time_multiplier(1).
 
 -!check_risk: true <- true.
 
-+!risk_decay: risk(R) & R - 1 >= 0 <-
++!risk_decay: risk(R) <-
+    R - 1 >= 0;
     !dec_risk(1);
     .wait(1000);
     !risk_decay.
