@@ -24,12 +24,12 @@ case class RealTimeSourceMulticaster[T](sourceFactory: () => Source[T, Any], err
     workingLock synchronized {
       initializing = true
     }
-    println("RealTimeSourceMulticaster started")
+    //println("RealTimeSourceMulticaster started")
     sourceFactory().runForeach(frame => {
       workingLock synchronized {
         working = true
       }
-      println(bufferContainer.length + " clients with " + bufferContainer.map(_.size).sum + " pending messages")
+      //println(bufferContainer.length + " clients with " + bufferContainer.map(_.size).sum + " pending messages")
       var closed = Seq[Buffer]()
       bufferContainer.foreach(b => {
         b synchronized {
@@ -43,7 +43,7 @@ case class RealTimeSourceMulticaster[T](sourceFactory: () => Source[T, Any], err
       })
       bufferContainer = bufferContainer.filterNot(closed.contains)
     }).onComplete { v =>
-      println("RealTimeSourceMulticaster closed " + v)
+      //println("RealTimeSourceMulticaster closed " + v)
       workingLock synchronized {
         working = false
         initializing = false

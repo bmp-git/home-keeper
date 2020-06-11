@@ -10,7 +10,7 @@ object Utils {
     val external = room()
     val hallway = room()
     val bedroom = room().withAction(
-      turn("action")
+      turn("action", println)
     )
 
     val h = home("home")(

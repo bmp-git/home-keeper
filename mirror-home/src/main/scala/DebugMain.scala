@@ -7,16 +7,17 @@ import config.factory.ble.BleBeaconFactory
 import config.factory.property.JsonPropertyFactory
 import model.coordinates.Coordinates
 import model.{BrokerConfig, Home, LocalizationService}
-import webserver.RouteGenerator
+import org.bytedeco.ffmpeg.global.avutil
+import utils.File
+import webserver.{JwtUtils, RouteGenerator}
 import webserver.json.JsonModel._
 
 import scala.concurrent.ExecutionContextExecutor
-import scala.io.StdIn
 import scala.util.Failure
 
 object DebugMain extends App {
 
-
+  avutil.av_log_set_level(avutil.AV_LOG_QUIET)
   implicit val system: ActorSystem = ConfigDsl.system
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
@@ -108,11 +109,15 @@ object DebugMain extends App {
 
   val build: Home = myHome.build()
 
-  val route = RouteGenerator.generateRoutes(build, "api")
+
+  val route = RouteGenerator.generateRoutes(build, "api")(if(File.exists(JwtUtils.secretKeyPath)) JwtUtils.secured else JwtUtils.unsecured)
+
 
   val bindingFuture = Http().bindAndHandle(route, "localhost", 8090)
   println(s"Server online at http://localhost:8090/\nPress RETURN to stop...")
-  StdIn.readLine()
+
+
+  Main.userCmd()
   bindingFuture
     .flatMap(_.unbind())
     .onComplete(_ => system.terminate())
