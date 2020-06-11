@@ -32,10 +32,12 @@
       </transition>
       <transition name="custom-transition" enter-active-class="animate__animated animate__bounceIn" leave-active-class="animate__animated animate__bounceOut">
       <v-col v-show="showCards">
-        <EntitiesViewer
-          ref="entitiesViewer"
-          :selected-floor-index="selectedFloorIndex"
-        ></EntitiesViewer>
+        <div style="height:calc(100vh - 231px);overflow-x: hidden; overflow-y: auto;">
+          <EntitiesViewer
+                  ref="entitiesViewer"
+                  :selected-floor-index="selectedFloorIndex"
+          ></EntitiesViewer>
+        </div>
       </v-col>
       </transition>
     </v-row>
@@ -235,11 +237,12 @@ export default class Home extends Vue {
   width: 350px;
 }
 
-.path_selected {
 
+.hide-native-scrollbar {
+  scrollbar-width: none; /* Firefox 64 /
+  -ms-overflow-style: none; / Internet Explorer 11 */
 }
-
-path[data-bindid] {
-
+::-webkit-scrollbar { /** WebKit */
+  display: none;
 }
 </style>
