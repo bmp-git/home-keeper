@@ -3,7 +3,14 @@
     <v-system-bar color="primary text--primary" dark :class="(this.properties.length > 0 || this.actions.length > 0) && open ? '' : 'minimized_card'">
 
         <UserAvatar :name="name" size="16"></UserAvatar>
-        <span class="pl-2"> {{name}}: {{position}}</span>
+        <span class="pl-2"> {{name}}:
+            <template v-if="position.type === 'in_room'">
+              {{position.floor}} -> {{position.room}}
+            </template>
+            <template v-else>
+              {{ position.type }}
+            </template>
+        </span>
 
 
       <v-spacer></v-spacer>
@@ -47,7 +54,7 @@ export default class UserCard extends Vue {
 
   private properties: [] = [];
   private actions: [] = [];
-  private position = "";
+  private position = {type:"unknown"};
 
   private open = true;
 
@@ -65,7 +72,7 @@ export default class UserCard extends Vue {
     if (user) {
       this.properties = user.properties;
       this.actions = user.actions;
-      this.position = this.properties.find((p : any) => p.name === "position")['value'];
+      this.position = this.properties.find((p : any) => p.semantic === "user_position")['value'];
     }
   }
 

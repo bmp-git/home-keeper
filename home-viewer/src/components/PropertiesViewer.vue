@@ -4,9 +4,9 @@
       Properties
     </div>
     <v-divider class="mb-1"></v-divider>
-    <table>
-      <tr v-for="prop in properties" :key="prop.name">
-        <template v-if="prop['semantic'] === 'video'">
+    <table width="100%" id="properties_table">
+      <tr v-for="prop in properties" :key="prop.name" class="mb-4">
+      <template v-if="prop['semantic'] === 'video'">
           <td colspan="2">
             <div>{{ prop["name"] }}:</div>
             <img
@@ -17,7 +17,7 @@
         </template>
         <template v-else-if="prop['semantic'] === 'time'">
           <td>{{ prop.name + ": " }}</td>
-          <td>{{ prop.value | timeFormat }}</td>
+          <td align="center">{{ prop.value | timeFormat }}</td>
         </template>
         <template v-else-if="prop['semantic'] === 'ble_receiver'">
           <td>Users seen:</td>
@@ -32,13 +32,24 @@
           </td>
         </template>
         <template v-else-if="prop['content-type'] === 'application/json'">
-          <template v-if="prop['value'] !== undefined">
+          <template v-if="!(prop['value'] == null)">
             <td>{{ prop.name + ": " }}</td>
-            <td>{{ prop.value }}</td>
+            <td align="center">
+              <table width="100%" style="table-layout:fixed">
+                <tr v-for="subprop in Object.keys(prop.value)" :key="subprop">
+                  <td align="center">{{subprop}}</td>
+                  <td style="word-wrap:break-word">{{prop.value[subprop]}}</td>
+                </tr>
+              </table>
+            </td>
           </template>
           <template v-else-if="prop['error']">
             <td>{{ prop.name + ": " }}</td>
             <td style="color: red;">{{ prop.error }}</td>
+          </template>
+          <template v-else>
+            <td>{{ prop.name + ": " }}</td>
+            <td style="color: orange;">Unknown</td>
           </template>
         </template>
       </tr>
@@ -66,4 +77,12 @@ export default class PropertiesViewer extends Vue {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+  #properties_table {
+    border-spacing: 0 1em;
+    padding-top: 0;
+  }
+  table {
+    border-spacing: 0 0.3em;
+  }
+</style>

@@ -44,7 +44,7 @@
       </v-col>
     </v-row>
     <v-row>
-      <v-col lg="9" mb="6">
+      <v-col lg="9" mb="6" id="svgs_settings">
         <div
           v-for="(floor, index) in floors"
           :key="floor.name"
@@ -213,7 +213,7 @@ export default class Settings extends Vue {
   }
 
   private onSvgLoad() {
-    $("svg").attr("height", "100%");
+    $("svg").attr("height", "calc(100vh - 231px)");
     $("svg").attr("width", "100%");
     $("svg")
       .find("*")
@@ -397,13 +397,13 @@ export default class Settings extends Vue {
 }
 </script>
 
-<style scoped>
-.path_selected {
+<style>
+  #svgs_settings .path_selected {
   fill: darkseagreen !important;
   fill-opacity: 0.5 !important;
 }
 
-path[data-bindid] {
+  #svgs_settings path[data-bindid] {
   fill: cornflowerblue;
   fill-opacity: 0.3;
 }

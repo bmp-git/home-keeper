@@ -184,7 +184,7 @@ export default class Home extends Vue {
     entities.forEach((e: any) => {
       const svgEntity = $(`#obj_${this.selectedFloorIndex}`).find(`path[data-bindid=${$.escapeSelector(e.entity.name)}]`);
       if (svgEntity[0]) {
-        this.cleanSvgStyle(svgEntity);
+        Home.cleanSvgStyle(svgEntity);
         e.entity.properties.forEach((p: any) => {
           switch (p.semantic) {
             case "is_open":
@@ -199,7 +199,7 @@ export default class Home extends Vue {
     });
   }
 
-  private cleanSvgStyle(svgEntity: any) {
+  private static cleanSvgStyle(svgEntity: any) {
     svgEntity.removeClass([
       "is_open",
       "is_closed",
@@ -233,5 +233,13 @@ export default class Home extends Vue {
 
 .entity_card {
   width: 350px;
+}
+
+.path_selected {
+
+}
+
+path[data-bindid] {
+
 }
 </style>
