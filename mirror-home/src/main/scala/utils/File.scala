@@ -20,11 +20,13 @@ object File {
 
   def readLines(fileName: String): Try[Seq[String]] = {
     Try(scala.io.Source.fromFile(fileName)).flatMap(source => {
-      val result:Try[Seq[String]] = Try(source.getLines().toList)
+      val result: Try[Seq[String]] = Try(source.getLines().toList)
       source.close()
       result
     })
   }
+
+  def exists(fileName: String): Boolean = java.nio.file.Files.exists(Paths.get(fileName))
 
   def write(fileName: String, data: String): Try[Done] =
     Try(java.nio.file.Files.write(Paths.get(fileName), data.getBytes(StandardCharsets.UTF_8))).map(_ => Done)

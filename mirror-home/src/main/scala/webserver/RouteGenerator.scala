@@ -8,6 +8,7 @@ import akka.Done
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.`Access-Control-Allow-Origin`
 import akka.http.scaladsl.server.Directives._
+import akka.http.scaladsl.server.directives.AuthenticationDirective
 import akka.http.scaladsl.server.{PathMatcher, Route, StandardRoute}
 import akka.stream.Materializer
 import akka.stream.scaladsl.Keep
@@ -33,16 +34,16 @@ object RouteGenerator {
     completeWithErrorMessage(code, message)
   }
 
-  def generateJsonGet[T: JsonWriter](completePath: PathMatcher[Unit], value: T): Route =
+  def generateJsonGet[T: JsonWriter](completePath: PathMatcher[Unit], value: T)(implicit auth: AuthenticationDirective[String]): Route =
     generateJsonGet(completePath, implicitly[JsonWriter[T]].write(value))
 
-  def generateJsonGet(completePath: PathMatcher[Unit], jsValue: JsValue): Route =
-    (path(completePath) & get) {
+  def generateJsonGet(completePath: PathMatcher[Unit], jsValue: JsValue)(implicit auth: AuthenticationDirective[String]): Route =
+    (path(completePath) & auth & get) { username =>
       complete(HttpResponse(200, entity = HttpEntity(ContentTypes.`application/json`, jsValue.compactPrint)))
     }
 
-  def generateRawPropertyGet(completePath: PathMatcher[Unit], property: Property): Route = {
-    (path(completePath) & get & extractRequestContext) { ctx =>
+  def generateRawPropertyGet(completePath: PathMatcher[Unit], property: Property)(implicit auth: AuthenticationDirective[String]): Route = {
+    (path(completePath) & auth & get & extractRequestContext) { (username, ctx) =>
       implicit val exe: ExecutionContextExecutor = ctx.executionContext
       property.source match {
         case Success(stream) => complete(HttpResponse(200, entity = HttpEntity(property.contentType, stream)))
@@ -51,8 +52,8 @@ object RouteGenerator {
     }
   }
 
-  def generateActionPost(completePath: PathMatcher[Unit], action: Action): Route = {
-    (path(completePath) & post & extractRequest & extractRequestContext) { (req, ctx) =>
+  def generateActionPost(completePath: PathMatcher[Unit], action: Action)(implicit auth: AuthenticationDirective[String]): Route = {
+    (path(completePath) & auth & post & extractRequest & extractRequestContext) { (username, req, ctx) =>
       implicit val mat: Materializer = ctx.materializer
       implicit val exe: ExecutionContextExecutor = ctx.executionContext
       //TODO: application/x-www-form-urlencoded is sent while uploading svg from home-viewer
@@ -74,30 +75,30 @@ object RouteGenerator {
   }
 
 
-  def generatePropertyListRoute[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
+  def generatePropertyListRoute[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
     generateJsonGet(startingPath / "properties", propertiesJsArray(dt))
   }
 
-  def generateActionListRoute[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
+  def generateActionListRoute[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
     generateJsonGet(startingPath / "actions", actionsJsArray(dt))
   }
 
-  def generatePropertiesRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
+  def generatePropertiesRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
     concat(
       dt.properties.map(p => generateJsonGet(startingPath / "properties" / p.name / "name", p.name)).toList ++
-      dt.properties.map(p => generateJsonGet(startingPath / "properties" / p.name, p.jsonDescription)).toList ++
-        dt.properties.map(p => generateRawPropertyGet(startingPath / "properties" / p.name / "raw", p)).toList :_*
+        dt.properties.map(p => generateJsonGet(startingPath / "properties" / p.name, p.jsonDescription)).toList ++
+        dt.properties.map(p => generateRawPropertyGet(startingPath / "properties" / p.name / "raw", p)).toList: _*
     )
   }
 
-  def generateActionsRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
-    concat (
+  def generateActionsRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
+    concat(
       dt.actions.map(a => generateActionPost(startingPath / "actions" / a.name, a)).toList ++
-        dt.actions.map(a => generateJsonGet(startingPath / "actions" / a.name, a.jsonDescription)) :_*
+        dt.actions.map(a => generateJsonGet(startingPath / "actions" / a.name, a.jsonDescription)): _*
     )
   }
 
-  def generateDigitalTwinRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit]): Route = {
+  def generateDigitalTwinRoutes[T <: DigitalTwin](dt: T, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
     concat(
       generatePropertiesRoutes(dt, startingPath),
       generatePropertyListRoute(dt, startingPath),
@@ -108,18 +109,18 @@ object RouteGenerator {
   }
 
 
-  def generateUserListRoute(home: Home, startingPath: PathMatcher[Unit]): Route =
+  def generateUserListRoute(home: Home, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route =
     generateJsonGet(startingPath / "users", usersJsArray(home))
 
-  def generateUsersRoutes(home: Home, startingPath: PathMatcher[Unit]): Route =
+  def generateUsersRoutes(home: Home, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route =
     concat(home.users.map(p => generateUserRoutes(p, startingPath)).toList: _*)
 
-  def generateUserRoutes(user: User, startingPath: PathMatcher[Unit]): Route = concat(
+  def generateUserRoutes(user: User, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = concat(
     generateJsonGet(startingPath / "users" / user.name, user),
     generateDigitalTwinRoutes(user, startingPath / "users" / user.name)
   )
 
-  def generateHomeRoutes(home: Home, startingPath: PathMatcher[Unit]): Route = {
+  def generateHomeRoutes(home: Home, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
     val path = startingPath / "home"
     concat(
       generateDigitalTwinRoutes(home, path),
@@ -131,7 +132,7 @@ object RouteGenerator {
     )
   }
 
-  def generateFloorRoutes(floor: Floor, startingPath: PathMatcher[Unit]): Route = {
+  def generateFloorRoutes(floor: Floor, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
     concat(
       generateDigitalTwinRoutes(floor, startingPath),
       generateJsonGet(startingPath, floor),
@@ -141,11 +142,11 @@ object RouteGenerator {
     )
   }
 
-  def generateFloorsRoutes(home: Home, startingPath: PathMatcher[Unit]): Route = {
-    concat( home.floors.map(f => generateFloorRoutes(f, startingPath / "floors" / f.name)) toList :_* )
+  def generateFloorsRoutes(home: Home, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
+    concat(home.floors.map(f => generateFloorRoutes(f, startingPath / "floors" / f.name)) toList: _*)
   }
 
-  def generateRoomRoutes(room: Room, startingPath: PathMatcher[Unit]): Route = {
+  def generateRoomRoutes(room: Room, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
     concat(
       generateDigitalTwinRoutes(room, startingPath),
       generateJsonGet(startingPath, room),
@@ -155,11 +156,11 @@ object RouteGenerator {
     )
   }
 
-  def generateRoomsRoutes(floor: Floor, startingPath: PathMatcher[Unit]): Route = {
-    concat( floor.rooms.map(r => generateRoomRoutes(r, startingPath / "rooms" / r.name)) toList :_* )
+  def generateRoomsRoutes(floor: Floor, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
+    concat(floor.rooms.map(r => generateRoomRoutes(r, startingPath / "rooms" / r.name)) toList: _*)
   }
 
-  def generateGatewayRoutes(gateway: Gateway, startingPath: PathMatcher[Unit]): Route = {
+  def generateGatewayRoutes(gateway: Gateway, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
     concat(
       generateDigitalTwinRoutes(gateway, startingPath),
       generateJsonGet(startingPath, gateway),
@@ -167,7 +168,7 @@ object RouteGenerator {
     )
   }
 
-  def generateGatewaysRoutes(room: Room, startingPath: PathMatcher[Unit]): Route = {
+  def generateGatewaysRoutes(room: Room, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route = {
     concat(
       room.gateways.map {
         case d: Door => generateGatewayRoutes(d, startingPath / "doors" / d.name)
@@ -176,8 +177,8 @@ object RouteGenerator {
     )
   }
 
-  def generateRoutes(home: Home, startingPath: PathMatcher[Unit]): Route =
+  def generateRoutes(home: Home, startingPath: PathMatcher[Unit])(implicit auth: AuthenticationDirective[String]): Route =
     respondWithDefaultHeader(`Access-Control-Allow-Origin`.*) {
-        concat(generateHomeRoutes(home, startingPath))
+      concat(generateHomeRoutes(home, startingPath))
     }
 }
