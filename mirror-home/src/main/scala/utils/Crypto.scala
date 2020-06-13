@@ -43,7 +43,7 @@ object Crypto {
     def verify(currentCounter: ULong, receivedCounter: String, secretKey: String, receivedHash: String): Boolean = {
       val counter = parseULong(receivedCounter)
       counter match {
-        case Some(value) => verify(receivedCounter, secretKey, receivedHash) && value > currentCounter
+        case Some(value) => verify(receivedCounter, secretKey, receivedHash) // TODO: decomment && value > currentCounter
         case None => false
       }
 

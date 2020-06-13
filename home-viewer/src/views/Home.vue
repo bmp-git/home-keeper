@@ -71,7 +71,12 @@ export default class Home extends Vue {
     })
   );
 
-  private selectedFloorIndex = this.floors.findIndex((f: any) => f.level === 0);
+  private initialSelectedFloorIndex() {
+    const index = this.floors.findIndex((f: any) => f.level === 0);
+    return index === -1 ? 0 : index;
+  }
+
+  private selectedFloorIndex = 0;
   private tooltip: any = null;
   private showSvg = true;
   private showCards = true;
@@ -92,6 +97,7 @@ export default class Home extends Vue {
 
     this.updateFloorsSvg();
     this.tooltip = this.$refs["tooltip"] as any;
+    this.selectedFloorIndex = this.initialSelectedFloorIndex();
   }
 
   private toggleSvg() {

@@ -66,7 +66,7 @@ object ConfigDsl {
   def door(rooms: (RoomFactory, RoomFactory)): DoorFactory = rooms match {
     case (roomA, roomB) =>
       val name = roomA.name + "_" + roomB.name
-      door( name + namedIdDispatcher.next(name), rooms)
+      door(name + namedIdDispatcher.next(name), rooms)
   }
 
   def door(name: String, rooms: (RoomFactory, RoomFactory)): DoorFactory =
@@ -91,7 +91,7 @@ object ConfigDsl {
 
   def tag[T: JsonFormat](name: String, value: T): JsonPropertyFactory[T] = JsonPropertyFactory.static(name, value, "tag")
 
-  def location(location: Coordinates): JsonPropertyFactory[Coordinates] = JsonPropertyFactory.static("location", location, "location")
+  def location(latitude: Double, longitude: Double): JsonPropertyFactory[Coordinates] = JsonPropertyFactory.static("location", Coordinates(latitude, longitude), "location")
 
   /** PREDEFINED STREAM BASED PROPERTIES **/
   def ble_receiver(name: String, mac: MacAddress)
@@ -143,7 +143,7 @@ object ConfigDsl {
   }
 
   def open_closed_433_mhz(name: String, open_code: String, closed_code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Option[OpenCloseData]] =
-    json_from_mqtt[Raw433MhzData]("scanner/+/433").ignoreFailures.collectValue[Option[OpenCloseData]]({
+    json_from_mqtt[Raw433MhzData]("scanner/+/433",  "scanner/sonoff/433/RESULT").ignoreFailures.collectValue[Option[OpenCloseData]]({
       case data if data.code == open_code => Some(model.mhz433.Open(DateTime.now))
       case data if data.code == closed_code => Some(model.mhz433.Close(DateTime.now))
     }) asJsonProperty(name, "is_open", None)
@@ -151,7 +151,7 @@ object ConfigDsl {
 
   def pir_433_mhz(name: String, code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Option[MotionDetection]] = {
     import model.mhz433.Formats._
-    json_from_mqtt[Raw433MhzData]("scanner/+/433").ignoreFailures.collectValue[Option[MotionDetection]]({
+    json_from_mqtt[Raw433MhzData]("scanner/+/433", "scanner/sonoff/433/RESULT").ignoreFailures.collectValue[Option[MotionDetection]]({
       case data if data.code == code => Some(MotionDetection(DateTime.now))
     }) asJsonProperty(name, "motion_detection", None)
   }

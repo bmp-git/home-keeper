@@ -1,6 +1,7 @@
 package utils
 
 
+import java.io.FileWriter
 import java.nio.charset.StandardCharsets
 import java.nio.file.Paths
 
@@ -33,4 +34,12 @@ object File {
 
   def writeLines(fileName: String, data: Seq[String]): Try[Done] =
     Try(java.nio.file.Files.write(Paths.get(fileName), data.mkString("\n").getBytes(StandardCharsets.UTF_8))).map(_ => Done)
+
+  def append(fileName: String, data: String): Try[Done] =
+    Try(new FileWriter(fileName, true)).flatMap(source => Try {
+      source.write(data)
+      source.close()
+      Done
+    })
+
 }

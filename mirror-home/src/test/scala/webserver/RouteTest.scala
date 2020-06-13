@@ -11,7 +11,7 @@ import spray.json._
 
 class RouteTest extends WordSpec with Matchers with ScalatestRouteTest {
   val home: Home = Utils.sampleHomeConfiguration()
-  val route: Route = RouteGenerator.generateRoutes(home, "api")
+  val route: Route = RouteGenerator.generateRoutes(home, "api")(JwtUtils.unsecured)
 
   "The mirror-world service" should {
 

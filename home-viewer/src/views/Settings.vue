@@ -107,7 +107,13 @@ export default class Settings extends Vue {
     level: f.level,
     svg: ""
   }));
-  private selectedFloorIndex = this.floors.findIndex((f: any) => f.level === 0);
+
+  private initialSelectedFloorIndex() {
+    const index = this.floors.findIndex((f: any) => f.level === 0);
+    return index === -1 ? 0 : index;
+  }
+
+  private selectedFloorIndex = 0;
   private selectedEntityIndexes: any[] = [];
   private lastPathSelected: any = null;
   private selectedClassIndex = 0;
@@ -126,6 +132,7 @@ export default class Settings extends Vue {
 
     this.initializeSelectedEntityIndexs();
     this.updateFloorsSvg();
+    this.selectedFloorIndex = this.initialSelectedFloorIndex();
   }
 
   private updateBoundEntities() {

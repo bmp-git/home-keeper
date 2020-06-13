@@ -1,6 +1,6 @@
 /* Initial beliefs and rules */
 
-risk(100).
+risk(0).
 risk_threshold(1000).
 slot_time_multiplier(1).
 
@@ -89,7 +89,7 @@ everyone_at_home_is_in_a_room :- locations(Locations) & not .member(user_locatio
 /* A9 - A new stranger mac address is detected. */
 +!handle_event(event(unknown_wifi_mac, _, _)): no_one_at_home <-
     .println("[NO ONE AT HOME]: a new stranger mac address has been detected!");
-    !inc_risk(100).
+    !inc_risk(5).
 
 
 /* Someone in a room X rules. */
@@ -179,7 +179,7 @@ everyone_at_home_is_in_a_room :- locations(Locations) & not .member(user_locatio
 /* C9 ✓ - A new stranger mac address is detected. */
 +!handle_event(event(unknown_wifi_mac, _, _)): someone_at_home <-
     .println("[SOMEONE AT HOME]: a new stranger mac address has been detected!");
-    !inc_risk(50).
+    !inc_risk(3).
 
 
 /* Always on rules. */
