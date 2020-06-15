@@ -69,7 +69,7 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
       }
     }
 
-    def debounceTimems = 1000
+    def debounceTimems = 10000
 
     def gatewayOpened(news: Seq[(Floor, Room, Gateway)], olds: Seq[(Floor, Room, Gateway)], g: Gateway => GatewayEvent): Seq[Event] = {
       gatewayWithProperty[Option[OpenCloseData], GatewayEvent](news, olds, "is_open", g, {

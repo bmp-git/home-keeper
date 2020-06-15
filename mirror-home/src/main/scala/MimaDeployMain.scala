@@ -29,9 +29,11 @@ object MimaDeployMain extends App {
 
   val edobrb = user("Edoardo", "Barbieri")
   val lory696 = user("Lorenzo", "Mondani")
+  val pancio96 = user("Emanuele", "Pancisi")
 
   edobrb.withProperties(smartphone(owner = edobrb))
   lory696.withProperties(smartphone(owner = lory696))
+  pancio96.withProperties(smartphone(owner = pancio96))
 
   implicit val beacons: Seq[BleBeaconFactory] = Seq(
     ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", edobrb),
@@ -40,7 +42,7 @@ object MimaDeployMain extends App {
   val (stream, movement) = video_motion_detection("external_door_video", "http://192.168.31.124/video.cgi")
 
 
-  val external = room().withProperties(stream)
+  val external = room().withProperties(stream, movement)
 
   val cucina = room().withProperties(pir_433_mhz("pir", "C7D55C")).withProperties(receiver("receiver", "fcf5c40e28d8"): _*)
   val camera = room().withProperties(pir_433_mhz("pir", "05C55C")).withProperties(receiver("receiver", "fcf5c40e2540"): _*)
@@ -65,7 +67,7 @@ object MimaDeployMain extends App {
       location(44.270688, 12.342442),
       time_now()
     )
-    .withUsers(edobrb, lory696)
+    .withUsers(edobrb, lory696, pancio96)
 
   door(ingresso -> external).withProperties(movement, stream, open_closed_433_mhz("magneto", open_code = "00BBF3", closed_code = "00BBF9"))
   door(ingresso -> cucina)

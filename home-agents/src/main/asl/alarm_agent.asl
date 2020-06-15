@@ -245,10 +245,12 @@ everyone_at_home_is_in_a_room :- locations(Locations) & not .member(user_locatio
 
 +!risk_decay: true <-
     ?risk(R);
-    R - 1 >= 0;
-    !dec_risk(1);
+    RDec = R * 0.008
+    R - RDec >= 0;
+    !dec_risk(RDec);
     .wait(1000);
     !risk_decay.
+
 
 -!risk_decay: true <-
     .wait(1000);
