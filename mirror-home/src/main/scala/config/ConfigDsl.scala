@@ -31,7 +31,7 @@ import model.user.smartphone.Formats._
 import model.user.smartphone.SmartphoneData
 import model.wifi.Formats._
 import model.wifi.{TimedWifiCaptureData, WifiCaptureData}
-import sources.{FrameSource, HttpSource, MqttSource, RealTimeSourceMulticaster}
+import sources.{VideoSource, HttpSource, MqttSource, RealTimeSourceMulticaster}
 import spray.json.DefaultJsonProtocol._
 import spray.json.{JsNumber, JsObject, JsValue, JsonFormat, RootJsonFormat}
 import utils.RichTrySource._
@@ -169,7 +169,7 @@ object ConfigDsl {
 
   def video_motion_detection(name: String, sourceFeed: String): (MixedReplaceVideoPropertyFactory, JsonPropertyFactory[Option[MotionDetection]]) = {
     val multicaster = RealTimeSourceMulticaster[Option[(BufferedImage, Boolean)]](
-      () => FrameSource.video(sourceFeed)(system.dispatcher).via(VideoAnalysis.motion_detection).map(Option.apply),
+      () => VideoSource.frames(sourceFeed)(system.dispatcher).via(VideoAnalysis.motion_detection).map(Option.apply),
       errorDefault = None,
       maxElementBuffered = 0,
       retryWhenCompleted = true)
@@ -219,7 +219,7 @@ object ConfigDsl {
   def json_from_http[T: JsonFormat](request: HttpRequest, pollingFreq: FiniteDuration = 1.second): Source[Try[T], Cancellable] =
     HttpSource.objects[T](request, pollingFreq)
 
-  def fileReader(name: String, path: String, contentType: ContentType, semantic: String): PropertyFactory =
+  def file_reader(name: String, path: String, contentType: ContentType, semantic: String): PropertyFactory =
     FileReaderPropertyFactory(name, path, contentType, semantic)
 
   /** ACTIONS **/
@@ -250,7 +250,7 @@ object ConfigDsl {
 
   /** ATTRIBUTES **/
   def file_attr(name: String, path: String, contentType: ContentType, semantic: String): (PropertyFactory, ActionFactory) =
-    (fileReader(name, path, contentType, semantic), file_writer(name, path, contentType))
+    (file_reader(name, path, contentType, semantic), file_writer(name, path, contentType))
 
   def var_attr[T: JsonFormat : json.Schema](name: String, initialValue: T, semantic: String): (PropertyFactory, ActionFactory) = {
     var value: T = initialValue

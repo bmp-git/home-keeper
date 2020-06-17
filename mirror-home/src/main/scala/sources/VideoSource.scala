@@ -7,8 +7,8 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import scala.util.{Failure, Success, Try}
 
-object FrameSource {
-  def video(filename: String)(implicit executionContext: ExecutionContext): Source[Frame, Any] = {
+object VideoSource {
+  def frames(filename: String)(implicit executionContext: ExecutionContext): Source[Frame, Any] = {
     Source.fromIterator[Frame](() => new Iterator[Frame] {
       val grabber = new FFmpegFrameGrabber(filename)
       var nextFrame: Option[Frame] = None

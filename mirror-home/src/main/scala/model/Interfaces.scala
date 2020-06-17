@@ -92,7 +92,7 @@ trait JsonAction[T] extends Action {
 
   def jsonSchema: json.Schema[T]
 
-  def contentType: ContentType = ContentTypes.`application/json`
+  override def contentType: ContentType = ContentTypes.`application/json`
 
   def jsonFormat: JsonFormat[T]
 }
