@@ -9,7 +9,7 @@ object Utils {
   def sampleHomeConfiguration(): Home = {
     val external = room()
     val hallway = room()
-    val bedroom = room().withAction(
+    val bedroom = room().add_actions(
       turn("action", println)
     )
 
@@ -19,10 +19,10 @@ object Utils {
         bedroom
       )
     )
-    h.withProperties(tag("myprop", "lol"))
+    h.add_properties(tag("myprop", "lol"))
 
     door(bedroom -> hallway)
-    door(hallway -> external).withProperties(
+    door(hallway -> external).add_properties(
       //time_now(), //don't match
       tag("color", "green"),
     )

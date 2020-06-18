@@ -8,8 +8,8 @@ import spray.json.DefaultJsonProtocol._
 class TopologyFactoryTest extends FunSuite {
   test("Same property name") {
     val factory = HomeFactory("my-home")
-      .withProperties(JsonPropertyFactory.static("my-property", 1234, "none"))
-      .withProperties(JsonPropertyFactory.static("my-property", 1235, "none"))
+      .add_properties(JsonPropertyFactory.static("my-property", 1234, "none"))
+      .add_properties(JsonPropertyFactory.static("my-property", 1235, "none"))
     assert(factory.build().properties.size == 1)
     assert(factory.build().properties.head.asInstanceOf[JsonProperty[Int]].value.get == 1234)
   }
@@ -31,7 +31,7 @@ class TopologyFactoryTest extends FunSuite {
   test("Home factory test") {
     val factory = HomeFactory("my-home")
       .withFloors(FloorFactory("my-floor", 0))
-      .withProperties(JsonPropertyFactory.static("my-property", 1234, "none"))
+      .add_properties(JsonPropertyFactory.static("my-property", 1234, "none"))
     val build = factory.build()
     assert(build.name == "my-home")
     assert(build.floors.exists(_.name == "my-floor"))
@@ -41,7 +41,7 @@ class TopologyFactoryTest extends FunSuite {
   test("Floor factory test") {
     val factory = FloorFactory("my-floor", 0)
       .withRooms(RoomFactory("my-room"))
-      .withProperties(JsonPropertyFactory.static("my-property", 1234, "none"))
+      .add_properties(JsonPropertyFactory.static("my-property", 1234, "none"))
     val build = factory.build()
     assert(build.name == "my-floor")
     assert(build.rooms.exists(_.name == "my-room"))
@@ -53,7 +53,7 @@ class TopologyFactoryTest extends FunSuite {
     val r2 = RoomFactory("r2")
     val factory = RoomFactory("my-room")
       .withGateways(DoorFactory("my-door", (r1, r2)))
-      .withProperties(JsonPropertyFactory.static("my-property", 1234, "none"))
+      .add_properties(JsonPropertyFactory.static("my-property", 1234, "none"))
     val build = factory.build()
     assert(build.name == "my-room")
     assert(build.gateways.exists(_.name == "my-door"))

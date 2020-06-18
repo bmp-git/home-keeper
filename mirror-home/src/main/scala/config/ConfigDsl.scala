@@ -50,14 +50,14 @@ object ConfigDsl {
   /** TOPOLOGY DSL **/
   def user(firstname: String, surname: String): UserFactory = {
     val user = UserFactory(firstname, surname)
-    user.withAttribute(file_attr("avatar", s"$RESOURCE_FOLDER/${user.name}_avatar.jpg", MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
-      .withAttribute(var_attr[UserPosition]("position", Unknown, "user_position"))
+    user.add_attribute(file_attr("avatar", s"$RESOURCE_FOLDER/${user.name}_avatar.jpg", MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
+      .add_attribute(var_attr[UserPosition]("position", Unknown, "user_position"))
   }
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
   def floor(name: String, level: Int): FloorFactory = FloorFactory(name, level)
-    .withAttribute(file_attr("svg", s"$RESOURCE_FOLDER/$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
+    .add_attribute(file_attr("svg", s"$RESOURCE_FOLDER/$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
 
   def room()(implicit name: sourcecode.Name): RoomFactory = room(name.value)
 
@@ -169,7 +169,7 @@ object ConfigDsl {
 
   def video_motion_detection(name: String, sourceFeed: String): (MixedReplaceVideoPropertyFactory, JsonPropertyFactory[Option[MotionDetection]]) = {
     val multicaster = RealTimeSourceMulticaster[Option[(BufferedImage, Boolean)]](
-      () => VideoSource.frames(sourceFeed)(system.dispatcher).via(VideoAnalysis.motion_detection).map(Option.apply),
+      () => VideoSource.frames(sourceFeed)(system.dispatcher).via(VideoAnalysis.motion_detection()).map(Option.apply),
       errorDefault = None,
       maxElementBuffered = 0,
       retryWhenCompleted = true)

@@ -15,20 +15,20 @@ trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
 
   def actions: Set[ActionFactory] = aContainer.content
 
-  def withProperties(properties: PropertyFactory*): this.type = {
+  def add_properties(properties: PropertyFactory*): this.type = {
     pContainer = pContainer.add(properties)
     this
   }
 
-  def withProperties(properties: (PropertyFactory, PropertyFactory)): this.type =
-    this.withProperties(properties._1, properties._2)
+  def add_properties(properties: (PropertyFactory, PropertyFactory)): this.type =
+    this.add_properties(properties._1, properties._2)
 
-  def withAction(actions: ActionFactory*): this.type = {
+  def add_actions(actions: ActionFactory*): this.type = {
     aContainer = aContainer.add(actions)
     this
   }
 
-  def withAttribute(attributes: (PropertyFactory, ActionFactory)*): this.type = {
+  def add_attribute(attributes: (PropertyFactory, ActionFactory)*): this.type = {
     pContainer = pContainer.add(attributes.map(_._1))
     aContainer = aContainer.add(attributes.map(_._2))
     this
