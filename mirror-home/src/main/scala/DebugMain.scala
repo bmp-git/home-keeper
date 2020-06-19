@@ -22,7 +22,7 @@ object DebugMain extends App {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  implicit val broker: BrokerConfig = BrokerConfig("doru2.mnd.cloud").withAuth("homekeeper", "8CUAgjwyuaJu")
+  implicit val broker: BrokerConfig = BrokerConfig("doru2.mnd.cloud").auth("homekeeper", "8CUAgjwyuaJu")
   implicit val localizationService: LocalizationService = LocalizationService(
   port = 8086,
   gmail = "bmpprogetti@gmail.com",
@@ -32,9 +32,9 @@ val edobrb = user("Edoardo", "Barbieri")
 val panchh = user("Emanuele", "Pancisi")
 val lory696 = user("Lorenzo", "Mondani")
 
-  edobrb.add_properties(smartphone(owner = edobrb))
-  panchh.add_properties(smartphone(owner = panchh))
-  lory696.add_properties(smartphone(owner = lory696))
+  edobrb.properties(smartphone(owner = edobrb))
+  panchh.properties(smartphone(owner = panchh))
+  lory696.properties(smartphone(owner = lory696))
   /*val localStream = FrameSource.video("http://192.168.1.237/video.cgi").via(motion_detection)
   val localVideo = MixedReplaceVideoPropertyFactory("video", () => localStream)
 
@@ -51,9 +51,9 @@ val cucina = room()
 val cameraDaLetto = room()
 /*.withProperties(localVideo)*/
 val corridoio = room()
-val bagnoRosa = room().add_properties(video_motion_detection("video", "http://192.168.1.237/video.cgi"))
-val bagnoVerde = room().add_properties(JsonPropertyFactory.dynamic[Int]("FailedProp", () => Failure(new Exception("failed")), "nothing"))
-val cameraMia = room().add_properties(receiver("1", "fcf5c40e2540"): _*)
+val bagnoRosa = room().properties(video_motion_detection("video", "http://192.168.1.237/video.cgi"))
+val bagnoVerde = room().properties(JsonPropertyFactory.dynamic[Int]("FailedProp", () => Failure(new Exception("failed")), "nothing"))
+val cameraMia = room().properties(receiver("1", "fcf5c40e2540"): _*)
 val ripostiglio = room()
 val sala = room()
 
@@ -62,30 +62,30 @@ val bagnoMarrone = room()
 
 
 val myHome = home("home")(
-  floor("firstfloor", 0).add_properties(time_now(), tag("Tag", 10)).add_actions(trig("loll", println("lol")))(
+  floor("firstfloor", 0).properties(time_now(), tag("Tag", 10)).actions(trig("loll", println("lol")))(
     cucina,
     cameraDaLetto,
-    corridoio.add_properties(pir_433_mhz("pir", "022623")),
+    corridoio.properties(pir_433_mhz("pir", "022623")),
     bagnoRosa,
     bagnoVerde,
     cameraMia,
     ripostiglio,
     sala,
-    external.add_properties(pir_433_mhz("pir", "022623"))
+    external.properties(pir_433_mhz("pir", "022623"))
   ),
   floor("secondfloor", 1)(
     disimpegno,
     bagnoMarrone
   ),
-  floor("basement", -1)().add_actions(trig("trigAction", println("trigAction")),
+  floor("basement", -1)().actions(trig("trigAction", println("trigAction")),
     turn("turnAction", b => println("turnAction: " + b)))
 )
-  .add_actions(turn("siren", b => println("siren: " + b)))
-  .add_properties(location(44.006235, 12.116960))
-  .withUsers(edobrb, panchh, lory696)
+  .actions(turn("siren", b => println("siren: " + b)))
+  .properties(location(44.006235, 12.116960))
+  .users(edobrb, panchh, lory696)
 
 door(sala -> external)
-door(sala -> corridoio).add_properties(open_closed_433_mhz("magneto1", open_code = "022623", closed_code = "022629"))
+door(sala -> corridoio).properties(open_closed_433_mhz("magneto1", open_code = "022623", closed_code = "022629"))
 door(sala -> cucina)
 door(ripostiglio -> corridoio)
 door(bagnoVerde -> corridoio)
@@ -93,7 +93,7 @@ door(bagnoRosa -> corridoio)
 door(cameraDaLetto -> corridoio)
 door(cameraMia -> corridoio)
 door(ripostiglio -> external)
-door(cameraMia -> external).add_properties(pir_433_mhz("pir", "022623"))
+door(cameraMia -> external).properties(pir_433_mhz("pir", "022623"))
 door(cucina -> external)
 door(cameraDaLetto -> external)
 
@@ -104,8 +104,8 @@ window(bagnoRosa -> external)
 
 door(disimpegno -> bagnoMarrone)
 
-cucina.add_properties(time_now(), tag("lol", 20))
-myHome.add_properties(time_now())
+cucina.properties(time_now(), tag("lol", 20))
+myHome.properties(time_now())
 
 val build: Home = myHome.build()
 

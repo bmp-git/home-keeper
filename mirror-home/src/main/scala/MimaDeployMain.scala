@@ -21,7 +21,7 @@ object MimaDeployMain extends App {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  implicit val broker: BrokerConfig = BrokerConfig("doru2.mnd.cloud").withAuth("homekeeper", "8CUAgjwyuaJu")
+  implicit val broker: BrokerConfig = BrokerConfig("doru2.mnd.cloud").auth("homekeeper", "8CUAgjwyuaJu")
   implicit val localizationService: LocalizationService = LocalizationService(
     port = 8086,
     gmail = "bmpprogetti@gmail.com",
@@ -31,9 +31,9 @@ object MimaDeployMain extends App {
   val lory696 = user("Lorenzo", "Mondani")
   val pancio96 = user("Emanuele", "Pancisi")
 
-  edobrb.add_properties(smartphone(owner = edobrb))
-  lory696.add_properties(smartphone(owner = lory696))
-  pancio96.add_properties(smartphone(owner = pancio96))
+  edobrb.properties(smartphone(owner = edobrb))
+  lory696.properties(smartphone(owner = lory696))
+  pancio96.properties(smartphone(owner = pancio96))
 
   implicit val beacons: Seq[BleBeaconFactory] = Seq(
     ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", edobrb),
@@ -42,14 +42,14 @@ object MimaDeployMain extends App {
   val (stream, movement) = video_motion_detection("external_door_video", "http://192.168.31.124/video.cgi")
 
 
-  val external = room().add_properties(stream, movement)
+  val external = room().properties(stream, movement)
 
-  val cucina = room().add_properties(pir_433_mhz("pir", "C7D55C")).add_properties(receiver("receiver", "fcf5c40e28d8"): _*)
-  val camera = room().add_properties(pir_433_mhz("pir", "05C55C")).add_properties(receiver("receiver", "fcf5c40e2540"): _*)
-  val corridoio = room().add_properties(pir_433_mhz("pir", "7F055C"))
+  val cucina = room().properties(pir_433_mhz("pir", "C7D55C")).properties(receiver("receiver", "fcf5c40e28d8"): _*)
+  val camera = room().properties(pir_433_mhz("pir", "05C55C")).properties(receiver("receiver", "fcf5c40e2540"): _*)
+  val corridoio = room().properties(pir_433_mhz("pir", "7F055C"))
   val ingresso = room()
-  val bagno = room().add_properties(pir_433_mhz("pir", "3CC55C")).add_properties(receiver("receiver", "fcf5c40e235c"): _*)
-  val sala = room().add_properties(pir_433_mhz("pir", "17D55C")).add_properties(receiver("receiver", "b4e62db21c79"): _*)
+  val bagno = room().properties(pir_433_mhz("pir", "3CC55C")).properties(receiver("receiver", "fcf5c40e235c"): _*)
+  val sala = room().properties(pir_433_mhz("pir", "17D55C")).properties(receiver("receiver", "b4e62db21c79"): _*)
 
   val myHome = home("home")(
     floor("mansarda", 2)(
@@ -62,24 +62,24 @@ object MimaDeployMain extends App {
       external
     ),
     //floor("terra", 0)
-  ).add_actions(turn("siren", status => println("Turning alarm: " + status)))
-    .add_properties(
+  ).actions(turn("siren", status => println("Turning alarm: " + status)))
+    .properties(
       location(44.270688, 12.342442),
       time_now()
     )
-    .withUsers(edobrb, lory696, pancio96)
+    .users(edobrb, lory696, pancio96)
 
-  door(ingresso -> external).add_properties(movement, stream, open_closed_433_mhz("magneto", open_code = "00BBF3", closed_code = "00BBF9"))
+  door(ingresso -> external).properties(movement, stream, open_closed_433_mhz("magneto", open_code = "00BBF3", closed_code = "00BBF9"))
   door(ingresso -> cucina)
   door(ingresso -> sala)
-  door(ingresso -> corridoio).add_properties(open_closed_433_mhz("magneto", open_code = "00E043", closed_code = "00E049"))
-  door(corridoio -> bagno).add_properties(open_closed_433_mhz("magneto", open_code = "01D7D3", closed_code = "01D7D9"))
-  door(corridoio -> camera).add_properties(open_closed_433_mhz("magneto", open_code = "027113", closed_code = "027119"))
-  door(camera -> external).add_properties(open_closed_433_mhz("magneto", open_code = "018823", closed_code = "018829"))
-  door(sala -> external).add_properties(open_closed_433_mhz("magneto", open_code = "025BC3", closed_code = "025BC9"))
+  door(ingresso -> corridoio).properties(open_closed_433_mhz("magneto", open_code = "00E043", closed_code = "00E049"))
+  door(corridoio -> bagno).properties(open_closed_433_mhz("magneto", open_code = "01D7D3", closed_code = "01D7D9"))
+  door(corridoio -> camera).properties(open_closed_433_mhz("magneto", open_code = "027113", closed_code = "027119"))
+  door(camera -> external).properties(open_closed_433_mhz("magneto", open_code = "018823", closed_code = "018829"))
+  door(sala -> external).properties(open_closed_433_mhz("magneto", open_code = "025BC3", closed_code = "025BC9"))
 
-  window(cucina -> external).add_properties(open_closed_433_mhz("magneto", open_code = "019C93", closed_code = "019C99"))
-  window(bagno -> external).add_properties(open_closed_433_mhz("magneto", open_code = "022623", closed_code = "022629"))
+  window(cucina -> external).properties(open_closed_433_mhz("magneto", open_code = "019C93", closed_code = "019C99"))
+  window(bagno -> external).properties(open_closed_433_mhz("magneto", open_code = "022623", closed_code = "022629"))
 
   val build: Home = myHome.build()
 

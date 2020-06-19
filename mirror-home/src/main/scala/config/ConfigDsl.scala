@@ -50,14 +50,14 @@ object ConfigDsl {
   /** TOPOLOGY DSL **/
   def user(firstname: String, surname: String): UserFactory = {
     val user = UserFactory(firstname, surname)
-    user.add_attribute(file_attr("avatar", s"$RESOURCE_FOLDER/${user.name}_avatar.jpg", MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
-      .add_attribute(var_attr[UserPosition]("position", Unknown, "user_position"))
+    user.attributes(file_attr("avatar", s"$RESOURCE_FOLDER/${user.name}_avatar.jpg", MediaType.image("jpeg", Compressible, "jpg", "jpeg", "png"), "user_avatar"))
+      .attributes(var_attr[UserPosition]("position", Unknown, "user_position"))
   }
 
   def home(name: String): HomeFactory = HomeFactory(name)
 
   def floor(name: String, level: Int): FloorFactory = FloorFactory(name, level)
-    .add_attribute(file_attr("svg", s"$RESOURCE_FOLDER/$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
+    .attributes(file_attr("svg", s"$RESOURCE_FOLDER/$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
 
   def room()(implicit name: sourcecode.Name): RoomFactory = room(name.value)
 

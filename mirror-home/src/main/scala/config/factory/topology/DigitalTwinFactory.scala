@@ -11,28 +11,28 @@ trait DigitalTwinFactory[T <: DigitalTwin] extends OneTimeFactory[T] {
   private var pContainer = SetContainer[PropertyFactory](Set(), Seq(_.name))
   private var aContainer = SetContainer[ActionFactory](Set(), Seq(_.name))
 
-  def properties: Set[PropertyFactory] = pContainer.content
+  def propertiesSet: Set[PropertyFactory] = pContainer.content
 
-  def actions: Set[ActionFactory] = aContainer.content
+  def actionsSet: Set[ActionFactory] = aContainer.content
 
-  def add_properties(properties: PropertyFactory*): this.type = {
+  def properties(properties: PropertyFactory*): this.type = {
     pContainer = pContainer.add(properties)
     this
   }
 
-  def add_properties(properties: (PropertyFactory, PropertyFactory)): this.type =
-    this.add_properties(properties._1, properties._2)
+  def properties(properties: (PropertyFactory, PropertyFactory)): this.type =
+    this.properties(properties._1, properties._2)
 
-  def add_actions(actions: ActionFactory*): this.type = {
+  def actions(actions: ActionFactory*): this.type = {
     aContainer = aContainer.add(actions)
     this
   }
 
-  def add_attribute(attributes: (PropertyFactory, ActionFactory)*): this.type = {
+  def attributes(attributes: (PropertyFactory, ActionFactory)*): this.type = {
     pContainer = pContainer.add(attributes.map(_._1))
     aContainer = aContainer.add(attributes.map(_._2))
     this
   }
 
-  def name: String //TODO: remove?
+  def name: String
 }
