@@ -5,6 +5,7 @@ import java.awt.image.BufferedImage
 import akka.actor.{ActorSystem, Cancellable}
 import akka.http.scaladsl.model.MediaType.Compressible
 import akka.http.scaladsl.model._
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import akka.{Done, NotUsed}
@@ -23,17 +24,18 @@ import model.mhz433.Formats._
 import model.mhz433.{OpenCloseData, Raw433MhzData}
 import model.motiondetection.Formats._
 import model.motiondetection.MotionDetection
-import model.receiver.ReceiverStatus
 import model.receiver.Formats._
+import model.receiver.ReceiverStatus
 import model.user.position.Formats._
 import model.user.position.{Unknown, UserPosition}
 import model.user.smartphone.Formats._
 import model.user.smartphone.SmartphoneData
 import model.wifi.Formats._
 import model.wifi.{TimedWifiCaptureData, WifiCaptureData}
-import sources.{VideoSource, HttpSource, MqttSource, RealTimeSourceMulticaster}
+import sinks.MqttSink
+import sources.{HttpSource, MqttSource, RealTimeSourceMulticaster, VideoSource}
 import spray.json.DefaultJsonProtocol._
-import spray.json.{JsNumber, JsObject, JsValue, JsonFormat, RootJsonFormat}
+import spray.json.JsonFormat
 import utils.RichTrySource._
 import utils.{Lazy, NamedIdDispatcher}
 
@@ -44,6 +46,7 @@ import scala.util.{Failure, Success, Try}
 object ConfigDsl {
   val RESOURCE_FOLDER = "resources"
   implicit val system: ActorSystem = ActorSystem()
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
 
   val namedIdDispatcher: NamedIdDispatcher = NamedIdDispatcher(1)
 
@@ -54,14 +57,18 @@ object ConfigDsl {
       .attributes(var_attr[UserPosition]("position", Unknown, "user_position"))
   }
 
-  def home(name: String): HomeFactory = HomeFactory(name)
+  def home(): HomeFactory = HomeFactory("home")
 
   def floor(name: String, level: Int): FloorFactory = FloorFactory(name, level)
     .attributes(file_attr("svg", s"$RESOURCE_FOLDER/$name.svg", ContentTypes.`text/xml(UTF-8)`, "floor_blueprint"))
 
+  def floor(level: Int)(implicit name: sourcecode.Name): FloorFactory = floor(name.value, level)
+
   def room()(implicit name: sourcecode.Name): RoomFactory = room(name.value)
 
   def room(name: String): RoomFactory = RoomFactory(name)
+
+  val external: RoomFactory = room("external")
 
   def door(rooms: (RoomFactory, RoomFactory)): DoorFactory = rooms match {
     case (roomA, roomB) =>
@@ -143,11 +150,13 @@ object ConfigDsl {
   }
 
   def open_closed_433_mhz(name: String, open_code: String, closed_code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Option[OpenCloseData]] =
-    json_from_mqtt[Raw433MhzData]("scanner/+/433",  "scanner/sonoff/433/RESULT").ignoreFailures.collectValue[Option[OpenCloseData]]({
+    json_from_mqtt[Raw433MhzData]("scanner/+/433", "scanner/sonoff/433/RESULT").ignoreFailures.collectValue[Option[OpenCloseData]]({
       case data if data.code == open_code => Some(model.mhz433.Open(DateTime.now))
       case data if data.code == closed_code => Some(model.mhz433.Close(DateTime.now))
     }) asJsonProperty(name, "is_open", None)
 
+  def open_closed_433_mhz(open_code: String, closed_code: String)(implicit name: sourcecode.Name, brokerConfig: BrokerConfig): JsonPropertyFactory[Option[OpenCloseData]] =
+    open_closed_433_mhz(name.value, open_code, closed_code)
 
   def pir_433_mhz(name: String, code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Option[MotionDetection]] = {
     import model.mhz433.Formats._
@@ -155,6 +164,9 @@ object ConfigDsl {
       case data if data.code == code => Some(MotionDetection(DateTime.now))
     }) asJsonProperty(name, "motion_detection", None)
   }
+
+  def pir_433_mhz(code: String)(implicit name: sourcecode.Name, brokerConfig: BrokerConfig): JsonPropertyFactory[Option[MotionDetection]] =
+    pir_433_mhz(name.value, code)
 
   def mqtt_bool(name: String, topic: String, caseTrue: String, caseFalse: String, semantic: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Boolean] =
     payload_from_mqtt(topic).tryMapValue {
@@ -167,9 +179,9 @@ object ConfigDsl {
     json_from_http[SmartphoneData](HttpRequest(uri = config.uri(owner.name)), 1.second)
       .asJsonProperty(name, "smartphone_data")
 
-  def video_motion_detection(name: String, sourceFeed: String): (MixedReplaceVideoPropertyFactory, JsonPropertyFactory[Option[MotionDetection]]) = {
+  def video_motion_detection(name: String, source_feed: String): (MixedReplaceVideoPropertyFactory, JsonPropertyFactory[Option[MotionDetection]]) = {
     val multicaster = RealTimeSourceMulticaster[Option[(BufferedImage, Boolean)]](
-      () => VideoSource.frames(sourceFeed)(system.dispatcher).via(VideoAnalysis.motion_detection()).map(Option.apply),
+      () => VideoSource.frames(source_feed)(system.dispatcher).via(VideoAnalysis.motion_detection()).map(Option.apply),
       errorDefault = None,
       maxElementBuffered = 0,
       retryWhenCompleted = true)
@@ -189,6 +201,9 @@ object ConfigDsl {
     (MixedReplaceVideoPropertyFactory(name, multicaster),
       motionDetectionEvents asJsonProperty(name + "_motion_detection", "motion_detection", None))
   }
+
+  def video_motion_detection(uri: String)(implicit name: sourcecode.Name): (MixedReplaceVideoPropertyFactory, JsonPropertyFactory[Option[MotionDetection]]) =
+    video_motion_detection(name.value, uri)
 
   /** GENERIC PROPERTY UTILS **/
   implicit class JsonPropertyFactoryImplicit[T: JsonFormat](source: Source[Try[T], _]) { //TODO: move
@@ -231,6 +246,9 @@ object ConfigDsl {
   def turn(name: String, action: Boolean => Unit): JsonActionFactory[Boolean] =
     JsonActionFactory[Boolean](name, action, "turn")(implicitly[JsonFormat[Boolean]], json.Json.schema[Boolean])
 
+  def turn(action: Boolean => Unit)(implicit name: sourcecode.Name): JsonActionFactory[Boolean] =
+    turn(name.value, action)
+
   def trig(actionName: String, action: => Unit): ActionFactory = new ActionFactory {
     override def name: String = actionName
 
@@ -257,8 +275,9 @@ object ConfigDsl {
     (json_property(name, () => value, semantic), json_action[T](name, value = _, "update_" + semantic))
   }
 
-
-  //def external:RoomFactory = ???
+  /** MQTT UTILS **/
+  def publish(topic: String, payload: String)(implicit brokerConfig: BrokerConfig): Unit =
+    Source.single(payload).to(MqttSink.fixedTopic(topic, brokerConfig))
 }
 
 

@@ -15,20 +15,22 @@ import scala.util.Try
 object MqttSource {
   val idDispatcher: IdDispatcher = IdDispatcher(0)
 
-  def messages(brokerConfig: BrokerConfig, topics: String*) //TODO: what if crash?
-              (implicit actorSystem: ActorSystem): Source[MqttMessage, Future[Done]] = {
-    var connectionSettings = MqttConnectionSettings(
+  def settings(brokerConfig: BrokerConfig): MqttConnectionSettings = {
+    val connectionSettings = MqttConnectionSettings(
       s"tcp://${brokerConfig.address}",
       s"mirror-home-property-" + idDispatcher.next,
-      new MemoryPersistence //TODO: need an explanation
+      new MemoryPersistence
     ).withAutomaticReconnect(true)
-    connectionSettings = brokerConfig.auth match {
+    brokerConfig.auth match {
       case Some((user, pass)) => connectionSettings.withAuth(user, pass)
       case None => connectionSettings
     }
+  }
 
+  def messages(brokerConfig: BrokerConfig, topics: String*) //TODO: what if crash?
+              (implicit actorSystem: ActorSystem): Source[MqttMessage, Future[Done]] = {
     akka.stream.alpakka.mqtt.scaladsl.MqttSource.atMostOnce(
-      connectionSettings,
+      settings(brokerConfig),
       MqttSubscriptions(Map(topics.map(_ -> MqttQoS.AtLeastOnce): _*)),
       bufferSize = 1
     )
