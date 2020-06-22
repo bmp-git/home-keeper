@@ -1,32 +1,55 @@
 package model
 
 import scala.concurrent.duration.FiniteDuration
+import scala.reflect.ClassTag
 
-trait EventMatcher {
+trait EventRuleElementDsl {
+  def ~>(matcher: EventMatcher): EventRuleElement
+}
+
+trait EventMatcherDsl {
+  def ~(min: FiniteDuration, max: FiniteDuration): EventRuleElementDsl
+
+  def ~(max: FiniteDuration): EventRuleElementDsl
+}
+
+trait EventMatcher extends EventMatcherDsl {
   def apply(event: Event): Boolean
 
-  def ~(min: FiniteDuration, max: FiniteDuration) = new {
-    def ~>(matcher: EventMatcher): EventRuleElement = EventRuleElement(matcher, Some(TimeMatcher(min.toMillis, max.toMillis), EventRuleElement(EventMatcher.this)))
-  }
+  override def ~(min: FiniteDuration, max: FiniteDuration): EventRuleElementDsl =
+    (matcher: EventMatcher) => EventRuleElement(matcher, Some(TimeMatcher(min.toMillis, max.toMillis), EventRuleElement(EventMatcher.this)))
 
-  def ~(max: FiniteDuration) = new {
-    def ~>(matcher: EventMatcher): EventRuleElement = EventRuleElement(matcher, Some(TimeMatcher(0, max.toMillis), EventRuleElement(EventMatcher.this)))
+  override def ~(max: FiniteDuration): EventRuleElementDsl =
+    (matcher: EventMatcher) => EventRuleElement(matcher, Some(TimeMatcher(0, max.toMillis), EventRuleElement(EventMatcher.this)))
+}
+
+class TypeEventMatcher[T: ClassTag]() extends EventMatcher {
+  override def apply(event: Event): Boolean = {
+    event match {
+      case _: T => true
+      case _ => false
+    }
   }
 }
 
-case object WifiMac extends EventMatcher {
-  override def apply(event: Event): Boolean = event match {
-    case _: UnknownWifiMacEvent => true
-    case _ => false
-  }
-}
+case object UnknownWifiMac extends TypeEventMatcher[UnknownWifiMacEvent]()
+
+case object GatewayOpen extends TypeEventMatcher[GatewayOpenEvent]()
+
+case object GatewayMotionDetectionNear extends TypeEventMatcher[GatewayMotionDetectionNearEvent]()
+
+case object MotionDetection extends TypeEventMatcher[MotionDetectionEvent]()
+
+case object GetBackHome extends TypeEventMatcher[GetBackHomeEvent]()
+
+case object ReceiverOffline extends TypeEventMatcher[ReceiverOfflineEvent]()
 
 case class TimeMatcher(min: Long, max: Long) {
   def apply(lastEventTime: Long, eventTime: Long): Boolean =
     lastEventTime - max <= eventTime && eventTime <= lastEventTime - min
 }
 
-case class EventRuleElement(head: EventMatcher, tail: Option[(TimeMatcher, EventRuleElement)] = None) {
+case class EventRuleElement(head: EventMatcher, tail: Option[(TimeMatcher, EventRuleElement)] = None) extends EventMatcherDsl {
   def tailList: Seq[(TimeMatcher, EventMatcher)] = {
     tail match {
       case Some((timeMatcher, element)) => (timeMatcher, element.head) +: element.tailList
@@ -34,13 +57,11 @@ case class EventRuleElement(head: EventMatcher, tail: Option[(TimeMatcher, Event
     }
   }
 
-  def ~(min: FiniteDuration, max: FiniteDuration) = new {
-    def ~>(matcher: EventMatcher): EventRuleElement = EventRuleElement(matcher, Some(TimeMatcher(min.toMillis, max.toMillis), EventRuleElement.this))
-  }
+  override def ~(min: FiniteDuration, max: FiniteDuration): EventRuleElementDsl =
+    (matcher: EventMatcher) => EventRuleElement(matcher, Some(TimeMatcher(min.toMillis, max.toMillis), EventRuleElement.this))
 
-  def ~(max: FiniteDuration) = new {
-    def ~>(matcher: EventMatcher): EventRuleElement = EventRuleElement(matcher, Some(TimeMatcher(0, max.toMillis), EventRuleElement.this))
-  }
+  override def ~(max: FiniteDuration): EventRuleElementDsl =
+    (matcher: EventMatcher) => EventRuleElement(matcher, Some(TimeMatcher(0, max.toMillis), EventRuleElement.this))
 
   def apply(events: Seq[(Long, Event)]): Seq[Seq[Event]] = Matcher(events, this)
 }
@@ -62,7 +83,7 @@ object Matcher {
                 check(remainingRules, remainingEvents, eventTime).map(solutions => solutions :+ event)
             }
           }
-        case None => Seq(Seq()) //ok rule is completed
+        case None => Seq(Seq()) //rule is completed
       }
     }
 
@@ -79,7 +100,7 @@ case class EventRule(matchers: EventRuleElement, guard: Home => Boolean)
 
 object Asd extends App {
 
-  implicit def eventRuleElement(rule: EventRuleElement)(implicit events: Seq[(Long, Event)]): Seq[Seq[Event]] = rule(events)
+  implicit def eventRuleElementApplier(rule: EventRuleElement)(implicit events: Seq[(Long, Event)]): Seq[Seq[Event]] = rule(events)
 
   val floor = Floor("", Set(), Set(), Set(), 0, "")
   val room = Room("", "", Set(), Set(), Set(), Set(), "")
@@ -92,8 +113,8 @@ object Asd extends App {
   import scala.concurrent.duration._
 
 
-  (WifiMac ~ 40.seconds ~> WifiMac) collectFirst {
-    case UnknownWifiMacEvent(_, _, mac1) :: UnknownWifiMacEvent(_, _, mac2) :: Nil => println("Boom" + mac1 + mac2)
+  (UnknownWifiMac ~ 40.seconds ~> UnknownWifiMac ~ 10.seconds ~> GatewayOpen) collectFirst {
+    case UnknownWifiMacEvent(_, _, mac1) :: UnknownWifiMacEvent(_, _, mac2) :: (e: GatewayOpenEvent) :: Nil => println("Boom" + mac1 + mac2)
   }
 
 }
