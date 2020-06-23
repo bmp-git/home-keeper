@@ -20,7 +20,11 @@ trait DigitalTwin extends Remote {
 }
 
 sealed trait Gateway extends DigitalTwin {
-  def rooms(home: Home): (Room, Room) = {
+  def isPerimetral(implicit home: Home): Boolean = rooms match {
+    case (r1, r2) => r1.isExternal != r2.isExternal
+  }
+
+  def rooms(implicit home: Home): (Room, Room) = {
     home.zippedRooms.filter(r => (r._2.doors ++ r._2.windows).exists(_.name == this.name)).map(_._2).toList match {
       case r1 :: r2 :: Nil => (r1, r2)
       case _ => throw new Exception("Impossible")
@@ -32,7 +36,13 @@ case class Door(name: String, properties: Set[Property], actions: Set[Action], u
 
 case class Window(name: String, properties: Set[Property], actions: Set[Action], url: String) extends Gateway
 
-case class Room(name: String, floorName: String, properties: Set[Property], actions: Set[Action], doors: Set[Door], windows: Set[Window], url: String) extends DigitalTwin
+case class Room(name: String, floorName: String, properties: Set[Property], actions: Set[Action], doors: Set[Door], windows: Set[Window], url: String) extends DigitalTwin {
+
+  def isInternal: Boolean = !isExternal
+
+  def isExternal: Boolean = name == "external"
+
+}
 
 case class Floor(name: String, properties: Set[Property], actions: Set[Action], rooms: Set[Room], level: Int, url: String) extends DigitalTwin
 

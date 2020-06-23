@@ -61,7 +61,7 @@ val disimpegno = room()
 val bagnoMarrone = room()
 
 
-val myHome = home("home")(
+val myHome = home()(
   floor("firstfloor", 0).properties(time_now(), tag("Tag", 10)).actions(trig("loll", println("lol")))(
     cucina,
     cameraDaLetto,

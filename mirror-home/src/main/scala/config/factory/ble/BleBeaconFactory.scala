@@ -8,11 +8,21 @@ import model.Units.MacAddress
 import model.ble.BleBeacon
 import spire.math.ULong
 
-case class BleBeaconFactory(mac: MacAddress, key: String, user: UserFactory) extends OneTimeFactory[BleBeacon] {
+object BleBeaconFactory {
+  def apply(mac: MacAddress, key: String, user: UserFactory, fireRate: Double, fireRateError: Double): BleBeaconFactory
+  = new BleBeaconFactory(mac, key, user, Some((fireRate, fireRateError)))
+}
+
+case class BleBeaconFactory(mac: MacAddress, key: String, user: UserFactory, fireRate: Option[(Double, Double)] = None) extends OneTimeFactory[BleBeacon] {
   override protected def oneTimeBuild(): BleBeacon = {
-    val storagePath = s"${ConfigDsl.RESOURCE_FOLDER}/ble_beacon_${mac}_counter"
-    val initialCounter = utils.File.read(storagePath).map(ULong.apply).getOrElse(ULong(0))
-    val counterUpdater = (c: ULong) => utils.File.write(storagePath, c.toString)
-    BleBeacon(mac, key, user.build(), initialCounter, counterUpdater)
+    val storagePath: String = s"${ConfigDsl.RESOURCE_FOLDER}/ble_beacon_${mac}_counter"
+    val storagePathTime: String = s"${ConfigDsl.RESOURCE_FOLDER}/ble_beacon_${mac}_counter"
+    val initialCounter: ULong = utils.File.read(storagePath).map(ULong.apply).getOrElse(ULong(0))
+    val initialCounterTime: Long = utils.File.read(storagePathTime).map[Long](_.toLong).getOrElse(0)
+    val counterUpdater: (ULong, Long) => Any = (c: ULong, t: Long) => {
+      utils.File.write(storagePath, c.toString)
+      utils.File.write(storagePathTime, t.toString)
+    }
+    BleBeacon(mac, key, user.build(), initialCounter, initialCounterTime, counterUpdater, fireRate)
   }
 }

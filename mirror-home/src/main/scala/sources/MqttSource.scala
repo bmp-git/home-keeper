@@ -27,7 +27,8 @@ object MqttSource {
     }
   }
 
-  def messages(brokerConfig: BrokerConfig, topics: String*) //TODO: what if crash?
+  //TODO: need a reconnection mechanism without closing the stream
+  def messages(brokerConfig: BrokerConfig, topics: String*)
               (implicit actorSystem: ActorSystem): Source[MqttMessage, Future[Done]] = {
     akka.stream.alpakka.mqtt.scaladsl.MqttSource.atMostOnce(
       settings(brokerConfig),

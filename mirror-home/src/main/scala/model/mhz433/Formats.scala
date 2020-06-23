@@ -7,7 +7,6 @@ import scala.util.Try
 
 
 object Formats {
-  //TODO: fix this
   implicit val raw433MhzDataFormat: JsonFormat[Raw433MhzData] = new JsonFormat[Raw433MhzData] {
     override def write(obj: Raw433MhzData): JsValue = ???
 

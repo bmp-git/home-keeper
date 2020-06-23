@@ -51,7 +51,7 @@ object MimaDeployMain extends App {
   val bagno = room().properties(pir_433_mhz("pir", "3CC55C")).properties(receiver("receiver", "fcf5c40e235c"): _*)
   val sala = room().properties(pir_433_mhz("pir", "17D55C")).properties(receiver("receiver", "b4e62db21c79"): _*)
 
-  val myHome = home("home")(
+  val myHome = home()(
     floor("mansarda", 2)(
       cucina,
       camera,

@@ -10,7 +10,6 @@ case class FloorFactory(override val name: String, level: Int) extends DigitalTw
 
   def apply(rooms: RoomFactory*): this.type = this.rooms(rooms: _*)
 
-  //TODO: check if every name of every DT of this floor is unique?
   def rooms(rooms: RoomFactory*): this.type = {
     this.roomsSet = this.roomsSet.add(rooms)
     this

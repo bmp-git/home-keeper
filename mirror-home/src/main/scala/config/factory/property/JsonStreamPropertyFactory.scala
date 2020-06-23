@@ -21,8 +21,8 @@ class JsonStreamPropertyFactory[T: JsonFormat](override val name: String, output
       case None => Failure(new NoSuchElementException("No value yet."))
     }
     val end: Future[Done] = output().runForeach(x => v = x)
-    end.onComplete { _ => //TODO: check if correct
-      println(s"property $name terminated.")
+    end.onComplete { _ => //Probably an anomaly
+      println(s"JsonStreamProperty '$name' terminated.")
     }
 
     override def name: String = JsonStreamPropertyFactory.this.name

@@ -36,7 +36,8 @@ object Flows {
 
   def frameToBufferedImageImageFlow: Flow[Frame, BufferedImage, _] = {
     val converter = new Java2DFrameConverter()
-    Flow[Frame].map(converter.convert).map(deepCopy) //TODO: why deep copy is needed?
+    //TODO: investigate why deep copy is needed?
+    Flow[Frame].map(converter.convert).map(deepCopy)
   }
 
   def deepCopy(bi: BufferedImage): BufferedImage = {

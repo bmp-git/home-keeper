@@ -40,11 +40,11 @@ object Crypto {
     def verify(receivedCounter: String, secretKey: String, receivedHash: String): Boolean =
       receivedCounter.length == 16 && receivedHash.length == 16 && hash(receivedCounter, secretKey) == receivedHash
 
-    def verify(currentCounter: ULong, receivedCounter: String, secretKey: String, receivedHash: String): Boolean = {
+    def verify(currentCounter: ULong, receivedCounter: String, secretKey: String, receivedHash: String): Option[ULong] = {
       val counter = parseULong(receivedCounter)
       counter match {
-        case Some(value) => verify(receivedCounter, secretKey, receivedHash) && value > currentCounter
-        case None => false
+        case Some(value) if verify(receivedCounter, secretKey, receivedHash) && value > currentCounter => counter
+        case _ => None
       }
 
     }

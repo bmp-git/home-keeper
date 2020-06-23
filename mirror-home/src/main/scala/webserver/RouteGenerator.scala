@@ -56,7 +56,7 @@ object RouteGenerator {
     (path(completePath) & auth & post & extractRequest & extractRequestContext) { (username, req, ctx) =>
       implicit val mat: Materializer = ctx.materializer
       implicit val exe: ExecutionContextExecutor = ctx.executionContext
-      //TODO: application/x-www-form-urlencoded is sent while uploading svg from home-viewer
+      //TODO: application/x-www-form-urlencoded is sent while uploading svg from home-viewer (fix from home-viewer)
       if (false && req.entity.contentType != action.contentType) {
         completeWithErrorMessage(415, "Invalid content type: the required type is '" + action.contentType + "' but '" + req.entity.contentType + "' was received")
       } else {

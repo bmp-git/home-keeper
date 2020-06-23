@@ -206,7 +206,7 @@ object ConfigDsl {
     video_motion_detection(name.value, uri)
 
   /** GENERIC PROPERTY UTILS **/
-  implicit class JsonPropertyFactoryImplicit[T: JsonFormat](source: Source[Try[T], _]) { //TODO: move
+  implicit class JsonPropertyFactoryImplicit[T: JsonFormat](source: Source[Try[T], _]) {
     def asJsonProperty(name: String, semantic: String): JsonPropertyFactory[T] =
       JsonPropertyFactory.fromStream(name, () => source, semantic, None)
 
