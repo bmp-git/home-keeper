@@ -46,7 +46,14 @@ object Crypto {
         case Some(value) if verify(receivedCounter, secretKey, receivedHash) && value > currentCounter => counter
         case _ => None
       }
+    }
 
+    def verifyDummy(receivedCounter: String, secretKey: String, receivedHash: String): Option[ULong] = {
+      val counter = parseULong(receivedCounter)
+      counter match {
+        case Some(_) if verify(receivedCounter, secretKey, receivedHash) => counter
+        case _ => None
+      }
     }
   }
 

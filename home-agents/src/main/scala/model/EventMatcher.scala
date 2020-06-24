@@ -136,7 +136,7 @@ object Asd extends App {
       println("Boom")
   }*/
 
-  (UnknownWifiMac ~ 40.seconds ~> UnknownWifiMac) collectFirst {
+  val asd:Unit=>Unit = _ => (UnknownWifiMac ~ 40.seconds ~> UnknownWifiMac) collectFirst {
     case UnknownWifiMacEvent(_, _, mac1) :: UnknownWifiMacEvent(_, _, mac2) :: Nil => println("Boom" + mac1 + mac2)
   }
 

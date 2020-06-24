@@ -4,8 +4,15 @@ import model.Units.MacAddress
 import model.User
 import spire.math.ULong
 import utils.Crypto
-case class BleBeacon(mac: MacAddress, key: String, attachedTo: User, initialCounter: ULong, initialLastCounterTime: Long,
-                     registerNewCounter: (ULong, Long) => Any, fireRate: Option[(Double, Double)]) {
+trait BleBeacon {
+  def attachedTo: User
+  def key: String
+  def mac: MacAddress
+  def validate(advData: String): Boolean
+}
+
+case class BleBeaconImpl(mac: MacAddress, key: String, attachedTo: User, initialCounter: ULong, initialLastCounterTime: Long,
+                     registerNewCounter: (ULong, Long) => Any, fireRate: Option[(Double, Double)]) extends BleBeacon {
   var counter: ULong = initialCounter
   var lastCounterTime: Long = initialLastCounterTime
 

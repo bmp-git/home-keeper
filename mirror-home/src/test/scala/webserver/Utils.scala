@@ -13,7 +13,7 @@ object Utils {
       turn("action", println)
     )
 
-    val h = home("home")(
+    val h = home()(
       floor("first", 0)(
         hallway,
         bedroom

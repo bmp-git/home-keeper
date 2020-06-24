@@ -277,7 +277,7 @@ object ConfigDsl {
 
   /** MQTT UTILS **/
   def publish(topic: String, payload: String)(implicit brokerConfig: BrokerConfig): Unit =
-    Source.single(payload).to(MqttSink.fixedTopic(topic, brokerConfig))
+    Source.single(payload).to(MqttSink.fixedTopic(topic, brokerConfig)).run()
 }
 
 

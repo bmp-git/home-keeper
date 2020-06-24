@@ -2,19 +2,21 @@ package env
 
 import cartago.{Artifact, LINK, OPERATION}
 import config.Server
-import jason.asSyntax.{Atom, ListTermImpl, Literal, NumberTermImpl, Term}
-import model.{Coordinates, Home, Property, ReceiverStatus}
+import jason.asSyntax._
+import model._
 import org.joda.time.DateTime
 import play.api.libs.json.JsBoolean
-import sttp.client.quick.quickRequest
+import sttp.client.quick.{quickRequest, _}
 import sttp.model.Uri
-import sttp.client.quick._
 
-import scala.util.Try
+import scala.concurrent.duration._
 
 class HomeArtifact extends Artifact {
 
   var oldHome: Home = _
+  var events: Seq[(Long, Event)] = Seq[(Long, Event)]()
+  var currentEvent: Seq[Event] = Seq[Event]()
+  var currentHome: Home = _
 
   def compute(home: Home): Seq[Term] = {
     home.properties.collectFirst {
@@ -62,7 +64,11 @@ class HomeArtifact extends Artifact {
     updateObsProperty("time", new NumberTermImpl(time))
     updateObsProperty("time_slot", if (isNight(time)) new Atom("night") else new Atom("day"))
 
-    val result = "a([" + (home - oldHome).map(_.toTerm).mkString(",") + "])"
+    val events = home - oldHome
+    currentHome = home
+    currentEvent = events
+    checkSpatialTemporalRule() //TODO: move call inside an agent
+    val result = "a([" + events.map(_.toTerm).mkString(",") + "])"
     val termList = Literal.parseLiteral(result).getTerm(0)
 
     updateObsProperty("receivers_online", new NumberTermImpl(receiverOnlineCount(home)), new NumberTermImpl(receiverCount(home)))
@@ -70,6 +76,24 @@ class HomeArtifact extends Artifact {
     updateObsProperty("events", termList)
 
     this.oldHome = home
+  }
+
+  @OPERATION def checkSpatialTemporalRule(): Unit = {
+    implicit val home: Home = currentHome
+    val eventsToConsume = currentEvent
+    currentEvent = Seq()
+    eventsToConsume.foreach(e => {
+      this.events = (System.currentTimeMillis, e) +: this.events
+
+      /** User defined rules **/
+      (GatewayMotionDetectionNear ~ 40.seconds ~> GatewayOpen ~ 10.seconds ~> MotionDetectionM) (this.events) collectFirst {
+        case GatewayMotionDetectionNearEvent(gateway1, (r1, r2)) :: GatewayOpenEvent(gateway2, (r3, r4)) ::
+          MotionDetectionEvent(_, room) :: Nil
+          if gateway1.isPerimetral && gateway1.name == gateway2.name &&
+            Set(r1.name, r2.name, r3.name, r4.name).contains(room.name) && room.isInternal && home.isEmpty =>
+          turnOnAlarm()
+      }
+    })
   }
 
   @OPERATION def turnOnAlarm(): Unit = {

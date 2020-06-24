@@ -15,7 +15,7 @@ import webserver.{JwtUtils, RouteGenerator}
 
 import scala.concurrent.ExecutionContextExecutor
 
-object MimaDeployMain extends App {
+object AllTest extends App {
 
   avutil.av_log_set_level(avutil.AV_LOG_QUIET)
   implicit val system: ActorSystem = ConfigDsl.system
@@ -50,7 +50,7 @@ object MimaDeployMain extends App {
   val corridoio = room().properties(pir_433_mhz("pir", "7F055C"))
   val ingresso = room()
   val bagno = room().properties(pir_433_mhz("pir", "3CC55C")).properties(receiver("receiver", "fcf5c40e235c"): _*)
-  val sala = room().properties(pir_433_mhz("pir", "17D55C")).properties(receiver("receiver", "b4e62db21c79"): _*)
+  val sala = room().properties(pir_433_mhz("pir", "SALAPIR")).properties(receiver("receiver", "b4e62db21c79"): _*)
 
   val myHome = home()(
     floor("mansarda", 2)(
@@ -77,7 +77,7 @@ object MimaDeployMain extends App {
   door(corridoio -> bagno).properties(open_closed_433_mhz("magneto", open_code = "01D7D3", closed_code = "01D7D9"))
   door(corridoio -> camera).properties(open_closed_433_mhz("magneto", open_code = "027113", closed_code = "027119"))
   door(camera -> external).properties(open_closed_433_mhz("magneto", open_code = "018823", closed_code = "018829"))
-  door(sala -> external).properties(open_closed_433_mhz("magneto", open_code = "025BC3", closed_code = "025BC9"))
+  door(sala -> external).properties(pir_433_mhz("pir", "PORTASALAPIR"), open_closed_433_mhz("magneto", open_code = "SALAMAGNETOOPEN", closed_code = "025BC9"))
 
   window(cucina -> external).properties(open_closed_433_mhz("magneto", open_code = "019C93", closed_code = "019C99"))
   window(bagno -> external).properties(open_closed_433_mhz("magneto", open_code = "022623", closed_code = "022629"))
@@ -98,6 +98,7 @@ object MimaDeployMain extends App {
   case class MqttPublishCommand(topic: String, payload: String, sleep: Int)
   import spray.json.DefaultJsonProtocol._
   import spray.json._
+
   import scala.concurrent.duration._
   val f = jsonFormat3(MqttPublishCommand)
   val data: Seq[MqttPublishCommand] = File.readLines(ConfigDsl.RESOURCE_FOLDER + "/mqtt_publish.txt")
@@ -105,6 +106,7 @@ object MimaDeployMain extends App {
   Source.fromIterator(() => data.iterator)
     .throttle(1000, 1.seconds, m => m.sleep) //budget: 1000 cost per second, how much cost an element?
     .map(v => {
+      println(v)
       MqttMessage(v.topic, ByteString(v.payload))
     }).toMat(MqttSink.messages(broker))(Keep.right).run().onComplete(_ => println("Done publishing"))
 

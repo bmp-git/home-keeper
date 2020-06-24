@@ -46,7 +46,15 @@ case class Room(name: String, floorName: String, properties: Set[Property], acti
 
 case class Floor(name: String, properties: Set[Property], actions: Set[Action], rooms: Set[Room], level: Int, url: String) extends DigitalTwin
 
-case class User(name: String, properties: Set[Property], actions: Set[Action], url: String) extends DigitalTwin
+case class User(name: String, properties: Set[Property], actions: Set[Action], url: String) extends DigitalTwin {
+
+  def isAtHome: Boolean = properties.find(p => p.semantic == "user_position").map(_.value.asInstanceOf[UserPosition]) match {
+    case Some(AtHome) => true
+    case Some(InRoom(_, _)) => true
+    case _ => false
+  }
+
+}
 
 case class Home(name: String, properties: Set[Property], actions: Set[Action], floors: Set[Floor], users: Set[User], url: String) extends DigitalTwin {
   def zippedRooms: Set[(Floor, Room)] = floors.flatMap(f => f.rooms.map(r => (f, r)))
@@ -189,6 +197,8 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
       receiverOfflineEvents(this.zippedRooms.toSeq, old.zippedRooms.toSeq) ++
       backHomeUser(this.users.toSeq, old.users.toSeq)
   }
+
+  def isEmpty: Boolean = users.forall(!_.isAtHome)
 }
 
 object Test extends App {
