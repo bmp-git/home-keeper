@@ -16,7 +16,7 @@
     .println("[INFO] Connected to mirror home service");
     lookupArtifact("home", HPID);
     focus(HPID);
-    ?usersNames(Users);
+    ?users_names(Users);
     for( .member(User, Users)) {
        .create_agent(User, "user_agent.asl");
        .wait(500)

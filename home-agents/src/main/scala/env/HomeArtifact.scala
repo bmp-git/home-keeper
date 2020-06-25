@@ -45,7 +45,7 @@ class HomeArtifact extends Artifact {
       case lat :: long :: Nil => defineObsProperty("home_location", lat, long)
       case Nil =>
     }
-    defineObsProperty("usersNames", home.users.map(u => new Atom(u.name)).toArray)
+    defineObsProperty("users_names", home.users.map(u => new Atom(u.name)).toArray)
     val time = System.currentTimeMillis()
     defineObsProperty("time", new NumberTermImpl(time)) //TODO: time from apis
     defineObsProperty("time_slot", if (isNight(time)) new Atom("night") else new Atom("day"))
@@ -79,6 +79,7 @@ class HomeArtifact extends Artifact {
     this.oldHome = home
   }
 
+  //TODO: This operation should be moved out of here
   @OPERATION def checkSpatialTemporalRule(): Unit = {
     implicit val home: Home = currentHome
     val eventsToConsume = currentEvent
