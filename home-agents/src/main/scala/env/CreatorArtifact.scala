@@ -36,7 +36,6 @@ class CreatorArtifact extends Artifact {
     this.json = Json.parse(response.body)
     Unmarshallers.homeUnmarshaller(json) match {
       case Some(home) =>
-        makeArtifact("pages", "env.YellowPagesArtifact", new ArtifactConfig(home))
         makeArtifact("users_locator", "env.UsersLocatorArtifact", new ArtifactConfig(home))
         makeArtifact("ble_artifact", "env.BleReceiversArtifact", new ArtifactConfig(home))
         makeArtifact("home", "env.HomeArtifact", new ArtifactConfig(home))

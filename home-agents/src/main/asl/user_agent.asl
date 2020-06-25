@@ -51,8 +51,7 @@ home_radius(200).  //meters
 
 -!check_nearest_receiver_in_time(Infos) : true <-
     .println("No data found in 1 minute, checking other systems");
-    !check_gps_data;
-    !update_location(unknown).
+    !check_gps_data.
 
 +!check_gps_data : true <-
     .println("Checking gps data in 10 minutes");

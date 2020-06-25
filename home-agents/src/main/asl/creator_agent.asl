@@ -14,8 +14,8 @@
 +!create_world: true <-
     createWorld;
     .println("[INFO] Connected to mirror home service");
-    lookupArtifact("pages", YPID);
-    focus(YPID);
+    lookupArtifact("home", HPID);
+    focus(HPID);
     ?usersNames(Users);
     for( .member(User, Users)) {
        .create_agent(User, "user_agent.asl");
