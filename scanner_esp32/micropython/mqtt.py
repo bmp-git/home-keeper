@@ -26,7 +26,6 @@ async def mqtt_pinger():
     while True:
         if mqtt_client.isConnected():
             await mqtt_client.ping()
-        
         await asyncio.sleep(MQTT_KEEPALIVE // 2)
 
 

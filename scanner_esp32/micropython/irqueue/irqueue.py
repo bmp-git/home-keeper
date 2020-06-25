@@ -6,8 +6,8 @@ class IRQueue:
     def __init__(self, recordType, size):
         self.size = size
         self.array = [recordType() for x in range(self.size)]
-        self.start = None
-        self.end = 0
+        self.start = None       # First occupied index
+        self.end = 0            # First free index
         self.mutex = IRQMutex()
     
     def enqueue(self, v1 = None, v2 = None, v3 = None, v4 = None, v5 = None):
@@ -27,9 +27,9 @@ class IRQueue:
     
 
     def dequeue(self, item):
-        isEmpty = self.start is None
-        if not isEmpty:
-            with self.mutex:
+        with self.mutex:
+            isEmpty = self.start is None
+            if not isEmpty:
                 self.array[self.start].copyTo(item)
                 self.start = inc(self.start, self.size)
                 if self.start == self.end:

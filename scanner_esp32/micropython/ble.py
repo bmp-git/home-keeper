@@ -23,11 +23,7 @@ def bt_irq(event, data):
     if event == _IRQ_SCAN_RESULT:
         global scan_result_queue
         addr_type, addr, adv_type, rssi, adv_data = data
-        # print("[BLE IRQ]", addr_type, addr, adv_type, rssi, adv_data)
         scan_result_queue.enqueue(addr, adv_data, rssi)
-    #elif event == _IRQ_SCAN_COMPLETE:
-    #    print("[BLE] Scan completed. Restarting.")
-    #    schedule(ble_scan_restart, None)
 
 
 async def ble_mqtt_publisher():
@@ -55,7 +51,7 @@ def ble_setup(loop):
     ble.config(rxbuf=BLE_RX_BUFFER)
     ble.irq(bt_irq)
     ble.active(True)
-    print("[BLE] Setup comleted!")
+    print("[BLE] Setup completed!")
 
 def ble_scan_start():
     global ble
@@ -77,11 +73,3 @@ async def ble_daemon_start(loop):
     await wifi.await_wifi_connected()
     ble_setup(loop)
     ble_scan_start()
-    #loop.create_task(ble_watchdog())
-
-async def ble_watchdog():
-    ble_scan_start()
-    while True:
-        await asyncio.sleep(30)
-        ble_scan_restart(None)
-

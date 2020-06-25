@@ -17,6 +17,6 @@ class PADbytearray:
 
     
     def copyTo(self, dest):
-        dest.set_bytearray(self.array)
+        dest.set_bytearray(self.array)     # sets dest.len = len(self.array), not self.len
         dest.len = min(dest.len, self.len)
         
