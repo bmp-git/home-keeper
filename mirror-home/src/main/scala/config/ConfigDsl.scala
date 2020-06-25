@@ -37,7 +37,7 @@ import sources.{HttpSource, MqttSource, RealTimeSourceMulticaster, VideoSource}
 import spray.json.DefaultJsonProtocol._
 import spray.json.JsonFormat
 import utils.RichTrySource._
-import utils.{Lazy, NamedIdDispatcher}
+import utils.{Lazy, LocalizationService, NamedIdDispatcher}
 
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}

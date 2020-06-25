@@ -6,9 +6,9 @@ import config.ConfigDsl._
 import config.factory.ble.BleBeaconFactory
 import config.factory.property.JsonPropertyFactory
 import model.coordinates.Coordinates
-import model.{BrokerConfig, Home, LocalizationService}
+import model.{BrokerConfig, Home}
 import org.bytedeco.ffmpeg.global.avutil
-import utils.File
+import utils.{File, LocalizationService}
 import webserver.{JwtUtils, RouteGenerator}
 import webserver.json.JsonModel._
 

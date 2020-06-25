@@ -1,10 +1,10 @@
-package model
+package utils
 
 import java.io.File
 
 import akka.http.scaladsl.model.Uri
 
-import scala.sys.process._
+import scala.sys.process.{Process, ProcessLogger}
 
 case class LocalizationService(gmail: String, cookieFile: String, port: Int, workingDir: String = "../user-localizer") {
   def uri(username: String): Uri = s"http://127.0.0.1:$port/users/$username"
