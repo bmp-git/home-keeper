@@ -1,11 +1,11 @@
-//Room, Door, Window, External env, Home, Floor,
-//Beacon, Pir, Videocamera, Perimetrali
 package model
 
 import akka.Done
 import akka.http.scaladsl.model.{ContentType, ContentTypes}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
+import com.github.andyglow.jsonschema.AsSpray._
+import json.schema.Version._
 import spray.json.DefaultJsonProtocol._
 import spray.json.{JsObject, JsonFormat, _}
 
@@ -14,6 +14,7 @@ import scala.util.{Failure, Success, Try}
 
 
 trait Property {
+
   def name: String
 
   def contentType: ContentType
@@ -25,6 +26,7 @@ trait Property {
   def confidence: Double = 1
 
   def jsonDescription: JsObject = {
+
     case class Obj(name: String, contentType: String, semantic: String, confidence: Double)
     val wrapperFormat: JsonFormat[Obj] = jsonFormat(Obj, "name", "content-type", "semantic", "confidence")
     wrapperFormat.write(Obj(name, contentType.toString(), semantic, confidence)).asJsObject
@@ -32,13 +34,14 @@ trait Property {
 }
 
 trait Action {
+
   def name: String
 
   def contentType: ContentType
 
   def sink(implicit executor: ExecutionContext): Sink[ByteString, Future[Try[Done]]]
 
-  def semantic: String //trig, file_write (content type), turn (boolean), set_position (room_name)
+  def semantic: String
 
   def jsonDescription: JsObject = {
     case class Obj(name: String, contentType: String, semantic: String)
@@ -55,7 +58,7 @@ trait JsonProperty[T] extends Property {
 
   override def contentType: ContentType = ContentTypes.`application/json`
 
-  override def jsonDescription: JsObject = //do not include the value here but only in source, will broke home-viewer
+  override def jsonDescription: JsObject =
     value match {
       case Failure(exception) => JsObject(super.jsonDescription.fields + ("error" -> JsString(exception.getMessage)))
       case Success(v) => JsObject(super.jsonDescription.fields + ("value" -> jsonFormat.write(v)))
@@ -66,10 +69,10 @@ trait JsonProperty[T] extends Property {
       case Failure(exception) => Failure(exception)
       case Success(v) => Success(Source.single(ByteString(jsonFormat.write(v).compactPrint)))
     }
-
 }
 
 trait JsonAction[T] extends Action {
+
   def trig(t: T): Unit
 
   override def sink(implicit executor: ExecutionContext): Sink[ByteString, Future[Try[Done]]] = {
@@ -83,9 +86,6 @@ trait JsonAction[T] extends Action {
       }))
   }
 
-  import com.github.andyglow.jsonschema.AsSpray._
-  import json.schema.Version._
-  import spray.json._
   override def jsonDescription: JsObject = {
     JsObject(super.jsonDescription.fields + ("schema" -> jsonSchema.asSpray(Draft04())))
   }
@@ -116,11 +116,15 @@ trait User extends DigitalTwin {
 trait Gateway extends DigitalTwin {
   def rooms: (Room, Room)
 }
+
 trait Door extends Gateway
+
 trait Window extends Gateway
+
 trait Room extends DigitalTwin {
   def gateways: Set[Gateway]
 }
+
 trait Floor extends DigitalTwin {
   def rooms: Set[Room]
 

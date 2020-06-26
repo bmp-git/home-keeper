@@ -27,30 +27,31 @@ object MqttSource {
     }
   }
 
-  //TODO: need a reconnection mechanism without closing the stream
   def messages(brokerConfig: BrokerConfig, topics: String*)
-              (implicit actorSystem: ActorSystem): Source[MqttMessage, Future[Done]] = {
-    akka.stream.alpakka.mqtt.scaladsl.MqttSource.atMostOnce(
-      settings(brokerConfig),
-      MqttSubscriptions(Map(topics.map(_ -> MqttQoS.AtLeastOnce): _*)),
-      bufferSize = 1
-    )
+              (implicit actorSystem: ActorSystem): Source[MqttMessage, NotUsed] = {
+    Source.repeat(()).flatMapConcat(_ => {
+      akka.stream.alpakka.mqtt.scaladsl.MqttSource.atMostOnce(
+        settings(brokerConfig),
+        MqttSubscriptions(Map(topics.map(_ -> MqttQoS.AtLeastOnce): _*)),
+        bufferSize = 1
+      )
+    })
   }
 
   def payloads(brokerConfig: BrokerConfig, topics: String*)
-              (implicit actorSystem: ActorSystem): Source[String, Future[Done]] =
+              (implicit actorSystem: ActorSystem): Source[String, NotUsed] =
     messages(brokerConfig, topics: _*)(actorSystem).via(payloadExtractor)
 
   def topicsAndPayloads(brokerConfig: BrokerConfig, topics: String*)
-                       (implicit actorSystem: ActorSystem): Source[(String, String), Future[Done]] =
+                       (implicit actorSystem: ActorSystem): Source[(String, String), NotUsed] =
     messages(brokerConfig, topics: _*)(actorSystem).via(topicAndPayloadExtractor)
 
   def objects[T: JsonFormat](brokerConfig: BrokerConfig, topics: String*)
-                            (implicit actorSystem: ActorSystem): Source[Try[T], Future[Done]] =
+                            (implicit actorSystem: ActorSystem): Source[Try[T], NotUsed] =
     payloads(brokerConfig, topics: _*).via(objectExtractor[T])
 
   def topicsAndObjects[T: JsonFormat](brokerConfig: BrokerConfig, topics: String*)
-                                    (implicit actorSystem: ActorSystem): Source[Try[(String, T)], Future[Done]] =
+                                    (implicit actorSystem: ActorSystem): Source[Try[(String, T)], NotUsed] =
     messages(brokerConfig, topics: _*).via(topicAndObjectExtractor[T])
 
   private def payloadExtractor: Flow[MqttMessage, String, NotUsed] =

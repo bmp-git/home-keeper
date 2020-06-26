@@ -19,8 +19,8 @@ import scala.util.{Failure, Success, Try}
 
 object HttpSource {
   val responseDownloadTimeout: FiniteDuration = 1.second
-  val responseMaxBufferSize: Long = 5 * 1024 * 1024
-  val trustfulSslContext: SSLContext = { //TODO: not safe, add the possibility to check from user
+  val responseMaxBufferSize: Long = 5 * 1024 * 1024 //Byte
+  val trustfulSslContext: SSLContext = { //TODO: not safe, give the user the possibility to check for itself
     object NoCheckX509TrustManager extends X509TrustManager {
       override def checkClientTrusted(chain: Array[X509Certificate], authType: String): Unit = ()
 

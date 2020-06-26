@@ -20,6 +20,10 @@
             <td>{{prop.name + ": "}}</td>
             <td>{{prop.value | timeFormat}}</td>
           </template>
+          <template v-else-if="prop['semantic'] === 'motion_detection'">
+            <td>{{prop.name + ": last seen "}}</td>
+            <td>{{prop.value.last_seen | timeFormat}}</td>
+          </template>
           <template v-else-if="prop['semantic'] === 'ble_receiver'">
             <td>Users seen:</td>
             <td>

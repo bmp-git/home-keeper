@@ -22,7 +22,7 @@ object DebugMain extends App {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  implicit val broker: BrokerConfig = BrokerConfig("doru2.mnd.cloud").auth("homekeeper", "8CUAgjwyuaJu")
+  implicit val broker: BrokerConfig = BrokerConfig("192.168.1.10")
   implicit val localizationService: LocalizationService = LocalizationService(
   port = 8086,
   gmail = "bmpprogetti@gmail.com",
@@ -45,13 +45,13 @@ implicit val beacons: Seq[BleBeaconFactory] = Seq(
   ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", edobrb),
   ble_beacon("abcdef123456", "not_existing_beacon", panchh))
 
-val external = room()
+val external = room().properties(video_motion_detection("video", "http://192.168.1.237/video.cgi"))
 /*.withProperties(remoteVideo)*/
 val cucina = room()
 val cameraDaLetto = room()
 /*.withProperties(localVideo)*/
 val corridoio = room()
-val bagnoRosa = room().properties(video_motion_detection("video", "http://192.168.1.237/video.cgi"))
+val bagnoRosa = room()
 val bagnoVerde = room().properties(JsonPropertyFactory.dynamic[Int]("FailedProp", () => Failure(new Exception("failed")), "nothing"))
 val cameraMia = room().properties(receiver("1", "fcf5c40e2540"): _*)
 val ripostiglio = room()
@@ -71,7 +71,7 @@ val myHome = home()(
     cameraMia,
     ripostiglio,
     sala,
-    external.properties(pir_433_mhz("pir", "022623"))
+    external
   ),
   floor("secondfloor", 1)(
     disimpegno,
@@ -114,7 +114,7 @@ val route = RouteGenerator.generateRoutes(build, "api")(if(File.exists(JwtUtils.
 
 
 val bindingFuture = Http().bindAndHandle(route, "localhost", 8090)
-println(s"Server online at http://localhost:8090/\nPress RETURN to stop...")
+println(s"Server online at http://localhost:8090/")
 
 
 Main.userCmd()

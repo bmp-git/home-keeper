@@ -222,10 +222,10 @@ object ConfigDsl {
   }
 
   /** PROPERTY SOURCES **/
-  def payload_from_mqtt(topics: String*)(implicit brokerConfig: BrokerConfig): Source[Try[String], Future[Done]] =
+  def payload_from_mqtt(topics: String*)(implicit brokerConfig: BrokerConfig): Source[Try[String], NotUsed] =
     MqttSource.payloads(brokerConfig, topics: _*).map(Success.apply)
 
-  def json_from_mqtt[T: JsonFormat](topics: String*)(implicit brokerConfig: BrokerConfig): Source[Try[T], Future[Done]] =
+  def json_from_mqtt[T: JsonFormat](topics: String*)(implicit brokerConfig: BrokerConfig): Source[Try[T], NotUsed] =
     MqttSource.objects[T](brokerConfig, topics: _*)
 
   def payload_from_http[T: JsonFormat](request: HttpRequest, pollingFreq: FiniteDuration = 1.second): Source[Try[String], Cancellable] =

@@ -114,26 +114,6 @@ class AllTest extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll {
     println(s"Server terminated.")
   }
 
-  def publish(filename: String): Future[Done] = {
-    implicit val _system: ActorSystem = system
-    implicit val materializer: ActorMaterializer = ActorMaterializer()
-    implicit val executionContext: ExecutionContextExecutor = system.dispatcher
-    case class MqttPublishCommand(topic: String, payload: String, sleep: Int)
-    import spray.json.DefaultJsonProtocol._
-    import spray.json._
-
-    import scala.concurrent.duration._
-    val f = jsonFormat3(MqttPublishCommand)
-    val data: Seq[MqttPublishCommand] = utils.File.readLines(filename)
-      .getOrElse(Seq[String]()).map(s => JsonParser.apply(ParserInput(s))).map(f.read)
-    Source.fromIterator(() => data.iterator)
-      .throttle(1000, 1.seconds, m => m.sleep) //budget: 1000 cost per second, how much cost an element?
-      .map(v => {
-        println(v)
-        MqttMessage(v.topic, ByteString(v.payload))
-      }).toMat(MqttSink.messages(broker))(Keep.right).run()
-  }
-
   test("A") {
     ConfigDsl.publish("scanner/abcdef123456/433", "{\"code\": \"PORTASALAPIR\", \"pulselength\": 0, \"proto\": 0}")
     Thread.sleep(4000)

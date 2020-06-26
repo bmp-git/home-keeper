@@ -48,7 +48,7 @@ object Main extends App {
       val build: Home = myHome.build()
       val route = RouteGenerator.generateRoutes(build, "api")(if (File.exists(JwtUtils.secretKeyPath)) JwtUtils.secured else JwtUtils.unsecured)
       val bindingFuture = Http().bindAndHandle(route, "localhost", 8090)
-      println(s"Server online at http://localhost:8090/\nPress RETURN to stop...")
+      println(s"Server online at http://localhost:8090/")
       userCmd()
       bindingFuture
         .flatMap(_.unbind())
