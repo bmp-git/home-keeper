@@ -5,7 +5,7 @@ from config import WIFI_SSID, WIFI_PASSWORD
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 
-async def wifi_daemon_start():    
+async def wifi_daemon_start(loop):    
     old_wlan_isconnected = wlan.isconnected()
     current_wlan_isconnected = old_wlan_isconnected
     while True:

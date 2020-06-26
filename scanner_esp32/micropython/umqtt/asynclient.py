@@ -1,3 +1,6 @@
+# Original code from: https://github.com/micropython/micropython-lib/blob/master/umqtt.simple/umqtt/simple.py
+# Improved and converted to asyncio, supports Qos0 publish only, no subscribe
+
 import usocket as socket
 import ustruct as struct
 import uasyncio as asyncio
@@ -17,8 +20,6 @@ class MQTTClient:
 
         self.server = server
         self.port = port
-        self.pid = 0
-        self.cb = None
         self.user = user
         self.pswd = password
         self.keepalive = keepalive
@@ -45,19 +46,6 @@ class MQTTClient:
 
     def _create_str(self, s):
         return bytearray(struct.pack("!H", len(s)) + s)
-
-    async def _recv_len(self):
-        n = 0
-        sh = 0
-        while 1:
-            b = await self._read(1)[0]
-            n |= (b & 0x7f) << sh
-            if not b & 0x80:
-                return n
-            sh += 7
-
-    def set_callback(self, f):
-        self.cb = f
 
     def set_last_will(self, topic, msg, retain=False, qos=0):
         assert 0 <= qos <= 2
@@ -125,8 +113,7 @@ class MQTTClient:
 
     async def disconnect(self):
         await self._write(b"\xe0\0")
-        self.writer.close()
-        await self.writer.wait_closed()
+        self.connected = False
 
     async def ping(self):
         if not self.connected:
@@ -173,64 +160,3 @@ class MQTTClient:
             i += 1
         pkt[i] = sz
         return pkt[:i + 1] + self._create_str(topic) + bytearray(msg)
-
-    async def subscribe(self, topic, qos=0):
-        assert self.cb is not None, "Subscribe callback is not set"
-        pkt = bytearray(b"\x82\0\0\0")
-        self.pid += 1
-        struct.pack_into("!BH", pkt, 1, 2 + 2 + len(topic) + 1, self.pid)
-        #print(hex(len(pkt)), hexlify(pkt, ":"))
-        await self._write(pkt)
-        await self._write(self._create_str(topic))
-        await self._write(qos.to_bytes(1, "little"))
-        while 1:
-            op = self.wait_msg()
-            if op == 0x90:
-                resp = await self._read(4)
-                #print(resp)
-                assert resp[1] == pkt[2] and resp[2] == pkt[3]
-                if resp[3] == 0x80:
-                    raise MQTTException(resp[3])
-                return
-
-    # Wait for a single incoming MQTT message and process it.
-    # Subscribed messages are delivered to a callback previously
-    # set by .set_callback() method. Other (internal) MQTT
-    # messages processed internally.
-    async def wait_msg(self):
-        res = await self._read(1)
-        if res is None:
-            return None
-        if res == b"":
-            raise OSError(-1)
-        if res == b"\xd0":  # PINGRESP
-            sz = await self._read(1)[0]
-            assert sz == 0
-            return None
-        op = res[0]
-        if op & 0xf0 != 0x30:
-            return op
-        sz = await self._recv_len()
-        topic_len = await self._read(2)
-        topic_len = (topic_len[0] << 8) | topic_len[1]
-        topic = await self._read(topic_len)
-        sz -= topic_len + 2
-        if op & 6:
-            pid = await self._read(2)
-            pid = pid[0] << 8 | pid[1]
-            sz -= 2
-        msg = await self._read(sz)
-        self.cb(topic, msg)
-        if op & 6 == 2:
-            pkt = bytearray(b"\x40\x02\0\0")
-            struct.pack_into("!H", pkt, 2, pid)
-            await self._write(pkt)
-        elif op & 6 == 4:
-            assert 0
-
-    # Checks whether a pending message from server is available.
-    # If not, returns immediately with None. Otherwise, does
-    # the same processing as wait_msg.
-    async def check_msg(self):
-        res = await self.wait_msg()
-        return res

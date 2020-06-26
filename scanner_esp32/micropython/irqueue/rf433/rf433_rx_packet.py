@@ -5,6 +5,7 @@ class RF433RXRecord:
         self.pulselength = int(0)
         self.proto = int(0)
     
+    # not using variable arguments to avoid an array allocation
     def setValues(self, v1, v2, v3, v4, v5):
         self.code = v1
         self.pulselength = v2

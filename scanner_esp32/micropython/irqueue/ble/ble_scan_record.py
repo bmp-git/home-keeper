@@ -6,6 +6,7 @@ class BLEScanRecord:
         self.adv_data = PADbytearray(31)
         self.rssi = int(0)
     
+    # not using variable arguments to avoid an array allocation
     def setValues(self, v1, v2, v3, v4, v5):
         bytearrayCopy(v1, self.addr)
         self.adv_data.set_bytearray(v2)
