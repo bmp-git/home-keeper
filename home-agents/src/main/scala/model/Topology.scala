@@ -30,6 +30,12 @@ sealed trait Gateway extends DigitalTwin {
       case _ => throw new Exception("Impossible")
     }
   }
+
+  def isOpen(implicit home: Home): Boolean = properties.find(p => p.semantic == "is_open").map(_.value.asInstanceOf[Option[OpenCloseData]]).forall {
+    case Some(Open(_)) => true
+    case Some(Close(_)) => false
+    case None => false
+  }
 }
 
 case class Door(name: String, properties: Set[Property], actions: Set[Action], url: String) extends Gateway
@@ -42,13 +48,24 @@ case class Room(name: String, floorName: String, properties: Set[Property], acti
 
   def isExternal: Boolean = name == "external"
 
+  def nonEmpty(implicit home: Home): Boolean = home.users.map(_.position).exists {
+    case Some(InRoom(floor, room)) => floorName == floor && room == name
+    case _ => false
+  }
+
+  def isEmpty(implicit home: Home): Boolean = !nonEmpty
+
+  def isOneOf(rooms: Room*): Boolean = rooms.exists(r => r.name == name && r.floorName == floorName)
+
 }
 
 case class Floor(name: String, properties: Set[Property], actions: Set[Action], rooms: Set[Room], level: Int, url: String) extends DigitalTwin
 
 case class User(name: String, properties: Set[Property], actions: Set[Action], url: String) extends DigitalTwin {
 
-  def isAtHome: Boolean = properties.find(p => p.semantic == "user_position").map(_.value.asInstanceOf[UserPosition]) match {
+  def position: Option[UserPosition] = properties.find(p => p.semantic == "user_position").map(_.value.asInstanceOf[UserPosition])
+
+  def isAtHome: Boolean = position match {
     case Some(AtHome) => true
     case Some(InRoom(_, _)) => true
     case _ => false

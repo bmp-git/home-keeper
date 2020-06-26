@@ -91,8 +91,18 @@ class HomeArtifact extends Artifact {
       (GatewayMotionDetectionNear ~ 40.seconds ~> GatewayOpen ~ 10.seconds ~> MotionDetectionM) (this.events) collectFirst {
         case GatewayMotionDetectionNearEvent(gateway1, (r1, r2)) :: GatewayOpenEvent(gateway2, (r3, r4)) ::
           MotionDetectionEvent(_, room) :: Nil
-          if gateway1.isPerimetral && gateway1.name == gateway2.name &&
-            Set(r1.name, r2.name, r3.name, r4.name).contains(room.name) && room.isInternal && home.isEmpty =>
+          if home.isEmpty &&
+            gateway1.isPerimetral && gateway1.name == gateway2.name &&
+            room.isOneOf(r1, r2, r3, r4) && room.isInternal =>
+          turnOnAlarm()
+      }
+
+      (GatewayMotionDetectionNear ~ 40.seconds ~> MotionDetectionM) (this.events) collectFirst {
+        case GatewayMotionDetectionNearEvent(g, (r1, r2)) ::
+          MotionDetectionEvent(_, room) :: Nil
+          if room.isEmpty &&
+            g.isOpen && g.isPerimetral &&
+            room.isOneOf(r1, r2) =>
           turnOnAlarm()
       }
     })

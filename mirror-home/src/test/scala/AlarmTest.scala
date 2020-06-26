@@ -20,9 +20,9 @@ import webserver.{JwtUtils, RouteGenerator}
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.sys.process.{Process, ProcessLogger}
 
-class AllTest extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll {
+class AlarmTest extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll {
   var system: ActorSystem = ConfigDsl.system
-  implicit val broker: BrokerConfig = BrokerConfig("192.168.1.10:1883")
+  implicit val broker: BrokerConfig = BrokerConfig("localhost:1883")
   var sirenIsOn = false
   var agentsProcess: Process = _
 
@@ -58,7 +58,7 @@ class AllTest extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll {
     val corridoio = room().properties(pir_433_mhz("pir", "7F055C"))
     val ingresso = room()
     val bagno = room().properties(pir_433_mhz("pir", "3CC55C")).properties(receiver("receiver", "fcf5c40e235c"): _*)
-    val sala = room().properties(pir_433_mhz("pir", "SALAPIR")).properties(receiver("receiver", "b4e62db21c79"): _*)
+    val sala = room().properties(pir_433_mhz("pir", "sala_pir")).properties(receiver("receiver", "b4e62db21c79"): _*)
 
     val myHome = home()(
       floor("mansarda", 2)(
@@ -85,7 +85,7 @@ class AllTest extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll {
     door(corridoio -> bagno).properties(open_closed_433_mhz("magneto", open_code = "01D7D3", closed_code = "01D7D9"))
     door(corridoio -> camera).properties(open_closed_433_mhz("magneto", open_code = "027113", closed_code = "027119"))
     door(camera -> external).properties(open_closed_433_mhz("magneto", open_code = "018823", closed_code = "018829"))
-    door(sala -> external).properties(pir_433_mhz("pir", "PORTASALAPIR"), open_closed_433_mhz("magneto", open_code = "SALAMAGNETOOPEN", closed_code = "025BC9"))
+    door(sala -> external).properties(pir_433_mhz("pir", "porta_sala_external_pir"), open_closed_433_mhz("magnetoo", open_code = "porta_sala_external_magneto", closed_code = "025BC9"))
 
     window(cucina -> external).properties(open_closed_433_mhz("magneto", open_code = "019C93", closed_code = "019C99"))
     window(bagno -> external).properties(open_closed_433_mhz("magneto", open_code = "022623", closed_code = "022629"))
@@ -96,16 +96,10 @@ class AllTest extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll {
     println(s"Server online at http://localhost:8090/")
 
 
-
-
   }
 
   override def beforeEach(): Unit = {
     sirenIsOn = false
-    val outPipe: String => Unit = s => println(s)
-    import scala.sys.process._
-    agentsProcess = Process("gradlew.bat run", new File("../home-agents")) run ProcessLogger(outPipe, outPipe)
-    Thread.sleep(10000)
   }
 
   override def afterEach(): Unit = {
@@ -114,22 +108,45 @@ class AllTest extends FunSuite with BeforeAndAfterEach with BeforeAndAfterAll {
     println(s"Server terminated.")
   }
 
-  test("A") {
-    ConfigDsl.publish("scanner/abcdef123456/433", "{\"code\": \"PORTASALAPIR\", \"pulselength\": 0, \"proto\": 0}")
+  def startMas(): Unit = {
+    val outPipe: String => Unit = s => println(s)
+    import scala.sys.process._
+    agentsProcess = Process("gradlew.bat run", new File("../home-agents")) run ProcessLogger(outPipe, outPipe)
+    Thread.sleep(10000)
+  }
+
+  def activate(code: String): Unit = {
+    ConfigDsl.publish("scanner/abcdef123456/433", "{\"code\": \""+code+"\", \"pulselength\": 0, \"proto\": 0}")
+  }
+
+  test("[No one at home] external movement -> door opening -> internal movement should turn the alarm on") {
+    startMas()
+    activate("porta_sala_external_pir")
     Thread.sleep(4000)
-    ConfigDsl.publish("scanner/abcdef123456/433", "{\"code\": \"SALAMAGNETOOPEN\", \"pulselength\": 0, \"proto\": 0}")
+    activate("porta_sala_external_magneto")
     Thread.sleep(4000)
-    ConfigDsl.publish("scanner/abcdef123456/433", "{\"code\": \"SALAPIR\", \"pulselength\": 0, \"proto\": 0}")
+    activate("sala_pir")
     Thread.sleep(4000)
     assert(sirenIsOn)
   }
 
-  test("B") {
-    ConfigDsl.publish("scanner/abcdef123456/433", "{\"code\": \"PORTASALAPIR\", \"pulselength\": 0, \"proto\": 0}")
+  test("[No one in room sala and external door is open] external movement -> internal movement should turn the alarm on") {
+    activate("porta_sala_external_magneto")
     Thread.sleep(4000)
-    ConfigDsl.publish("scanner/abcdef123456/433", "{\"code\": \"SALAPIR\", \"pulselength\": 0, \"proto\": 0}")
+    startMas()
+    activate("porta_sala_external_pir")
     Thread.sleep(4000)
-    ConfigDsl.publish("scanner/abcdef123456/433", "{\"code\": \"SALAMAGNETOOPEN\", \"pulselength\": 0, \"proto\": 0}")
+    activate("sala_pir")
+    Thread.sleep(4000)
+    assert(sirenIsOn)
+  }
+
+  test("[No one at home] sala_pir -> porta_sala_external_magneto -> porta_sala_external_pir STRANGE") {
+    activate("sala_pir")
+    Thread.sleep(4000)
+    activate("porta_sala_external_magneto")
+    Thread.sleep(4000)
+    activate("porta_sala_external_pir")
     Thread.sleep(4000)
     assert(!sirenIsOn)
   }
