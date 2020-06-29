@@ -99,6 +99,7 @@ import { Component, Vue, Watch } from "vue-property-decorator";
 import { uploadSVG, getSVG } from "@/Api.ts";
 import $ from "jquery";
 import FloorSelector from "@/components/FloorSelector.vue";
+import {initialSelectedFloorIndex} from "@/Utils";
 
 @Component({ components: { FloorSelector } })
 export default class Settings extends Vue {
@@ -108,12 +109,7 @@ export default class Settings extends Vue {
     svg: ""
   }));
 
-  private initialSelectedFloorIndex() {
-    const index = this.floors.findIndex((f: any) => f.level === 0);
-    return index === -1 ? 0 : index;
-  }
-
-  private selectedFloorIndex = 0;
+  private selectedFloorIndex = initialSelectedFloorIndex(this.floors);
   private selectedEntityIndexes: any[] = [];
   private lastPathSelected: any = null;
   private selectedClassIndex = 0;
@@ -132,7 +128,6 @@ export default class Settings extends Vue {
 
     this.initializeSelectedEntityIndexs();
     this.updateFloorsSvg();
-    this.selectedFloorIndex = this.initialSelectedFloorIndex();
   }
 
   private updateBoundEntities() {

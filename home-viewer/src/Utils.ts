@@ -27,3 +27,8 @@ export function removeFromArray(array: any[], predicate: (obj:any) => boolean) {
         array.splice(index, 1);
     }
 }
+
+export function initialSelectedFloorIndex(floors: any) {
+    const index = floors.findIndex((f: any) => f.level === 0);
+    return index === -1 ? 0 : index;
+}

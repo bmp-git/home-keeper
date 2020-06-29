@@ -13,7 +13,7 @@
     "sourceMap": true,
     "baseUrl": ".",
     "types": [
-      "webpack-env", "jquery"
+      "webpack-env", "jquery", "vuetify"
     ],
     "paths": {
       "@/*": [

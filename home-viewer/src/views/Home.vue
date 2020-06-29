@@ -54,6 +54,7 @@ import $ from "jquery";
 import { getSVG } from "@/Api";
 import UsersList from "@/components/UsersList.vue";
 import { flatHome } from "@/Utils";
+import { initialSelectedFloorIndex } from "@/Utils";
 
 @Component({
   components: { FloorSelector, Tooltip, EntitiesViewer, UsersList }
@@ -71,12 +72,8 @@ export default class Home extends Vue {
     })
   );
 
-  private initialSelectedFloorIndex() {
-    const index = this.floors.findIndex((f: any) => f.level === 0);
-    return index === -1 ? 0 : index;
-  }
 
-  private selectedFloorIndex = 0;
+  private selectedFloorIndex = initialSelectedFloorIndex(this.floors);
   private tooltip: any = null;
   private showSvg = true;
   private showCards = true;
@@ -97,7 +94,6 @@ export default class Home extends Vue {
 
     this.updateFloorsSvg();
     this.tooltip = this.$refs["tooltip"] as any;
-    this.selectedFloorIndex = this.initialSelectedFloorIndex();
   }
 
   private toggleSvg() {

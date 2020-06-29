@@ -82,12 +82,11 @@
 
 <script lang="ts">
 import Vue from "vue";
-import HelloWorld from "./components/HelloWorld.vue";
 import { Component } from "vue-property-decorator";
 import "material-design-icons-iconfont/dist/material-design-icons.css";
 import UserAvatar from "@/components/UserAvatar.vue";
 
-@Component({ components: {UserAvatar, HelloWorld } })
+@Component({ components: { UserAvatar } })
 export default class App extends Vue {
   private fav = true;
   private menu = false;
