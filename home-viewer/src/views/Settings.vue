@@ -103,11 +103,11 @@ import {initialSelectedFloorIndex} from "@/Utils";
 
 @Component({ components: { FloorSelector } })
 export default class Settings extends Vue {
-  private floors = this.$store.state.homeTopology.floors.map((f: { name: string, level: number }) => ({
-    name: f.name,
-    level: f.level,
-    svg: ""
-  }));
+  private floors = this.$store.state.homeTopology.floors.map(( f: { name: string, level: number }) => ({
+      name: f.name,
+      level: f.level,
+      svg: ""
+    }));
 
   private selectedFloorIndex = initialSelectedFloorIndex(this.floors);
   private selectedEntityIndexes: any[] = [];
@@ -400,12 +400,12 @@ export default class Settings extends Vue {
 </script>
 
 <style>
-  #svgs_settings .path_selected {
+#svgs_settings .path_selected {
   fill: darkseagreen !important;
   fill-opacity: 0.5 !important;
 }
 
-  #svgs_settings path[data-bindid] {
+#svgs_settings path[data-bindid] {
   fill: cornflowerblue;
   fill-opacity: 0.3;
 }

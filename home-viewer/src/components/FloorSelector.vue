@@ -21,5 +21,3 @@ export default class FloorSelector extends Vue {
   }
 }
 </script>
-
-<style scoped></style>

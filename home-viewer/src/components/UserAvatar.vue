@@ -1,11 +1,11 @@
 <template>
   <v-avatar :size="size">
-      <img
-              v-if="avatarExists"
-              :src="avatarRelativePath"
-              :alt="name"
-              @error="avatarExists = false"
-      />
+    <img
+      v-if="avatarExists"
+      :src="avatarRelativePath"
+      :alt="name"
+      @error="avatarExists = false"
+    />
     <v-icon v-else dark>mdi-account-circle</v-icon>
   </v-avatar>
 </template>
@@ -20,9 +20,7 @@ export default class User extends Vue {
   private avatarExists = true;
 
   get avatarRelativePath() {
-    return this.$store.state.serverAddress + `/home/users/${this.name}/properties/avatar/raw`;
+    return (this.$store.state.serverAddress + `/home/users/${this.name}/properties/avatar/raw`);
   }
 }
 </script>
-
-<style scoped></style>

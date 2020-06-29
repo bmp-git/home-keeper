@@ -11,40 +11,57 @@
       </h2>
     </div>
     <div v-if="currentProperties && currentProperties.length > 0" class="tooltip_content">
-      <table>
-        <tr v-for="prop in currentProperties" :key="prop.name">
-          <template v-if="prop['semantic']  === 'video'">
-            <td colspan="2"><img :src="`${getPropertyPath(prop.name)}/raw`" style="display:block; width:100%;"/></td>
-          </template>
-          <template v-else-if="prop['semantic'] === 'time'">
-            <td>{{prop.name + ": "}}</td>
-            <td>{{prop.value | timeFormat}}</td>
-          </template>
-          <template v-else-if="prop['semantic'] === 'motion_detection'">
-            <td>{{prop.name + ": last seen "}}</td>
-            <td>{{prop.value.last_seen | timeFormat}}</td>
-          </template>
-          <template v-else-if="prop['semantic'] === 'ble_receiver'">
-            <td>Users seen:</td>
-            <td>
-              <table>
-                <tr v-for="record in prop.value" :key="record.user">
-                  <td>{{record.user}}</td>
-                  <td>{{record["last_seen"] | timeFormat}}</td>
-                  <td>{{record["rssi"] + "db"}}</td>
-                </tr>
-              </table>
+      <table id="properties_table">
+        <tr v-for="prop in currentProperties" :key="prop.name" class="mb-4">
+          <template v-if="prop['semantic'] === 'ble_receiver'"></template>
+          <template v-else-if="prop['semantic'] === 'wifi_receiver'"></template>
+          <template v-else-if="prop['semantic'] === 'smartphone_data'"></template>
+
+          <template v-else-if="prop['semantic'] === 'video'">
+            <td colspan="2">
+              <div>{{ prop["name"] }}:</div>
+              <img
+                :src="`${getPropertyAbsolutePath(prop.name)}/raw`"
+                style="display:block; width:100%;"
+              />
             </td>
           </template>
+          <template v-else-if="prop['semantic'] === 'time'">
+            <td>{{ prop.name + ": " }}</td>
+            <td align="center">{{ prop.value | timeFormat }}</td>
+          </template>
           <template v-else-if="prop['content-type'] === 'application/json'">
-              <template v-if="prop['value'] !== undefined">
-                <td> {{prop.name + ": "}}</td>
-                <td> {{prop.value}}</td>
-              </template>
-              <template v-else-if="prop['error']">
-                <td> {{prop.name + ": "}}</td>
-                <td style="color: red;"> {{prop.error}}</td>
-              </template>
+            <template v-if="!(prop['value'] == null)">
+              <td>{{ prop.name + ": " }}</td>
+              <td align="center">
+                <table style="table-layout:fixed">
+                  <tr v-for="subprop in Object.keys(prop.value)" :key="subprop">
+                    <td align="center" v-if="!Array.isArray(prop.value)">{{subprop}}</td>
+                    <template v-if="prop.value[subprop] instanceof Object">
+                      <td>
+                        <table style="table-layout:auto;">
+                          <tr v-for="subsubprop in Object.keys(prop.value[subprop])" :key="subsubprop">
+                            <td align="center" v-if="!Array.isArray(prop.value[subprop])">{{subsubprop}}</td>
+                            <td style="word-wrap:break-word; word-break: break-all;">{{propertyFormatter(subsubprop, prop.value[subprop][subsubprop])}}</td>
+                          </tr>
+                        </table>
+                      </td>
+                    </template>
+                    <template v-else>
+                      <td style="word-wrap:break-word"> {{ propertyFormatter(subprop, prop.value[subprop]) }} </td>
+                    </template>
+                  </tr>
+                </table>
+              </td>
+            </template>
+            <template v-else-if="prop['error']">
+              <td>{{ prop.name + ": " }}</td>
+              <td style="color: red;">{{ prop.error }}</td>
+            </template>
+            <template v-else>
+              <td>{{ prop.name + ": " }}</td>
+              <td style="color: orange;">Unknown</td>
+            </template>
           </template>
         </tr>
       </table>
@@ -55,13 +72,13 @@
 <script lang="ts">
 import $ from "jquery";
 import { Component, Vue, Watch } from "vue-property-decorator";
-import { createPopper, auto } from "@popperjs/core";
-import {flatHome} from "@/Utils";
+import { createPopper } from "@popperjs/core";
+import { flatHome } from "@/Utils";
 
 @Component({
   filters: {
     timeFormat(date: number) {
-      return new Date(date).toTimeString().split(' ')[0];
+      return new Date(date).toTimeString().split(" ")[0];
     }
   }
 })
@@ -79,6 +96,10 @@ export default class Tooltip extends Vue {
     this.updateTooltipContent();
   }
 
+  private getPropertyAbsolutePath(prop: string) {
+    return `${this.$store.state.serverAddress}${this.currentEntityUrl}/properties/${prop}`;
+  }
+
   private floorName() {
     return this.$store.state.homeProperties.floors[this.currentFloor].name;
   }
@@ -86,12 +107,19 @@ export default class Tooltip extends Vue {
     return this.$store.state.serverAddress + this.currentEntityUrl + "/properties/" + prop;
   }
 
+  private propertyFormatter(name: string, value: any) {
+    if (name == "last_seen" || name == "timestamp" || name == "last_change") {
+      return this.$options.filters.timeFormat(value);
+    } else {
+      return value;
+    }
+  }
+
   private updateTooltipContent() {
     if (!(this.currentFloor == null) && !(this.currentId == null)) {
       const floor = this.floorName();
       const home = flatHome(this.$store.state.homeProperties);
       const found = home.find((e: any) => e.entity.name === this.currentId && e.floor === floor);
-      
       if (found) {
         this.currentEntityUrl = found.url;
         this.currentProperties = found.entity.properties;
@@ -112,7 +140,7 @@ export default class Tooltip extends Vue {
 
     const svgEntity = $(bindto).get(0);
     const tooltip = $("#tooltip").get(0);
-    this.popper = createPopper(svgEntity, tooltip, {placement: 'auto'});
+    this.popper = createPopper(svgEntity, tooltip, { placement: "auto" });
     $("#tooltip").css("display", "block");
   }
 

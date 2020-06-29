@@ -86,11 +86,12 @@ export default class PropertiesViewer extends Vue {
 </script>
 
 <style scoped>
-  #properties_table {
-    border-spacing: 0 1em;
-    padding-top: 0;
-  }
-  table {
-    border-spacing: 0 0.3em;
-  }
+#properties_table {
+  border-spacing: 0 1em;
+  padding-top: 0;
+}
+
+table {
+  border-spacing: 0 0.3em;
+}
 </style>

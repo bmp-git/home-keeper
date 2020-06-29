@@ -9,7 +9,7 @@
       </v-col>
       <v-col cols="1" align="end" justify="end">
         <v-btn @click="toggleSvg()" :disabled="disableToggleSvg">
-          {{showSvg ? "Hide map" : "Show map"}}
+          {{ showSvg ? "Hide map" : "Show map" }}
         </v-btn>
       </v-col>
       <v-col cols="3">
@@ -31,14 +31,14 @@
         </v-col>
       </transition>
       <transition name="custom-transition" enter-active-class="animate__animated animate__bounceIn" leave-active-class="animate__animated animate__bounceOut">
-      <v-col v-show="showCards">
-        <div style="height:calc(100vh - 231px);overflow-x: hidden; overflow-y: auto;">
-          <EntitiesViewer
-                  ref="entitiesViewer"
-                  :selected-floor-index="selectedFloorIndex"
-          ></EntitiesViewer>
-        </div>
-      </v-col>
+        <v-col v-show="showCards">
+          <div style="height:calc(100vh - 231px);overflow-x: hidden; overflow-y: auto;">
+            <EntitiesViewer
+              ref="entitiesViewer"
+              :selected-floor-index="selectedFloorIndex">
+            </EntitiesViewer>
+          </div>
+        </v-col>
       </transition>
     </v-row>
     <Tooltip ref="tooltip"></Tooltip>
@@ -71,7 +71,6 @@ export default class Home extends Vue {
       svg: ""
     })
   );
-
 
   private selectedFloorIndex = initialSelectedFloorIndex(this.floors);
   private tooltip: any = null;
@@ -111,7 +110,7 @@ export default class Home extends Vue {
       }
       this.showCards = !this.showCards;
       this.disableToggleSvg = false;
-    }, 1000)
+    }, 1000);
   }
 
   private onPathSelect(path: any) {
@@ -120,15 +119,11 @@ export default class Home extends Vue {
     if (id == null) {
       return;
     }
-    (this.$refs["entitiesViewer"] as any).addEntity(
-      this.selectedFloorIndex,
-      id,
-      true
-    );
+    (this.$refs["entitiesViewer"] as any).addEntity(this.selectedFloorIndex, id);
   }
 
   private pinUserCard(userName: string) {
-    (this.$refs["entitiesViewer"] as any).addUser(userName, true);
+    (this.$refs["entitiesViewer"] as any).addUser(userName);
   }
 
   private onPathEnter(path: any) {
@@ -188,15 +183,17 @@ export default class Home extends Vue {
     entities.forEach((e: any) => {
       const svgEntity = $(`#obj_${this.selectedFloorIndex}`).find(`path[data-bindid=${$.escapeSelector(e.entity.name)}]`);
       if (svgEntity[0]) {
-        Home.cleanSvgStyle(svgEntity);
         e.entity.properties.forEach((p: any) => {
-          switch (p.semantic) {
-            case "is_open":
-              svgEntity.addClass(p.value ? "is_open" : "is_closed");
-              break;
-            case "light_on":
-              svgEntity.addClass(p.value ? "is_light_on" : "is_light_off");
-              break;
+          Home.cleanSvgStyle(svgEntity);
+          if (!(p.value === null)) {
+            switch (p.semantic) {
+              case "is_open":
+                svgEntity.addClass(p.value.open ? "is_open" : "is_closed");
+                break;
+              case "motion_detection":
+                svgEntity.addClass(Date.now() - p.value["last_seen"] <= 5000 ? "motion_detected" : "");
+                break;
+            }
           }
         });
       }
@@ -208,7 +205,8 @@ export default class Home extends Vue {
       "is_open",
       "is_closed",
       "is_light_on",
-      "is_light_off"
+      "is_light_off",
+      "motion_detected"
     ]);
   }
 }
@@ -216,18 +214,23 @@ export default class Home extends Vue {
 
 <style>
 .is_open {
-  fill: orange !important;
-  fill-opacity: 0.3 !important;
+  fill: red !important;
+  fill-opacity: 0.7 !important;
 }
 
 .is_closed {
   fill: green !important;
-  fill-opacity: 0.3 !important;
+  fill-opacity: 0.7 !important;
 }
 
 .is_light_on {
   fill: rgba(255, 255, 0, 0.99) !important;
   fill-opacity: 0.3 !important;
+}
+
+.motion_detected {
+  fill: rgba(198, 198, 90, 0.99) !important;
+  fill-opacity: 0.6 !important;
 }
 
 .is_light_off {
@@ -239,12 +242,12 @@ export default class Home extends Vue {
   width: 350px;
 }
 
-
 .hide-native-scrollbar {
   scrollbar-width: none; /* Firefox 64 /
   -ms-overflow-style: none; / Internet Explorer 11 */
 }
-::-webkit-scrollbar { /** WebKit */
+/** WebKit */
+::-webkit-scrollbar {
   display: none;
 }
 </style>

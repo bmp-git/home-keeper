@@ -12,10 +12,8 @@ import User from "@/components/User.vue";
 export default class UsersList extends Vue {
   @Prop() private users: string[];
 
-    private pinUserCard(userName: string) {
-        (this.$parent as any).pinUserCard(userName);
-    }
+  private pinUserCard(userName: string) {
+    (this.$parent as any).pinUserCard(userName);
+  }
 }
 </script>
-
-<style scoped></style>

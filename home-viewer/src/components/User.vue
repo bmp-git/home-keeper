@@ -1,10 +1,10 @@
 <template>
   <div @click="pinUserCard" class="pointer" style="text-align: center">
-    <p style=" margin-bottom: 0px">{{ name }}</p>
+    <p style=" margin-bottom: 0">{{ name }}</p>
     <UserAvatar :name="this.name" style="display: inline-block;"></UserAvatar>
     <h6>
       <template v-if="userProperties.get('user_position').value.type === 'in_room'">
-        {{userProperties.get('user_position').value.floor}} -> {{userProperties.get('user_position').value.room}}
+        {{ userProperties.get("user_position").value.floor }} -> {{userProperties.get("user_position").value.room}}
       </template>
       <template v-else>
         {{ userProperties.get("user_position").value.type }}

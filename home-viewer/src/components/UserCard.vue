@@ -1,30 +1,29 @@
 <template>
   <v-card class="entity_card">
-    <v-system-bar color="primary text--primary" dark :class="(this.properties.length > 0 || this.actions.length > 0) && open ? '' : 'minimized_card'">
-
-        <UserAvatar :name="name" size="16"></UserAvatar>
-        <span class="pl-2"> {{name}}:
-            <template v-if="position.type === 'in_room'">
-              {{position.floor}} -> {{position.room}}
-            </template>
-            <template v-else>
-              {{ position.type }}
-            </template>
-        </span>
-
+    <v-system-bar
+      color="primary text--primary"
+      dark
+      :class=" (this.properties.length > 0 || this.actions.length > 0) && open? '' : 'minimized_card'" >
+      <UserAvatar :name="name" size="16"></UserAvatar>
+      <span class="pl-2">
+        {{ name }}:
+        <template v-if="position.type === 'in_room'">
+          {{ position.floor }} -> {{ position.room }}
+        </template>
+        <template v-else>
+          {{ position.type }}
+        </template>
+      </span>
 
       <v-spacer></v-spacer>
 
       <v-icon
         v-if="properties.length > 0 || actions.length > 0"
-        @click="open = !open"
-        >{{ open ? "mdi-chevron-up" : "mdi-chevron-down" }}</v-icon
-      >
+        @click="open = !open" >{{ open ? "mdi-chevron-up" : "mdi-chevron-down" }}</v-icon>
       <v-icon v-if="isClosable" @click="closeCard()">mdi-close</v-icon>
     </v-system-bar>
-    <v-card-text :class="(this.properties.length > 0 || this.actions.length > 0) && open ? 'pt-0' : 'pb-0 pt-0'">
-
-
+    <v-card-text
+      :class=" (this.properties.length > 0 || this.actions.length > 0) && open ? 'pt-0' : 'pb-0 pt-0'" >
       <v-expand-transition>
         <div v-show="open">
           <PropertiesViewer
@@ -54,7 +53,7 @@ export default class UserCard extends Vue {
 
   private properties: [] = [];
   private actions: [] = [];
-  private position = {type:"unknown"};
+  private position = { type: "unknown" };
 
   private open = true;
 
@@ -68,11 +67,15 @@ export default class UserCard extends Vue {
   }
 
   private updateCardContent() {
-    const user = this.$store.state.homeProperties.users.find((u: any) => u.name === this.name);
+    const user = this.$store.state.homeProperties.users.find(
+      (u: any) => u.name === this.name
+    );
     if (user) {
       this.properties = user.properties;
       this.actions = user.actions;
-      this.position = this.properties.find((p : any) => p.semantic === "user_position")['value'];
+      this.position = this.properties.find(
+        (p: any) => p.semantic === "user_position"
+      )["value"];
     }
   }
 
