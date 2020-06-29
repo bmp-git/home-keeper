@@ -30,11 +30,11 @@ object MqttSource {
   def messages(brokerConfig: BrokerConfig, topics: String*)
               (implicit actorSystem: ActorSystem): Source[MqttMessage, NotUsed] = {
     Source.repeat(()).flatMapConcat(_ => {
-      akka.stream.alpakka.mqtt.scaladsl.MqttSource.atMostOnce(
+      Try(akka.stream.alpakka.mqtt.scaladsl.MqttSource.atMostOnce(
         settings(brokerConfig),
         MqttSubscriptions(Map(topics.map(_ -> MqttQoS.AtLeastOnce): _*)),
         bufferSize = 1
-      )
+      )).getOrElse(Source.empty)
     })
   }
 

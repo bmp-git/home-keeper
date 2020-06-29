@@ -61,7 +61,7 @@ object MimaDeployMain extends App {
       bagno,
       sala,
       external
-    ),
+    )
     //floor("terra", 0)
   ).actions(turn("siren", status => println("Turning alarm: " + status)))
     .properties(
