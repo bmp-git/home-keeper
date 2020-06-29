@@ -36,7 +36,6 @@ everyone_at_home_is_in_a_room :- locations(Locations) & not .member(user_locatio
      +alarmed(false);
      !risk_decay.
 
-
 +events(Events): true <-
     .print("Events changed: ");
     for( .member(Event, Events)) {
@@ -226,16 +225,18 @@ everyone_at_home_is_in_a_room :- locations(Locations) & not .member(user_locatio
     !turn_alarm_off.
 
 +!turn_alarm_on: true <-
-    .println("TURNING ALARM ON!");
+    .println("[INFO] Turning alarm on!");
      turnOnAlarm;
+     .println("[INFO] SUCCESSFULLY TURNED ALARM ON!");
      -+alarmed(true).
 
 -!turn_alarm_on: true <-
     .println("[ERROR] TURNING ALARM ON!").
 
 +!turn_alarm_off: true <-
-    .println("TURNING ALARM OFF!");
+    .println("[INFO] Turning alarm off!");
     turnOffAlarm;
+    .println("[INFO] SUCCESSFULLY TURNED ALARM OFF!");
     -+alarmed(false).
 
 -!turn_alarm_off: true <-

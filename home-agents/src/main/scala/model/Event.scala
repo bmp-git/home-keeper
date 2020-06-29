@@ -26,26 +26,25 @@ trait GatewayEvent extends Event {
 }
 
 case class GatewayOpenEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayEvent {
-  //event(gateway_open, door, Name, internal, Rooms)
   override def eventName: String = "open"
-} //
+}
+
 case class GatewayMotionDetectionNearEvent(gateway: Gateway, rooms: (Room, Room)) extends GatewayEvent {
-  //event(motion_detection_near, door, Name, internal, Rooms)
   override def eventName: String = "motion_detection_near"
-} //
+}
+
 case class MotionDetectionEvent(floor: Floor, room: Room) extends Event {
-  //event(motion_detection, room(firstfloor, bedroom))
   override def toTerm: Term = Literal.parseLiteral(s"event(motion_detection, room(${floor.name}, ${room.name}))")
-} //
+}
+
 case class GetBackHomeEvent(user: User) extends Event {
-  //event(get_back_home, lorenzomondani)
   override def toTerm: Term = Literal.parseLiteral(s"event(get_back_home, ${user.name})")
-} //
+}
+
 case class UnknownWifiMacEvent(floor: Floor, room: Room, mac: String) extends Event {
-  //event(unknown_wifi_mac, room(firstfloor, kitchen))
   override def toTerm: Term = Literal.parseLiteral(s"event(unknown_wifi_mac, ${'"'}$mac${'"'}, room(${floor.name}, ${room.name}))")
 }
+
 case class ReceiverOfflineEvent(floor: Floor, room: Room) extends Event {
-  //event(unknown_wifi_mac, room(firstfloor, kitchen))
   override def toTerm: Term = Literal.parseLiteral(s"event(receiver_offline, room(${floor.name}, ${room.name}))")
 }

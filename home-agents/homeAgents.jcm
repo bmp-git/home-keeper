@@ -7,6 +7,6 @@ mas homeAgents {
 
 	agent creator: creator_agent.asl
 	agent alarm: alarm_agent.asl
-    agent alarm2: spatio_temporal_agent.asl
+    agent alarm2: alarm2_agent.asl
 	asl-path: "src/main/asl"
 }

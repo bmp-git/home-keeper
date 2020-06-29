@@ -9,8 +9,6 @@ import sttp.client.quick.quickRequest
 import sttp.model.Uri
 import sttp.client.quick._
 
-import scala.util.Try
-
 class UsersLocatorArtifact extends Artifact {
 
   def userLocation(user: User): String = {

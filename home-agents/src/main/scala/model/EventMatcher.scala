@@ -2,6 +2,7 @@ package model
 
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.reflect.ClassTag
+
 trait EventRuleElementDsl {
   def ~>(matcher: EventMatcher): EventRuleElement
 }
@@ -105,39 +106,4 @@ object Matcher {
       case _ => Seq() //rule failed
     }
   }
-}
-
-
-case class EventRule(matchers: EventRuleElement, guard: Home => Boolean)
-
-object Asd extends App {
-
-  implicit def eventRuleElementApplier(rule: EventRuleElement)(implicit events: Seq[(Long, Event)]): Seq[Seq[Event]] = rule(events)
-
-  val floor = Floor("", Set(), Set(), Set(), 0, "")
-  val room = Room("", "", Set(), Set(), Set(), Set(), "")
-
-  implicit def home: Home = ???
-
-  implicit val events: Seq[(Long, Event)] = Seq(
-    (1000000, UnknownWifiMacEvent(floor, room, "A")),
-    (1000000 - 10000, UnknownWifiMacEvent(floor, room, "B")),
-    (1000000 - 20000, UnknownWifiMacEvent(floor, room, "C")))
-
-  /*(GatewayMotionDetectionNear ~ 40.seconds ~> GatewayOpen ~ 10.seconds ~> MotionDetection) collectFirst {
-    case GatewayMotionDetectionNearEvent(gateway1, (r1, r2)) ::
-      GatewayOpenEvent(gateway2, (r3, r4)) ::
-      MotionDetectionEvent(_, room) :: Nil
-      if gateway1.isPerimetral &&
-        gateway1.name == gateway2.name &&
-        Set(r1.name, r2.name, r3.name, r4.name).contains(room.name) &&
-        room.isInternal &&
-        home.isEmpty =>
-      println("Boom")
-  }*/
-
-  val asd:Unit=>Unit = _ => (UnknownWifiMac ~ 40.seconds ~> UnknownWifiMac) collectFirst {
-    case UnknownWifiMacEvent(_, _, mac1) :: UnknownWifiMacEvent(_, _, mac2) :: Nil => println("Boom" + mac1 + mac2)
-  }
-
 }

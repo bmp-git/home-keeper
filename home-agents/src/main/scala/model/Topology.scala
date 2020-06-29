@@ -217,27 +217,3 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
 
   def isEmpty: Boolean = users.forall(!_.isAtHome)
 }
-
-object Test extends App {
-  println("Started!")
-
-  import sttp.client.quick._
-
-  var h: Option[Home] = None
-
-  while (true) {
-    Thread.sleep(500)
-    val response = quickRequest.get(uri"http://localhost:8090/api/home").send()
-    val json = Json.parse(response.body)
-    (h, Unmarshallers.homeUnmarshaller(json)) match {
-      case (None, Some(home)) => h = Some(home)
-      case (Some(oldHome), Some(newHome)) =>
-        val events: Seq[Event] = newHome - oldHome
-        events.toSet.foreach(println)
-        println("------------------------------------------------------")
-        h = Some(newHome)
-      case _ => println("!")
-    }
-  }
-
-}

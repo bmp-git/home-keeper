@@ -82,7 +82,7 @@ home_radius(200).  //meters
     !update_location(away).
 
 -!check_distance_and_accuracy(Radius, Distance, Accuracy) : true <-
-     .println("Error: unexpected location: ", Radius, Distance, Accuracy).
+     .println("[ERROR] Unexpected location: ", Radius, Distance, Accuracy).
 
 -!check_gps_data : true <-
     .println("No valid data found");

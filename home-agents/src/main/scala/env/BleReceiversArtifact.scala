@@ -15,7 +15,7 @@ class BleReceiversArtifact extends Artifact {
       }
     }).mkString(",") + "]"
   }
- // movement("external", _) ~40.seconds~> gateway_open("external", gateway) ~10.seconds~> movement("internal", room) -> if gateway is in room
+
   def compute(home: Home): Object = {
     val result = "a([" + home.users.map(u => {
       "userdata(" + u.name + "," + info(u.name, home) + ")"
