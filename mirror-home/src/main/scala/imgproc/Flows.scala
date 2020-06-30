@@ -31,7 +31,11 @@ object Flows {
 
   def iplImageToFrameImageFlow: Flow[IplImage, Frame, _] = {
     val converter = new OpenCVFrameConverter.ToIplImage
-    Flow[IplImage].map(converter.convert)
+    Flow[IplImage].map(img => {
+      val res = converter.convert(img)
+      //img.close()
+      res
+    })
   }
 
   def frameToBufferedImageImageFlow: Flow[Frame, BufferedImage, _] = {

@@ -151,8 +151,8 @@ object ConfigDsl {
 
   def open_closed_433_mhz(name: String, open_code: String, closed_code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Option[OpenCloseData]] =
     json_from_mqtt[Raw433MhzData]("scanner/+/433", "scanner/sonoff/433/RESULT").ignoreFailures.collectValue[Option[OpenCloseData]]({
-      case data if data.code == open_code => Some(model.mhz433.Open(DateTime.now))
-      case data if data.code == closed_code => Some(model.mhz433.Close(DateTime.now))
+      case data if data.code.toLowerCase == open_code.toLowerCase => Some(model.mhz433.Open(DateTime.now))
+      case data if data.code.toLowerCase == closed_code.toLowerCase => Some(model.mhz433.Close(DateTime.now))
     }) asJsonProperty(name, "is_open", None)
 
   def open_closed_433_mhz(open_code: String, closed_code: String)(implicit name: sourcecode.Name, brokerConfig: BrokerConfig): JsonPropertyFactory[Option[OpenCloseData]] =
@@ -161,7 +161,7 @@ object ConfigDsl {
   def pir_433_mhz(name: String, code: String)(implicit brokerConfig: BrokerConfig): JsonPropertyFactory[Option[MotionDetection]] = {
     import model.mhz433.Formats._
     json_from_mqtt[Raw433MhzData]("scanner/+/433", "scanner/sonoff/433/RESULT").ignoreFailures.collectValue[Option[MotionDetection]]({
-      case data if data.code == code => Some(MotionDetection(DateTime.now))
+      case data if data.code.toLowerCase == code.toLowerCase => Some(MotionDetection(DateTime.now))
     }) asJsonProperty(name, "motion_detection", None)
   }
 
@@ -183,7 +183,7 @@ object ConfigDsl {
     val multicaster = RealTimeSourceMulticaster[Option[(BufferedImage, Boolean)]](
       () => VideoSource.frames(source_feed)(system.dispatcher).via(VideoAnalysis.motion_detection()).map(Option.apply),
       errorDefault = None,
-      maxElementBuffered = 0,
+      maxElementBuffered = 10,
       retryWhenCompleted = true)
 
     val motionDetectionEvents: Source[Try[Option[MotionDetection]], NotUsed] = Source.fromIterator(() =>
@@ -199,7 +199,7 @@ object ConfigDsl {
     }).map(Success.apply)
 
     (MixedReplaceVideoPropertyFactory(name, multicaster),
-      motionDetectionEvents asJsonProperty(name + "_motion_detection", "motion_detection", None))
+      motionDetectionEvents asJsonProperty(name + "_md", "motion_detection", None))
   }
 
   def video_motion_detection(uri: String)(implicit name: sourcecode.Name): (MixedReplaceVideoPropertyFactory, JsonPropertyFactory[Option[MotionDetection]]) =
@@ -270,9 +270,12 @@ object ConfigDsl {
   def file_attr(name: String, path: String, contentType: ContentType, semantic: String): (PropertyFactory, ActionFactory) =
     (file_reader(name, path, contentType, semantic), file_writer(name, path, contentType))
 
-  def var_attr[T: JsonFormat : json.Schema](name: String, initialValue: T, semantic: String): (PropertyFactory, ActionFactory) = {
+  def var_attr[T: JsonFormat : json.Schema](name: String, initialValue: T, semantic: String): (PropertyFactory, ActionFactory) =
+    var_attr(name, initialValue, semantic, "update_" + semantic)
+
+  def var_attr[T: JsonFormat : json.Schema](name: String, initialValue: T, property_semantic: String, action_semantic:String): (PropertyFactory, ActionFactory) = {
     var value: T = initialValue
-    (json_property(name, () => value, semantic), json_action[T](name, value = _, "update_" + semantic))
+    (json_property(name, () => value, property_semantic), json_action[T](name, value = _, action_semantic))
   }
 
   /** MQTT UTILS **/
