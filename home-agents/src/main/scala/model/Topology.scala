@@ -216,4 +216,8 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
   }
 
   def isEmpty: Boolean = users.forall(!_.isAtHome)
+
+  def getTime: Long = {
+    this.properties.find(_.semantic == "time").map(_.value.asInstanceOf[String].toLong).getOrElse(System.currentTimeMillis())
+  }
 }

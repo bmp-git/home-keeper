@@ -2,7 +2,7 @@ package env
 
 import cartago.{Artifact, LINK, OPERATION}
 import config.Server
-import jason.asSyntax.{Literal, NumberTermImpl}
+import jason.asSyntax.{Atom, Literal, NumberTermImpl}
 import model.{AtHome, Away, Home, InRoom, Unknown, User}
 import play.api.libs.json.Json
 import sttp.client.quick.quickRequest
@@ -21,7 +21,7 @@ class UsersLocatorArtifact extends Artifact {
     }).getOrElse("")
   }
 
-  def compute(home: Home): Object = {
+  def usersLocations(home: Home): Object = {
     val result = "a([" + home.users.map(u => {
       "user_location(" + u.name + ", location(" +  userLocation(u) + "))"
     }).mkString(",") + "])"
@@ -29,16 +29,17 @@ class UsersLocatorArtifact extends Artifact {
     parsed.getTerm(0)
   }
 
-  def getInsideUsersCount(home: Home): Int = home.users.map(userLocation).count(l => l == "at_home" || l.contains("room("))
+  def insideUsersCount(home: Home): Int = home.users.map(userLocation).count(l => l == "at_home" || l.contains("room("))
 
   @OPERATION def init(home: Home): Unit = {
-    defineObsProperty("locations", compute(home))
-    defineObsProperty("users_at_home", new NumberTermImpl(getInsideUsersCount(home)))
+    defineObsProperty("users_names", home.users.map(u => new Atom(u.name)).toArray)
+    defineObsProperty("locations", usersLocations(home))
+    defineObsProperty("users_at_home", new NumberTermImpl(insideUsersCount(home)))
   }
 
   @LINK def update(home: Home): Unit = {
-    updateObsProperty("locations", compute(home))
-    updateObsProperty("users_at_home", new NumberTermImpl(getInsideUsersCount(home)))
+    updateObsProperty("locations", usersLocations(home))
+    updateObsProperty("users_at_home", new NumberTermImpl(insideUsersCount(home)))
   }
 
   private def postUserPosition(user: String, body: String): Unit = {

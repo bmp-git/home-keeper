@@ -29,10 +29,14 @@ everyone_at_home_is_in_a_room :- locations(Locations) & not .member(user_locatio
 
 +!initialize : true <-
      .wait({ +world_created[source(creator)] });
-     lookupArtifact("home", HAID);
-     focus(HAID);
-     lookupArtifact("users_locator", USLO);
-     focus(USLO);
+     lookupArtifact("alarm", AAID);
+     focus(AAID);
+     lookupArtifact("users_locator", ULAID);
+     focus(ULAID);
+     lookupArtifact("clock", CAID);
+     focus(CAID);
+     lookupArtifact("receivers", RAID);
+     focus(RAID);
      +alarmed(false);
      !risk_decay.
 

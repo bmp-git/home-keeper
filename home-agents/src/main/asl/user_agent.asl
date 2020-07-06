@@ -12,8 +12,8 @@ home_radius(200).  //meters
 +!start : true <-
      println("Hello, world!");
      .wait({ +world_created[source(creator)] });
-     lookupArtifact("ble_artifact", BAID);
-     focus(BAID);
+     lookupArtifact("receivers", RAID);
+     focus(RAID);
      lookupArtifact("home", HAID);
      focus(HAID);
      ?user(Name);
@@ -27,7 +27,7 @@ home_radius(200).  //meters
 
 +!work : true <-
     .wait(500);
-    ?receivers(Data);
+    ?ble_data(Data);
     ?user(Name);
     .member(userdata(Name, Infos), Data);
     .println(Name, " total infos: ", Infos);
