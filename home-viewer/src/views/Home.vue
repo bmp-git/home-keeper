@@ -183,8 +183,8 @@ export default class Home extends Vue {
     entities.forEach((e: any) => {
       const svgEntity = $(`#obj_${this.selectedFloorIndex}`).find(`path[data-bindid=${$.escapeSelector(e.entity.name)}]`);
       if (svgEntity[0]) {
+        Home.cleanSvgStyle(svgEntity);
         e.entity.properties.forEach((p: any) => {
-          Home.cleanSvgStyle(svgEntity);
           if (!(p.value === null)) {
             switch (p.semantic) {
               case "is_open":

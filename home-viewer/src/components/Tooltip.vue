@@ -35,6 +35,7 @@
               <td>{{ prop.name + ": " }}</td>
               <td align="center">
                 <table style="table-layout:fixed">
+                <template v-if="prop.value instanceof Object">
                   <tr v-for="subprop in Object.keys(prop.value)" :key="subprop">
                     <td align="center" v-if="!Array.isArray(prop.value)">{{subprop}}</td>
                     <template v-if="prop.value[subprop] instanceof Object">
@@ -51,6 +52,10 @@
                       <td style="word-wrap:break-word"> {{ propertyFormatter(subprop, prop.value[subprop]) }} </td>
                     </template>
                   </tr>
+                  </template>
+              <template v-else>
+                <td align="center">{{ prop.value }}</td>
+              </template>
                 </table>
               </td>
             </template>

@@ -5,7 +5,7 @@ import akka.stream.alpakka.mqtt.MqttMessage
 import akka.stream.scaladsl.{Keep, Source}
 import akka.util.ByteString
 import config.ConfigDsl
-import config.ConfigDsl.{ble_beacon, door, floor, home, location, open_closed_433_mhz, pir_433_mhz, receiver, room, smartphone, time_now, turn, user, video_motion_detection, window}
+import config.ConfigDsl._
 import config.factory.ble.BleBeaconFactory
 import model.{BrokerConfig, Home}
 import org.bytedeco.ffmpeg.global.avutil
@@ -14,6 +14,9 @@ import utils.{File, LocalizationService}
 import webserver.{JwtUtils, RouteGenerator}
 
 import scala.concurrent.ExecutionContextExecutor
+import spray.json.DefaultJsonProtocol._
+import json._
+import spray.json.JsonFormat
 
 object MimaDeployMain extends App {
 
@@ -22,7 +25,7 @@ object MimaDeployMain extends App {
   implicit val materializer: ActorMaterializer = ActorMaterializer()
   implicit val executionContext: ExecutionContextExecutor = system.dispatcher
 
-  implicit val broker: BrokerConfig = BrokerConfig("192.168.1.54:1883")
+  implicit val broker: BrokerConfig = BrokerConfig("doru2.mnd.cloud").auth("homekeeper", "8CUAgjwyuaJu")
   implicit val localizationService: LocalizationService = LocalizationService(
     port = 8086,
     gmail = "bmpprogetti@gmail.com",
@@ -37,18 +40,18 @@ object MimaDeployMain extends App {
   pancio96.properties(smartphone(owner = pancio96))
 
   implicit val beacons: Seq[BleBeaconFactory] = Seq(
-    ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", edobrb),
+    ble_beacon("74daeaac2a2d", "SimpleBLEBroadca", pancio96),
     ble_beacon("abcdef123456", "not_existing_beacon", lory696))
 
-  val (stream, movement) = video_motion_detection("external_door_video", "http://192.168.31.124/video.cgi")
+  val (stream, movement) = video_motion_detection("external_video", "http://192.168.31.137:8080/video")
 
 
   val external = room().properties(stream, movement)
 
   val cucina = room().properties(pir_433_mhz("pir", "C7D55C")).properties(receiver("receiver", "fcf5c40e28d8"): _*)
   val camera = room().properties(pir_433_mhz("pir", "05C55C")).properties(receiver("receiver", "fcf5c40e2540"): _*)
-  val corridoio = room().properties(pir_433_mhz("pir", "7F055C"))
-  val ingresso = room()
+  val corridoio = room()
+  val ingresso = room().properties(pir_433_mhz("pir", "7F055C"))
   val bagno = room().properties(pir_433_mhz("pir", "3CC55C")).properties(receiver("receiver", "fcf5c40e235c"): _*)
   val sala = room().properties(pir_433_mhz("pir", "17D55C")).properties(receiver("receiver", "b4e62db21c79"): _*)
 
@@ -63,12 +66,20 @@ object MimaDeployMain extends App {
       external
     )
     //floor("terra", 0)
-  ).actions(turn("siren", status => println("Turning alarm: " + status)))
+  )//.attributes(var_attr("siren", false, "turn", "turn")(implicitly[JsonFormat[Boolean]], Json.schema[Boolean]))
     .properties(
       location(44.270688, 12.342442),
-      time_now()
+      time_now(),
+      mqtt_bool("siren", "ESPURNA-D3FD0B/relay/0", "1", "0", "turn")
     )
+    .actions(turn("siren", {
+      case true => publish("ESPURNA-D3FD0B/relay/0/set", "1")
+      case false => publish("ESPURNA-D3FD0B/relay/0/set", "0")
+    }))
     .users(edobrb, lory696, pancio96)
+
+
+
 
   door(ingresso -> external).properties(movement, stream, open_closed_433_mhz("magneto", open_code = "00BBF3", closed_code = "00BBF9"))
   door(ingresso -> cucina)
