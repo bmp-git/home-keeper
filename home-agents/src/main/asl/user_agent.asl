@@ -14,6 +14,8 @@ home_radius(200).  //meters
      .wait({ +world_created[source(creator)] });
      lookupArtifact("receivers", RAID);
      focus(RAID);
+     lookupArtifact("clock", CAID);
+     focus(CAID);
      lookupArtifact("home", HAID);
      focus(HAID);
      ?user(Name);
@@ -34,7 +36,8 @@ home_radius(200).  //meters
     !check_nearest_receiver_in_space(Infos).
 
 +!check_nearest_receiver_in_space(Infos) : true <-
-    userinfo.filters.byTimeDifference(Infos, Filtered, 10000);
+    ?time(Now);
+    userinfo.filters.byTimeDifference(Infos, Filtered, Now, 10000);
     .println("Under 10 seconds infos: ", Filtered);
     userinfo.reducers.maxRssi(Filtered, info(Room, _, _));
     !update_location(Room).
@@ -44,7 +47,8 @@ home_radius(200).  //meters
     !check_nearest_receiver_in_time(Infos).
 
 +!check_nearest_receiver_in_time(Infos) : true <-
-    userinfo.filters.byTimeDifference(Infos, Filtered, 60000);
+    ?time(Now);
+    userinfo.filters.byTimeDifference(Infos, Filtered, Now, 60000);
     .println("Under 1 minute infos: ", Filtered);
     userinfo.reducers.maxDate(Filtered, info(Room, _, _));
     !update_location(Room).
