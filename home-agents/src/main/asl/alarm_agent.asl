@@ -37,6 +37,8 @@ everyone_at_home_is_in_a_room :- locations(Locations) & not .member(user_locatio
      focus(CAID);
      lookupArtifact("receivers", RAID);
      focus(RAID);
+     lookupArtifact("home", HAID);
+     focus(HAID);
      +alarmed(false);
      !risk_decay.
 

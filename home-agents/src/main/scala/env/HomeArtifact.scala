@@ -6,6 +6,8 @@ import model._
 
 class HomeArtifact extends Artifact {
 
+  var currentHome: Home = _
+
   def homeLocation(home: Home): Seq[Term] = {
     home.properties.collectFirst {
       case Property(_, Coordinates(latitude, longitude), "location") => Seq(new NumberTermImpl(latitude), new NumberTermImpl(longitude))
@@ -13,6 +15,8 @@ class HomeArtifact extends Artifact {
   }
 
   @OPERATION def init(home: Home): Unit = {
+    this.currentHome = home
+    defineObsProperty("events", new ListTermImpl())
     homeLocation(home) match {
       case lat :: long :: Nil => defineObsProperty("home_location", lat, long)
       case Nil =>
@@ -26,5 +30,13 @@ class HomeArtifact extends Artifact {
       case Nil if hasObsProperty("home_location") => removeObsProperty("home_location")
       case _ =>
     }
+
+    updateObsProperty("events", eventTermList(home - currentHome))
+    currentHome = home
+  }
+
+  def eventTermList(events: Seq[Event]): Term = {
+    val result = "a([" + events.map(_.toTerm).mkString(",") + "])"
+    Literal.parseLiteral(result).getTerm(0)
   }
 }

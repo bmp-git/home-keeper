@@ -16,24 +16,15 @@ class AlarmArtifact extends Artifact {
   var currentHome: Home = _
   var currentEvent: Seq[Event] = Seq[Event]()
 
-  def eventTermList(): Term = {
-    val result = "a([" + currentEvent.map(_.toTerm).mkString(",") + "])"
-    Literal.parseLiteral(result).getTerm(0)
-  }
-
   @OPERATION def init(home: Home): Unit = {
     this.currentHome = home
-    defineObsProperty("events", new ListTermImpl())
   }
 
   @LINK def update(home: Home): Unit = {
     currentEvent = home - currentHome
     currentHome = home
-    updateObsProperty("events", eventTermList())
   }
 
-
-  //TODO: This operation should be moved out of here
   @OPERATION def checkSpatialTemporalRule(): Unit = {
     implicit val home: Home = currentHome
     val eventsToConsume = currentEvent
