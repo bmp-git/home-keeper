@@ -45,7 +45,7 @@ class AlarmArtifact extends Artifact {
       (GatewayMotionDetectionNear ~ 40.seconds ~> GatewayOpen ~ 10.seconds ~> MotionDetectionM) (this.events) collectFirst {
         case GatewayMotionDetectionNearEvent(gateway1, (r1, r2)) :: GatewayOpenEvent(gateway2, (r3, r4)) ::
           MotionDetectionEvent(_, room) :: Nil
-          if home.isEmpty &&
+          if room.isEmpty && home.everyoneAtHomeInARoom &&
             gateway1.isPerimetral && gateway1.name == gateway2.name &&
             room.isOneOf(r1, r2, r3, r4) && room.isInternal =>
           turnOnAlarm()

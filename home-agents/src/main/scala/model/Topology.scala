@@ -65,8 +65,12 @@ case class User(name: String, properties: Set[Property], actions: Set[Action], u
 
   def position: Option[UserPosition] = properties.find(p => p.semantic == "user_position").map(_.value.asInstanceOf[UserPosition])
 
-  def isAtHome: Boolean = position match {
+  def isAtHome: Boolean = isInRoom || (position match {
     case Some(AtHome) => true
+    case _ => false
+  })
+
+  def isInRoom: Boolean = position match {
     case Some(InRoom(_, _)) => true
     case _ => false
   }
@@ -216,6 +220,8 @@ case class Home(name: String, properties: Set[Property], actions: Set[Action], f
   }
 
   def isEmpty: Boolean = users.forall(!_.isAtHome)
+
+  def everyoneAtHomeInARoom: Boolean = users.filter(_.isAtHome).forall(_.isInRoom)
 
   def getTime: Long = {
     this.properties.find(_.semantic == "time").map(_.value.asInstanceOf[String].toLong).getOrElse(System.currentTimeMillis())
