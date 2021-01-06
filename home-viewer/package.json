@@ -11,7 +11,7 @@
     "@antv/g6": "^3.4.7",
     "@popperjs/core": "^2.4.0",
     "@types/jquery": "^3.3.35",
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "core-js": "^3.6.4",
     "jquery": "^3.5.0",
     "material-design-icons-iconfont": "^5.0.1",
